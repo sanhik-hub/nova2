@@ -1,5 +1,7 @@
+import argparse
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -33,3 +35,25 @@ class LocalLLMConfig:
 
     # Never allow a request to hang indefinitely.
     request_timeout: int = 90
+
+
+def main() -> int:
+    """Print the effective configuration for launch scripts."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the effective configuration as JSON",
+    )
+    arguments = parser.parse_args()
+
+    if not arguments.json:
+        parser.print_help()
+        return 0
+
+    print(json.dumps(asdict(LocalLLMConfig())))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
