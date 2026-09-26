@@ -360,7 +360,7 @@ def _normalize_multiplication(expression: str) -> str:
     # Variable followed directly by a Wolfram function:
     # xSin[x] -> x*Sin[x]
     result = re.sub(
-        r"([a-zA-Z])(?=[A-Z][A-Za-z]*\[)",
+        r"(?<!Ar)([a-zA-Z])(?=[A-Z][A-Za-z]*\[)",
         r"\1*",
         result,
     )

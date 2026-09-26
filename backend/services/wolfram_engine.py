@@ -1,9 +1,12 @@
+﻿import atexit
 import json
 import os
 import shutil
-import subprocess
+import threading
 from dataclasses import dataclass
 from typing import Any, Optional
+
+from wolframclient.evaluation import WolframLanguageSession
 
 
 @dataclass
@@ -16,15 +19,16 @@ class WolframResult:
 
 class WolframEngine:
     """
-    Interface between Python and Wolfram Language Engine.
+    Interface between Python and the Wolfram Language Engine.
+
+    A single persistent WolframLanguageSession is reused for all
+    calculations made by this backend process.
 
     Python
         ↓
-    wolframscript
+    WolframLanguageSession
         ↓
     Wolfram Language Engine
-        ↓
-    JSON
         ↓
     Python
     """
@@ -53,31 +57,87 @@ class WolframEngine:
                 f"Expected: {self.executable}"
             )
 
-    def _build_wrapper(self, expression: str) -> str:
+        self._session: Optional[WolframLanguageSession] = None
+        self._session_lock = threading.RLock()
+
+        atexit.register(self.close)
+
+    def _get_session(self) -> WolframLanguageSession:
         """
-        Wrap the user's Wolfram Language expression and force
-        a JSON-safe response.
+        Return the persistent Wolfram session, creating it lazily.
+
+        The session is created only when the first calculation is made.
         """
 
-        # Escape the expression so it can safely be placed inside
-        # a Wolfram string.
-        escaped = (
-            expression
-            .replace("\\", "\\\\")
-            .replace('"', '\\"')
-            .replace("\r", "\\r")
-            .replace("\n", "\\n")
-        )
+        with self._session_lock:
+            if self._session is None:
+                self._session = WolframLanguageSession()
+
+            return self._session
+
+    def close(self) -> None:
+        """
+        Terminate the persistent Wolfram session.
+        """
+
+        with self._session_lock:
+            if self._session is not None:
+                try:
+                    self._session.terminate()
+                except Exception:
+                    pass
+                finally:
+                    self._session = None
+
+    def _evaluate(self, expression: str) -> Any:
+        """
+        Evaluate an expression using the persistent Wolfram session.
+        """
+
+        with self._session_lock:
+            session = self._get_session()
+            return session.evaluate(expression)
+
+    @staticmethod
+    def _result_to_string(result: Any) -> str:
+        """
+        Convert a Wolfram result to a stable InputForm string.
+        """
+
+        try:
+            session_expression = (
+                f"ToString[{result}, InputForm]"
+            )
+
+            # This helper is intentionally not used for the main
+            # calculation path because `result` may already be a
+            # Python representation returned by wolframclient.
+            return str(result)
+
+        except Exception:
+            return str(result)
+
+    def calculate(self, expression: str) -> WolframResult:
+        """
+        Evaluate arbitrary Wolfram Language code using the persistent
+        Wolfram session.
+        """
+
+        if not expression or not expression.strip():
+            return WolframResult(
+                success=False,
+                error="Expression is empty.",
+            )
 
         wrapper = f'''
 Module[
-    {{input, result, success, error}},
-
-    input = "{escaped}";
+    {{result, success}},
 
     result = Quiet[
         Check[
-            ToExpression[input],
+            ToExpression[
+                {json.dumps(expression)}
+            ],
             $Failed
         ]
     ];
@@ -86,111 +146,48 @@ Module[
 
     If[
         success,
-
-        ExportString[
-            <|
-                "success" -> True,
-                "input" -> input,
-                "result" -> ToString[result, InputForm]
-            |>,
-            "JSON"
-        ],
-
-        ExportString[
-            <|
-                "success" -> False,
-                "input" -> input,
-                "error" -> "Wolfram Engine could not evaluate the expression."
-            |>,
-            "JSON"
-        ]
+        <|
+            "success" -> True,
+            "result" -> ToString[result, InputForm]
+        |>,
+        <|
+            "success" -> False,
+            "error" -> "Wolfram Engine could not evaluate the expression."
+        |>
     ]
 ]
 '''
 
-        return wrapper
-
-    def calculate(self, expression: str) -> WolframResult:
-        """
-        Evaluate arbitrary Wolfram Language code.
-        """
-
-        if not expression or not expression.strip():
-            return WolframResult(
-                success=False,
-                error="Expression is empty."
-            )
-
-        wrapper = self._build_wrapper(expression)
-
         try:
-            process = subprocess.run(
-                [
-                    self.executable,
-                    "-code",
-                    wrapper,
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.timeout,
-                creationflags=getattr(
-                    subprocess,
-                    "CREATE_NO_WINDOW",
-                    0
-                ),
-            )
-
-        except subprocess.TimeoutExpired:
-            return WolframResult(
-                success=False,
-                error=(
-                    f"Wolfram Engine timed out after "
-                    f"{self.timeout} seconds."
-                ),
-            )
+            data = self._evaluate(wrapper)
 
         except Exception as exc:
             return WolframResult(
                 success=False,
-                error=f"Failed to start Wolfram Engine: {exc}"
+                error=f"Wolfram evaluation failed: {exc}",
             )
 
-        stdout = process.stdout.strip()
-        stderr = process.stderr.strip()
-
-        if not stdout:
+        if not isinstance(data, dict):
             return WolframResult(
                 success=False,
-                error=stderr or "Wolfram Engine returned no output.",
-                raw_output=stdout,
-            )
-
-        try:
-            data: Any = json.loads(stdout)
-
-        except json.JSONDecodeError:
-            return WolframResult(
-                success=False,
-                error="Wolfram returned invalid JSON.",
-                raw_output=stdout,
+                error="Wolfram returned an unexpected response.",
+                raw_output=str(data),
             )
 
         if data.get("success") is True:
             return WolframResult(
                 success=True,
                 result=data.get("result"),
-                raw_output=stdout,
+                raw_output=str(data),
             )
 
         return WolframResult(
             success=False,
             error=data.get(
                 "error",
-                stderr or "Unknown Wolfram error."
+                "Unknown Wolfram error.",
             ),
-            raw_output=stdout,
+            raw_output=str(data),
         )
 
     def solve(
@@ -250,6 +247,7 @@ Module[
         return self.calculate(
             f"Limit[{expression}, {variable} -> {value}]"
         )
+
     def plot(
         self,
         expression: str,
@@ -280,97 +278,55 @@ Module[
         )
 
         wrapper = f'''
-    Module[
-        {{expr, var, data, step, x}},
+Module[
+    {{expr, var, data}},
 
-        Check[
+    Check[
 
-            expr = ToExpression["{escaped_expression}"];
-            var = ToExpression["{escaped_variable}"];
+        expr = ToExpression["{escaped_expression}"];
+        var = ToExpression["{escaped_variable}"];
 
-            step = ({xmax} - ({xmin})) / {points};
+        data = Table[
+            {{
+                Round[N[x, 12], 10^-10],
+                Round[N[expr /. var -> x, 12], 10^-10]
+            }},
+            {{
+                x,
+                {xmin},
+                {xmax},
+                ({xmax} - ({xmin})) / {points}
+            }}
+        ];
 
-            data = Table[
-                {{
-                    Round[N[x, 12], 10^-10],
-                    Round[N[expr /. var -> x, 12], 10^-10]
-                }},
-                {{
-                    x,
-                    {xmin},
-                    {xmax},
-                    step
-                }}
-            ];
+        <|
+            "success" -> True,
+            "points" -> data
+        |>,
 
-            ExportString[
-                <|
-                    "success" -> True,
-                    "points" -> data
-                |>,
-                "JSON"
-            ],
+        <|
+            "success" -> False,
+            "error" -> ToString[$MessageList, InputForm]
+        |>
 
-            ExportString[
-                <|
-                    "success" -> False,
-                    "error" -> ToString[$MessageList, InputForm]
-                |>,
-                "JSON"
-            ]
-
-        ]
     ]
-    '''
+]
+'''
 
         try:
-            process = subprocess.run(
-                [
-                    self.executable,
-                    "-code",
-                    wrapper,
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.timeout,
-                creationflags=getattr(
-                    subprocess,
-                    "CREATE_NO_WINDOW",
-                    0,
-                ),
-            )
-
-        except subprocess.TimeoutExpired:
-            return WolframResult(
-                success=False,
-                error=f"Wolfram Engine timed out after {self.timeout} seconds.",
-            )
+            data = self._evaluate(wrapper)
 
         except Exception as exc:
             return WolframResult(
                 success=False,
-                error=f"Failed to start Wolfram Engine: {exc}",
+                error=f"Wolfram plotting failed: {exc}",
             )
 
-        stdout = process.stdout.strip()
-        stderr = process.stderr.strip()
-
-        if not stdout:
+        if not isinstance(data, dict):
             return WolframResult(
                 success=False,
-                error=stderr or "Wolfram Engine returned no output.",
-            )
-
-        try:
-            data = json.loads(stdout)
-
-        except json.JSONDecodeError:
-            return WolframResult(
-                success=False,
-                error="Wolfram returned invalid JSON.",
-                raw_output=stdout,
+                error="Wolfram returned an unexpected plotting response.",
+                raw_output=str(data),
             )
 
         if not data.get("success"):
@@ -378,13 +334,13 @@ Module[
                 success=False,
                 error=data.get(
                     "error",
-                    stderr or "Wolfram plotting failed.",
+                    "Wolfram plotting failed.",
                 ),
-                raw_output=stdout,
+                raw_output=str(data),
             )
 
         return WolframResult(
             success=True,
             result=data.get("points", []),
-            raw_output=stdout,
+            raw_output=str(data),
         )

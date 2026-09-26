@@ -4,28 +4,32 @@ from dataclasses import dataclass
 
 @dataclass
 class LocalLLMConfig:
+
     enabled: bool = True
 
-    # Model path will be configured later.
     model_path: str = os.getenv(
         "LOCAL_LLM_MODEL",
-        "models/local/model.gguf",
+        "models/local/Qwen3-4B-Q4_K_M.gguf",
     )
 
-    # CPU-only for your current machine.
+    # llama.cpp server
+    server_url: str = os.getenv(
+        "LOCAL_LLM_SERVER",
+        "http://127.0.0.1:8080",
+    )
+
+    # CPU-first configuration
     n_gpu_layers: int = 0
-
-    # Keep this conservative initially.
     context_size: int = 4096
+    threads: int = 6
 
-    # 0 lets the runtime choose.
-    threads: int = 0
+    # Keep generation short by default.
+    max_tokens: int = 384
 
-    # Number of tokens generated per request.
-    max_tokens: int = 1024
+    # Deterministic reasoning.
+    temperature: float = 0.0
 
-    # Deterministic enough for mathematical planning.
-    temperature: float = 0.2
-
-    # Keep prompt processing manageable on the i3.
     batch_size: int = 128
+
+    # Never allow a request to hang indefinitely.
+    request_timeout: int = 90

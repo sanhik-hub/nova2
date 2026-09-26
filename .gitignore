@@ -1,0 +1,42 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Local models and engines
+models/
+engines/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Temporary backups
+*.backup*
+*.bak
+*.old
+
+# Test / temporary files
+test.json
+test_reason.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local model response dumps
+0
+
+# Test caches
+.pytest_cache/

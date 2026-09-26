@@ -7,19 +7,6 @@ from .runtime import LocalLLMRuntime
 
 
 class LocalLLMProvider(ComputationProvider):
-    """
-    Local AI provider.
-
-    This provider is responsible for:
-    - natural-language interpretation
-    - mathematical problem decomposition
-    - reasoning/planning
-    - explanations
-    - guided-learning assistance
-
-    It is NOT the authoritative mathematical calculator.
-    Wolfram Engine remains responsible for verified computation.
-    """
 
     name = "local_llm"
 
@@ -31,19 +18,12 @@ class LocalLLMProvider(ComputationProvider):
         self.runtime = LocalLLMRuntime(self.config)
 
     def calculate(self, query: str) -> dict[str, Any]:
-        """
-        Provider interface compatibility.
-
-        General computation should eventually go through the
-        reasoning/orchestration layer rather than directly treating
-        the LLM as a CAS.
-        """
         return {
             "success": False,
             "result": None,
             "error": (
-                "Local LLM is an AI reasoning provider, "
-                "not a computational CAS."
+                "Local LLM is a reasoning provider, "
+                "not the authoritative computational engine."
             ),
             "engine": self.name,
         }
@@ -53,12 +33,17 @@ class LocalLLMProvider(ComputationProvider):
         prompt: str,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        system_prompt: Optional[str] = None,
+        enable_thinking: bool = False,
     ) -> dict[str, Any]:
+
         try:
             result = self.runtime.generate(
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                system_prompt=system_prompt,
+                enable_thinking=enable_thinking,
             )
 
             return {
@@ -69,6 +54,7 @@ class LocalLLMProvider(ComputationProvider):
             }
 
         except Exception as exc:
+
             return {
                 "success": False,
                 "result": None,
@@ -77,7 +63,11 @@ class LocalLLMProvider(ComputationProvider):
             }
 
     def is_available(self) -> bool:
-        return (
-            self.config.enabled
-            and self.config.model_path is not None
-        )
+        if not self.config.enabled:
+            return False
+
+        try:
+            self.runtime.load()
+            return True
+        except Exception:
+            return False
