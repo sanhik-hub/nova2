@@ -488,7 +488,7 @@ async function refresh(force = false) {
         document.getElementById("llmModel").textContent = fmt(status.llm.model_name);
         document.getElementById("llmHealth").textContent = status.llm.health.ok ? "Healthy" : "Unavailable";
 
-        const kernelRunning = status.wolfram.session_started && status.wolfram.count > 0;
+        const kernelRunning = status.wolfram.session_exists && status.wolfram.count > 0;
         setBadge(
             "wolframBadge",
             kernelRunning ? "running" : (status.wolfram.session_exists ? "warning" : "unknown"),
