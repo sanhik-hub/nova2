@@ -360,6 +360,14 @@ def http_json_check(url: str):
             "error": str(exc),
         }
 
+def http_json_post(url: str):
+    request = urllib.request.Request(url, method="POST")
+    with urllib.request.urlopen(request, timeout=10) as response:
+        raw = response.read().decode("utf-8", errors="replace")
+    result = json.loads(raw) if raw else {}
+    return result if isinstance(result, dict) else {}
+
+
 def health_status():
     config = load_llm_config()
     processes = process_snapshot()
@@ -407,10 +415,13 @@ def health_status():
             f"http://{HOST}:{BACKEND_PORT}/api/health"
         )
 
-    wolfram_active = bool(
-        wolfram_health.get("ok")
-        and wolfram_health.get("wolfram") is True
-    )
+    session = wolfram_health.get("wolfram_session") or {}
+    session_started = bool(session.get("session_started"))
+    kernel_count = len(processes["wolfram"])
+
+    # UI says KERNEL RUNNING only when both the Python session and
+    # an actual WolframKernel.exe process are present.
+    wolfram_active = session_started and kernel_count > 0
 
     # A service is considered running when its actual
     # endpoint is reachable. Process information is
@@ -498,11 +509,11 @@ def health_status():
                 process["pid"]
                 for process in processes["wolfram"]
             ],
-            "count": len(
-                processes["wolfram"]
-            ),
+            "count": kernel_count,
             "embedded": True,
             "healthy": wolfram_active,
+            "session_exists": bool(session.get("session_exists")),
+            "session_started": session_started,
             "note": (
                 "Wolfram runs as a persistent "
                 "session inside the Nova backend."
@@ -517,6 +528,78 @@ def health_status():
 
         "timestamp": time.time(),
     }
+
+
+def start_backend():
+    if port_listener(BACKEND_PORT):
+        return {"ok": True, "message": "Backend is already running."}
+
+    log("Starting FastAPI backend...")
+    subprocess.Popen(
+        [
+            str(PYTHON),
+            "-m", "uvicorn", "backend.main:app",
+            "--host", HOST,
+            "--port", str(BACKEND_PORT),
+        ],
+        cwd=str(NOVA_ROOT),
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+    return {"ok": True, "message": "Backend start requested."}
+
+
+def start_frontend():
+    if port_listener(FRONTEND_PORT):
+        return {"ok": True, "message": "Frontend is already running."}
+
+    npm = subprocess.run(
+        ["where.exe", "npm.exe"],
+        capture_output=True, text=True,
+    )
+    if npm.returncode != 0 or not npm.stdout.strip():
+        raise RuntimeError("npm.exe was not found in PATH.")
+
+    log("Starting Vite frontend...")
+    subprocess.Popen(
+        [
+            npm.stdout.strip().splitlines()[0],
+            "run", "dev", "--",
+            "--host", HOST,
+            "--port", str(FRONTEND_PORT),
+        ],
+        cwd=str(FRONTEND_ROOT),
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+    return {"ok": True, "message": "Frontend start requested."}
+
+
+def start_llm():
+    if port_listener(8080):
+        return {"ok": True, "message": "Local model server is already running."}
+
+    config = load_llm_config()
+    model_path = str(config.get("model_path", "")).strip()
+    server_url = str(config.get("server_url", "")).strip()
+    if not model_path or not server_url:
+        raise RuntimeError("Local model configuration is incomplete.")
+
+    if not Path(model_path).is_absolute():
+        model_path = str(NOVA_ROOT / model_path)
+
+    parsed = urlparse(server_url)
+    port = parsed.port or 8080
+
+    log(f"Starting local model server on port {port}...")
+    subprocess.Popen(
+        [
+            str(LLAMA_SERVER), "-m", model_path,
+            "--host", parsed.hostname or HOST,
+            "--port", str(port),
+        ],
+        cwd=str(NOVA_ROOT),
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+    return {"ok": True, "message": "Local model server start requested."}
 
 
 def start_all():
@@ -653,31 +736,22 @@ def terminate_llm():
 
 
 def terminate_wolfram():
+    backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
+
+    if backend_http.get("ok"):
+        try:
+            result = http_json_post(
+                f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
+            )
+            if result.get("success"):
+                log("Wolfram session terminated cleanly through backend.")
+                return {"ok": True, "message": "Wolfram session terminated cleanly."}
+        except Exception as exc:
+            log(f"Wolfram session reset failed: {exc}")
+
     processes = process_snapshot()["wolfram"]
-
-    if not processes:
-        return {
-            "ok": True,
-            "message": (
-                "No Wolfram kernel "
-                "process found."
-            ),
-        }
-
-    terminate_process_list(
-        processes,
-        "WolframKernel",
-    )
-
-    return {
-        "ok": True,
-        "message": (
-            "Wolfram kernel process terminated. "
-            "The backend may create a fresh "
-            "session on the next calculation."
-        ),
-    }
-
+    terminate_process_list(processes, "WolframKernel")
+    return {"ok": True, "message": "Wolfram kernel processes terminated."}
 
 def terminate_all():
     terminate_frontend()
@@ -927,6 +1001,41 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
 
         try:
+            if parsed.path == "/api/start/backend":
+                api_response(self, start_backend())
+                return
+            if parsed.path == "/api/start/frontend":
+                api_response(self, start_frontend())
+                return
+            if parsed.path == "/api/start/llm":
+                api_response(self, start_llm())
+                return
+
+            if parsed.path == "/api/restart/backend":
+                terminate_backend()
+                time.sleep(0.5)
+                api_response(self, start_backend())
+                return
+            if parsed.path == "/api/restart/frontend":
+                terminate_frontend()
+                time.sleep(0.5)
+                api_response(self, start_frontend())
+                return
+            if parsed.path == "/api/restart/llm":
+                terminate_llm()
+                time.sleep(0.5)
+                api_response(self, start_llm())
+                return
+            if parsed.path == "/api/restart/wolfram":
+                result = http_json_post(
+                    f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
+                )
+                api_response(self, {
+                    "ok": bool(result.get("success")),
+                    "message": result.get("message", "Wolfram session reset."),
+                })
+                return
+
             if parsed.path == "/api/start":
                 api_response(
                     self,
