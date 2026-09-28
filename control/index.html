@@ -290,9 +290,9 @@ pre {
             </div>
 
             <div class="controls actions">
-                <button onclick="startAll()">Start</button>
+                <button onclick="startComponent('backend')">Start</button>
                 <button class="danger" onclick="terminateBackend()">Terminate</button>
-                <button onclick="restartAll()">Restart</button>
+                <button onclick="restartComponent('backend')">Restart</button>
             </div>
         </section>
 
@@ -323,8 +323,9 @@ pre {
             </div>
 
             <div class="controls actions">
+                <button onclick="startComponent('frontend')">Start</button>
                 <button class="danger" onclick="terminateFrontend()">Terminate</button>
-                <button onclick="restartAll()">Restart</button>
+                <button onclick="restartComponent('frontend')">Restart</button>
             </div>
         </section>
 
@@ -355,9 +356,9 @@ pre {
             </div>
 
             <div class="controls actions">
-                <button onclick="startAll()">Start</button>
+                <button onclick="startComponent('llm')">Start</button>
                 <button class="danger" onclick="terminateLLM()">Terminate</button>
-                <button onclick="restartAll()">Restart</button>
+                <button onclick="restartComponent('llm')">Restart</button>
             </div>
         </section>
 
@@ -389,7 +390,8 @@ pre {
 
             <div class="controls actions">
                 <button onclick="testWolfram()">Test 2 + 2</button>
-                <button class="danger" onclick="terminateWolfram()">Terminate Kernel</button>
+                <button onclick="restartComponent('wolfram')">Restart Session</button>
+                <button class="danger" onclick="terminateWolfram()">Terminate</button>
             </div>
         </section>
 
@@ -448,109 +450,60 @@ function fmt(value) {
 
 async function refresh(force = false) {
     if (refreshing && !force) return;
-
     refreshing = true;
 
     try {
-        const status = await request("/api/status");
+        const [status, logs] = await Promise.all([
+            request("/api/status"),
+            request("/api/logs")
+        ]);
 
         const backendRunning = status.backend.process && status.backend.http.ok;
+        setBadge(
+            "backendBadge",
+            backendRunning ? "running" : (status.backend.process ? "warning" : "stopped"),
+            backendRunning ? "RUNNING" : (status.backend.process ? "PROCESS" : "STOPPED")
+        );
+        document.getElementById("backendPid").textContent = fmt(status.backend.pid);
+        document.getElementById("backendHttp").textContent = status.backend.http.ok ? "Healthy" : "Unavailable";
 
-        if (backendRunning) {
-            setBadge("backendBadge", "running", "RUNNING");
-        } else if (status.backend.process) {
-            setBadge("backendBadge", "warning", "PROCESS");
-        } else {
-            setBadge("backendBadge", "stopped", "STOPPED");
-        }
+        const frontendRunning = status.frontend.process && status.frontend.http.ok;
+        setBadge(
+            "frontendBadge",
+            frontendRunning ? "running" : (status.frontend.process ? "warning" : "stopped"),
+            frontendRunning ? "RUNNING" : (status.frontend.process ? "PROCESS" : "STOPPED")
+        );
+        document.getElementById("frontendPid").textContent = fmt(status.frontend.pid);
+        document.getElementById("frontendHttp").textContent = status.frontend.http.ok ? "Healthy" : "Unavailable";
+        document.getElementById("frontendRoot").textContent = fmt(status.frontend.root);
 
-        document.getElementById("backendPid").textContent =
-            fmt(status.backend.pid);
+        const llmRunning = status.llm.process && status.llm.health.ok;
+        setBadge(
+            "llmBadge",
+            llmRunning ? "running" : (status.llm.process ? "warning" : "stopped"),
+            llmRunning ? "RUNNING" : (status.llm.process ? "PROCESS" : "STOPPED")
+        );
+        document.getElementById("llmServer").textContent = fmt(status.llm.server_url);
+        document.getElementById("llmPid").textContent = fmt(status.llm.pid);
+        document.getElementById("llmModel").textContent = fmt(status.llm.model_name);
+        document.getElementById("llmHealth").textContent = status.llm.health.ok ? "Healthy" : "Unavailable";
 
-        document.getElementById("backendHttp").textContent =
-            status.backend.http.ok
-                ? "Healthy"
-                : "Unavailable";
-
-
-        const frontendRunning =
-            status.frontend.process && status.frontend.http.ok;
-
-        if (frontendRunning) {
-            setBadge("frontendBadge", "running", "RUNNING");
-        } else if (status.frontend.process) {
-            setBadge("frontendBadge", "warning", "PROCESS");
-        } else {
-            setBadge("frontendBadge", "stopped", "STOPPED");
-        }
-
-        document.getElementById("frontendPid").textContent =
-            fmt(status.frontend.pid);
-
-        document.getElementById("frontendHttp").textContent =
-            status.frontend.http.ok
-                ? "Healthy"
-                : "Unavailable";
-
-        document.getElementById("frontendRoot").textContent =
-            fmt(status.frontend.root);
-
-
-        const llmRunning =
-            status.llm.process && status.llm.health.ok;
-
-        if (llmRunning) {
-            setBadge("llmBadge", "running", "RUNNING");
-        } else if (status.llm.process) {
-            setBadge("llmBadge", "warning", "PROCESS");
-        } else {
-            setBadge("llmBadge", "stopped", "STOPPED");
-        }
-
-        document.getElementById("llmServer").textContent =
-            fmt(status.llm.server_url);
-
-        document.getElementById("llmPid").textContent =
-            fmt(status.llm.pid);
-
-        document.getElementById("llmModel").textContent =
-            fmt(status.llm.model_name);
-
-        document.getElementById("llmHealth").textContent =
-            status.llm.health.ok
-                ? "Healthy"
-                : "Unavailable";
-
-
-        if (status.wolfram.process) {
-            setBadge("wolframBadge", "running", "KERNEL RUNNING");
-        } else {
-            setBadge("wolframBadge", "unknown", "NOT RUNNING");
-        }
-
+        const kernelRunning = status.wolfram.session_started && status.wolfram.count > 0;
+        setBadge(
+            "wolframBadge",
+            kernelRunning ? "running" : (status.wolfram.session_exists ? "warning" : "unknown"),
+            kernelRunning ? "KERNEL RUNNING" : (status.wolfram.session_exists ? "SESSION READY" : "KERNEL STOPPED")
+        );
         document.getElementById("wolframPid").textContent =
-            status.wolfram.pids.length
-                ? status.wolfram.pids.join(", ")
-                : "—";
-
-        document.getElementById("wolframCount").textContent =
-            fmt(status.wolfram.count);
-
-
-        const processes = await request("/api/processes");
+            status.wolfram.pids.length ? status.wolfram.pids.join(", ") : "—";
+        document.getElementById("wolframCount").textContent = fmt(status.wolfram.count);
 
         document.getElementById("processes").textContent =
-            JSON.stringify(processes, null, 2);
-
-
-        const logs = await request("/api/logs");
-
+            JSON.stringify(status.processes || {}, null, 2);
         document.getElementById("logs").textContent =
             logs.logs.join("\n") || "No events yet.";
-
         document.getElementById("lastUpdate").textContent =
             "Last updated " + new Date().toLocaleTimeString();
-
     } catch (error) {
         document.getElementById("lastUpdate").textContent =
             "Control server error: " + error.message;
@@ -569,15 +522,21 @@ async function action(url) {
     }
 }
 
+async function startComponent(component) {
+    await action("/api/start/" + component);
+}
+
+async function restartComponent(component) {
+    if (!confirm("Restart only the " + component + "?")) return;
+    await action("/api/restart/" + component);
+}
 
 async function manualRefresh() {
     const button = document.getElementById("refreshButton");
-
     if (button) {
         button.disabled = true;
         button.textContent = "Refreshing...";
     }
-
     try {
         await refresh(true);
     } finally {
@@ -588,35 +547,20 @@ async function manualRefresh() {
     }
 }
 
-
-function startAll() {
-    action("/api/start");
-}
-
-function terminateBackend() {
-    action("/api/terminate/backend");
-}
-
-function terminateLLM() {
-    action("/api/terminate/llm");
-}
-
-function terminateFrontend() {
-    action("/api/terminate/frontend");
-}
-
-function terminateWolfram() {
-    action("/api/terminate/wolfram");
-}
+function startAll() { action("/api/start"); }
+function terminateBackend() { action("/api/terminate/backend"); }
+function terminateLLM() { action("/api/terminate/llm"); }
+function terminateFrontend() { action("/api/terminate/frontend"); }
+function terminateWolfram() { action("/api/terminate/wolfram"); }
 
 function terminateAll() {
-    if (confirm("Terminate the Nova backend, local model and Wolfram kernel?")) {
+    if (confirm("Terminate the Nova backend, local model and Wolfram session?")) {
         action("/api/terminate/all");
     }
 }
 
 function restartAll() {
-    if (confirm("Restart Nova using run_nova.ps1?")) {
+    if (confirm("Restart all Nova services using run_nova.ps1?")) {
         action("/api/restart");
     }
 }
@@ -662,7 +606,11 @@ async function testWolfram() {
 
 refresh();
 
-setInterval(refresh, 3000);
+setInterval(() => refresh(), 2000);
+
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refresh(true);
+});
 </script>
 </body>
 </html>
