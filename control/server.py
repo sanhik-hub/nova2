@@ -437,12 +437,16 @@ def health_status():
         )
 
     session = wolfram_health.get("wolfram_session") or {}
+    session_exists = bool(session.get("session_exists"))
     session_started = bool(session.get("session_started"))
     kernel_count = len(processes["wolfram"])
 
-    # UI says KERNEL RUNNING only when both the Python session and
-    # an actual WolframKernel.exe process are present.
-    wolfram_active = session_started and kernel_count > 0
+    # WolframLanguageSession.started is not used as the sole runtime
+    # signal here. After a successful evaluation the native kernel can
+    # still be present even when that property is momentarily false.
+    # The backend session object plus an actual WolframKernel.exe give
+    # us the reliable Control Center state.
+    wolfram_active = session_exists and kernel_count > 0
 
     # A service is considered running when its actual
     # endpoint is reachable. Process information is
@@ -528,7 +532,7 @@ def health_status():
             "count": kernel_count,
             "embedded": True,
             "healthy": wolfram_active,
-            "session_exists": bool(session.get("session_exists")),
+            "session_exists": session_exists,
             "session_started": session_started,
             "note": (
                 "Wolfram runs as a persistent "
