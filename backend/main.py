@@ -19,7 +19,8 @@ app = FastAPI(
 )
 
 computation = ComputationService()
-reasoning = ReasoningService()
+# Reuse the same provider router so Wolfram has one persistent session.
+reasoning = ReasoningService(router=computation.router)
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
