@@ -521,6 +521,8 @@ def health_status():
             "health": wolfram_health,
         },
 
+        "processes": processes,
+
         "runner": {
             "exists": RUNNER.exists(),
             "path": str(RUNNER),
