@@ -89,6 +89,30 @@ class WolframEngine:
                 finally:
                     self._session = None
 
+    def restart(self) -> None:
+        """Reset the persistent session; the next evaluation starts a fresh kernel."""
+        self.close()
+
+    def status(self) -> dict[str, Any]:
+        """Report session state without starting a kernel just to inspect it."""
+        with self._session_lock:
+            session = self._session
+            if session is None:
+                return {
+                    "session_exists": False,
+                    "session_started": False,
+                }
+
+            try:
+                started = bool(session.started)
+            except Exception:
+                started = False
+
+            return {
+                "session_exists": True,
+                "session_started": started,
+            }
+
     def _evaluate(self, expression: str) -> Any:
         """
         Evaluate an expression using the persistent Wolfram session.
