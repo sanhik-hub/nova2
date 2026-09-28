@@ -24,8 +24,11 @@ class ReasoningService:
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
 
-    def __init__(self):
-        self.router = ProviderRouter()
+    def __init__(self, router: ProviderRouter | None = None):
+        # Share the application-wide router when one is supplied. This
+        # keeps the persistent Wolfram session identical across
+        # /api/reason, /api/compute, and the health/control endpoints.
+        self.router = router or ProviderRouter()
 
         self._cache = OrderedDict()
         self._cache_lock = Lock()
