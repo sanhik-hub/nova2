@@ -769,6 +769,13 @@ def terminate_llm():
 
 
 def terminate_wolfram():
+    """Reset the backend session and remove any kernel left behind.
+
+    WolframLanguageSession.terminate() can occasionally release the
+    Python-side session without immediately removing the native
+    WolframKernel.exe process. Never report a clean termination until
+    the native process is actually gone.
+    """
     backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
 
     if backend_http.get("ok"):
@@ -776,15 +783,48 @@ def terminate_wolfram():
             result = http_json_post(
                 f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
             )
+
             if result.get("success"):
-                log("Wolfram session terminated cleanly through backend.")
-                return {"ok": True, "message": "Wolfram session terminated cleanly."}
+                deadline = time.time() + 5
+
+                while time.time() < deadline:
+                    if not process_snapshot()["wolfram"]:
+                        log("Wolfram session terminated cleanly through backend.")
+                        return {
+                            "ok": True,
+                            "message": "Wolfram session terminated cleanly.",
+                        }
+                    time.sleep(0.25)
+
+                log(
+                    "Wolfram session reset succeeded, but a native "
+                    "WolframKernel.exe process remained. Forcing termination."
+                )
         except Exception as exc:
             log(f"Wolfram session reset failed: {exc}")
 
     processes = process_snapshot()["wolfram"]
-    terminate_process_list(processes, "WolframKernel")
-    return {"ok": True, "message": "Wolfram kernel processes terminated."}
+
+    if processes:
+        terminate_process_list(processes, "WolframKernel")
+
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            if not process_snapshot()["wolfram"]:
+                break
+            time.sleep(0.25)
+
+    if process_snapshot()["wolfram"]:
+        return {
+            "ok": False,
+            "message": "WolframKernel.exe could not be terminated.",
+        }
+
+    return {
+        "ok": True,
+        "message": "Wolfram kernel processes terminated.",
+    }
+
 
 def terminate_all():
     terminate_frontend()
