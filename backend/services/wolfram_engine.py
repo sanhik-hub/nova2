@@ -38,6 +38,11 @@ class WolframEngine:
         r"\WolframScript\wolframscript.exe"
     )
 
+    DEFAULT_KERNEL_PATH = (
+        r"C:\Program Files\Wolfram Research"
+        r"\Wolfram Engine\15.0\WolframKernel.exe"
+    )
+
     def __init__(
         self,
         executable: Optional[str] = None,
@@ -57,6 +62,14 @@ class WolframEngine:
                 f"Expected: {self.executable}"
             )
 
+        self.kernel = self.DEFAULT_KERNEL_PATH
+
+        if not os.path.isfile(self.kernel):
+            raise FileNotFoundError(
+                "Wolfram Kernel executable was not found.\n"
+                f"Expected: {self.kernel}"
+            )
+
         self._session: Optional[WolframLanguageSession] = None
         self._session_lock = threading.RLock()
 
@@ -71,7 +84,7 @@ class WolframEngine:
 
         with self._session_lock:
             if self._session is None:
-                self._session = WolframLanguageSession()
+                self._session = WolframLanguageSession(self.kernel)
 
             return self._session
 
