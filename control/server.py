@@ -301,11 +301,7 @@ def process_snapshot():
                 }
             )
 
-        if (
-            name_lower == "llama-server.exe"
-            and str(LLAMA_SERVER).lower()
-            in command_lower
-        ):
+        if name_lower == "llama-server.exe":
             llama.append(
                 {
                     "pid": pid,
