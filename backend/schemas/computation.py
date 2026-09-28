@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+﻿from pydantic import BaseModel, Field
 from typing import Any, Optional
 
 
@@ -6,6 +6,7 @@ class ComputationRequest(BaseModel):
     query: str = Field(..., min_length=1)
     operation: str = "compute"
     provider: str = "wolfram"
+    explanation: bool = True
 
 
 class ExpressionRequest(BaseModel):
@@ -35,7 +36,7 @@ class ComputationResponse(BaseModel):
     plots: list[Any] = []
     related: list[Any] = []
 
-    
+
 class PlotRequest(BaseModel):
     expression: str = Field(..., min_length=1)
     variable: str = "x"

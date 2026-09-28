@@ -1,0 +1,672 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrismOffline Control Center</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    color-scheme: dark;
+    --bg: #0b0d11;
+    --panel: #12151b;
+    --panel2: #171b22;
+    --border: #282e38;
+    --text: #edf1f7;
+    --muted: #8f98a7;
+    --green: #45d483;
+    --yellow: #e6b94a;
+    --red: #ef6262;
+    --blue: #5d9cff;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, Segoe UI, Arial, sans-serif;
+}
+
+.container {
+    max-width: 1250px;
+    margin: auto;
+    padding: 28px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: var(--muted);
+    margin-top: 5px;
+}
+
+.header-actions,
+.actions {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+button {
+    border: 1px solid var(--border);
+    background: #1b2028;
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+button:hover {
+    background: #242a34;
+}
+
+button.primary {
+    background: #235da8;
+    border-color: #3278d3;
+}
+
+button.danger {
+    color: #ff9b9b;
+}
+
+button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 240px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.card-title {
+    font-size: 17px;
+    font-weight: 650;
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    padding: 5px 8px;
+    border-radius: 999px;
+}
+
+.badge.running {
+    background: rgba(69, 212, 131, .12);
+    color: var(--green);
+}
+
+.badge.stopped {
+    background: rgba(239, 98, 98, .12);
+    color: var(--red);
+}
+
+.badge.warning {
+    background: rgba(230, 185, 74, .12);
+    color: var(--yellow);
+}
+
+.badge.unknown {
+    background: rgba(143, 152, 167, .12);
+    color: var(--muted);
+}
+
+.details {
+    margin: 22px 0;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.045);
+}
+
+.label {
+    color: var(--muted);
+}
+
+.value {
+    text-align: right;
+    max-width: 70%;
+    overflow-wrap: anywhere;
+}
+
+.controls {
+    margin-top: 26px;
+}
+
+.bottom {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.panel-title {
+    font-size: 16px;
+    font-weight: 650;
+    margin-bottom: 14px;
+}
+
+pre {
+    margin: 0;
+    min-height: 210px;
+    max-height: 350px;
+    overflow: auto;
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px;
+    color: #bfc7d4;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.global {
+    margin-bottom: 16px;
+}
+
+.connection {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.test-result {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 7px;
+    background: #0c0f14;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bottom {
+        grid-template-columns: 1fr;
+    }
+
+    .header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="header">
+        <div>
+            <div class="title">PrismOffline Control Center</div>
+            <div class="subtitle">
+                Local runtime monitor and process control
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="primary" onclick="startAll()">Start All</button>
+            <button onclick="restartAll()">Restart All</button>
+            <button class="danger" onclick="terminateAll()">Terminate All</button>
+            <button id="refreshButton" onclick="manualRefresh()">Refresh</button>
+        </div>
+    </div>
+
+    <div class="global connection" id="lastUpdate">
+        Connecting...
+    </div>
+
+    <div class="grid">
+
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">FastAPI Backend</div>
+                <span id="backendBadge" class="badge unknown">CHECKING</span>
+            </div>
+
+            <div class="details">
+                <div class="row">
+                    <span class="label">Address</span>
+                    <span class="value">127.0.0.1:8000</span>
+                </div>
+                <div class="row">
+                    <span class="label">PID</span>
+                    <span id="backendPid" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">HTTP</span>
+                    <span id="backendHttp" class="value">—</span>
+                </div>
+            </div>
+
+            <div class="controls actions">
+                <button onclick="startAll()">Start</button>
+                <button class="danger" onclick="terminateBackend()">Terminate</button>
+                <button onclick="restartAll()">Restart</button>
+            </div>
+        </section>
+
+
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">Frontend</div>
+                <span id="frontendBadge" class="badge unknown">CHECKING</span>
+            </div>
+
+            <div class="details">
+                <div class="row">
+                    <span class="label">Address</span>
+                    <span class="value">127.0.0.1:5173</span>
+                </div>
+                <div class="row">
+                    <span class="label">PID</span>
+                    <span id="frontendPid" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">HTTP</span>
+                    <span id="frontendHttp" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Root</span>
+                    <span id="frontendRoot" class="value">—</span>
+                </div>
+            </div>
+
+            <div class="controls actions">
+                <button class="danger" onclick="terminateFrontend()">Terminate</button>
+                <button onclick="restartAll()">Restart</button>
+            </div>
+        </section>
+
+
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">Local Model</div>
+                <span id="llmBadge" class="badge unknown">CHECKING</span>
+            </div>
+
+            <div class="details">
+                <div class="row">
+                    <span class="label">Server</span>
+                    <span id="llmServer" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">PID</span>
+                    <span id="llmPid" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Model</span>
+                    <span id="llmModel" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Health</span>
+                    <span id="llmHealth" class="value">—</span>
+                </div>
+            </div>
+
+            <div class="controls actions">
+                <button onclick="startAll()">Start</button>
+                <button class="danger" onclick="terminateLLM()">Terminate</button>
+                <button onclick="restartAll()">Restart</button>
+            </div>
+        </section>
+
+
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title">Wolfram Engine</div>
+                <span id="wolframBadge" class="badge unknown">CHECKING</span>
+            </div>
+
+            <div class="details">
+                <div class="row">
+                    <span class="label">Mode</span>
+                    <span class="value">Persistent backend session</span>
+                </div>
+                <div class="row">
+                    <span class="label">Kernel PID</span>
+                    <span id="wolframPid" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Kernel count</span>
+                    <span id="wolframCount" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Evaluation</span>
+                    <span id="wolframEvaluation" class="value">Not tested</span>
+                </div>
+            </div>
+
+            <div class="controls actions">
+                <button onclick="testWolfram()">Test 2 + 2</button>
+                <button class="danger" onclick="terminateWolfram()">Terminate Kernel</button>
+            </div>
+        </section>
+
+    </div>
+
+
+    <div class="bottom">
+
+        <section class="panel">
+            <div class="panel-title">Runtime Processes</div>
+            <pre id="processes">Loading...</pre>
+        </section>
+
+        <section class="panel">
+            <div class="panel-title">Event Log</div>
+            <pre id="logs">Loading...</pre>
+        </section>
+
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+        <div class="panel-title">Last Wolfram Test</div>
+        <div id="testResult" class="test-result">No test executed.</div>
+    </div>
+
+</div>
+
+<script>
+let refreshing = false;
+
+async function request(url, method = "GET") {
+    const response = await fetch(url, { method });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || data.message || "Request failed");
+    }
+
+    return data;
+}
+
+function setBadge(id, state, text) {
+    const el = document.getElementById(id);
+    el.className = "badge " + state;
+    el.textContent = text;
+}
+
+function fmt(value) {
+    if (value === null || value === undefined || value === "") {
+        return "—";
+    }
+
+    return String(value);
+}
+
+async function refresh(force = false) {
+    if (refreshing && !force) return;
+
+    refreshing = true;
+
+    try {
+        const status = await request("/api/status");
+
+        const backendRunning = status.backend.process && status.backend.http.ok;
+
+        if (backendRunning) {
+            setBadge("backendBadge", "running", "RUNNING");
+        } else if (status.backend.process) {
+            setBadge("backendBadge", "warning", "PROCESS");
+        } else {
+            setBadge("backendBadge", "stopped", "STOPPED");
+        }
+
+        document.getElementById("backendPid").textContent =
+            fmt(status.backend.pid);
+
+        document.getElementById("backendHttp").textContent =
+            status.backend.http.ok
+                ? "Healthy"
+                : "Unavailable";
+
+
+        const frontendRunning =
+            status.frontend.process && status.frontend.http.ok;
+
+        if (frontendRunning) {
+            setBadge("frontendBadge", "running", "RUNNING");
+        } else if (status.frontend.process) {
+            setBadge("frontendBadge", "warning", "PROCESS");
+        } else {
+            setBadge("frontendBadge", "stopped", "STOPPED");
+        }
+
+        document.getElementById("frontendPid").textContent =
+            fmt(status.frontend.pid);
+
+        document.getElementById("frontendHttp").textContent =
+            status.frontend.http.ok
+                ? "Healthy"
+                : "Unavailable";
+
+        document.getElementById("frontendRoot").textContent =
+            fmt(status.frontend.root);
+
+
+        const llmRunning =
+            status.llm.process && status.llm.health.ok;
+
+        if (llmRunning) {
+            setBadge("llmBadge", "running", "RUNNING");
+        } else if (status.llm.process) {
+            setBadge("llmBadge", "warning", "PROCESS");
+        } else {
+            setBadge("llmBadge", "stopped", "STOPPED");
+        }
+
+        document.getElementById("llmServer").textContent =
+            fmt(status.llm.server_url);
+
+        document.getElementById("llmPid").textContent =
+            fmt(status.llm.pid);
+
+        document.getElementById("llmModel").textContent =
+            fmt(status.llm.model_name);
+
+        document.getElementById("llmHealth").textContent =
+            status.llm.health.ok
+                ? "Healthy"
+                : "Unavailable";
+
+
+        if (status.wolfram.process) {
+            setBadge("wolframBadge", "running", "KERNEL RUNNING");
+        } else {
+            setBadge("wolframBadge", "unknown", "NOT RUNNING");
+        }
+
+        document.getElementById("wolframPid").textContent =
+            status.wolfram.pids.length
+                ? status.wolfram.pids.join(", ")
+                : "—";
+
+        document.getElementById("wolframCount").textContent =
+            fmt(status.wolfram.count);
+
+
+        const processes = await request("/api/processes");
+
+        document.getElementById("processes").textContent =
+            JSON.stringify(processes, null, 2);
+
+
+        const logs = await request("/api/logs");
+
+        document.getElementById("logs").textContent =
+            logs.logs.join("\n") || "No events yet.";
+
+        document.getElementById("lastUpdate").textContent =
+            "Last updated " + new Date().toLocaleTimeString();
+
+    } catch (error) {
+        document.getElementById("lastUpdate").textContent =
+            "Control server error: " + error.message;
+    } finally {
+        refreshing = false;
+    }
+}
+
+
+async function action(url) {
+    try {
+        await request(url, "POST");
+        await refresh(true);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+
+async function manualRefresh() {
+    const button = document.getElementById("refreshButton");
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Refreshing...";
+    }
+
+    try {
+        await refresh(true);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Refresh";
+        }
+    }
+}
+
+
+function startAll() {
+    action("/api/start");
+}
+
+function terminateBackend() {
+    action("/api/terminate/backend");
+}
+
+function terminateLLM() {
+    action("/api/terminate/llm");
+}
+
+function terminateFrontend() {
+    action("/api/terminate/frontend");
+}
+
+function terminateWolfram() {
+    action("/api/terminate/wolfram");
+}
+
+function terminateAll() {
+    if (confirm("Terminate the Nova backend, local model and Wolfram kernel?")) {
+        action("/api/terminate/all");
+    }
+}
+
+function restartAll() {
+    if (confirm("Restart Nova using run_nova.ps1?")) {
+        action("/api/restart");
+    }
+}
+
+async function testWolfram() {
+    document.getElementById("wolframEvaluation").textContent =
+        "Testing...";
+
+    document.getElementById("testResult").textContent =
+        "Running 2 + 2 through the existing backend...";
+
+    try {
+        const result = await request("/api/test/wolfram", "POST");
+
+        if (result.ok) {
+            setBadge("wolframBadge", "running", "WORKING");
+            document.getElementById("wolframEvaluation").textContent =
+                "Passed";
+
+            document.getElementById("testResult").textContent =
+                JSON.stringify(result, null, 2);
+        } else {
+            setBadge("wolframBadge", "warning", "ERROR");
+            document.getElementById("wolframEvaluation").textContent =
+                "Failed";
+
+            document.getElementById("testResult").textContent =
+                JSON.stringify(result, null, 2);
+        }
+
+    } catch (error) {
+        setBadge("wolframBadge", "warning", "ERROR");
+        document.getElementById("wolframEvaluation").textContent =
+            "Failed";
+
+        document.getElementById("testResult").textContent =
+            error.message;
+    }
+
+    await refresh();
+}
+
+
+refresh();
+
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
+
+
+
+

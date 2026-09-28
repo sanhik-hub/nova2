@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from backend.services.reasoning_service import ReasoningService
 
 from backend.schemas.computation import (
@@ -23,7 +23,10 @@ reasoning = ReasoningService()
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
-    return reasoning.solve(request.query)
+    return reasoning.solve(
+        request.query,
+        explanation=request.explanation,
+    )
 
 @app.get("/")
 def root():

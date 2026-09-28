@@ -34,7 +34,11 @@ class ReasoningService:
     # PUBLIC API
     # =========================================================
 
-    def solve(self, problem: str) -> dict[str, Any]:
+    def solve(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ) -> dict[str, Any]:
 
         started = time.perf_counter()
 
@@ -47,7 +51,10 @@ class ReasoningService:
         # 1. EXACT CACHE
         # -----------------------------------------------------
 
-        cached = self._cache_get(problem)
+        cached = self._cache_get(
+            problem,
+            explanation,
+        )
 
         if cached is not None:
             cached["cached"] = True
@@ -79,7 +86,11 @@ class ReasoningService:
             }
 
             if result["success"]:
-                self._cache_set(problem, response)
+                self._cache_set(
+                    problem,
+                    response,
+                    explanation,
+                )
 
             response["elapsed_ms"] = round(
                 (time.perf_counter() - started) * 1000,
@@ -111,7 +122,11 @@ class ReasoningService:
             )
 
             if response.get("success"):
-                self._cache_set(problem, response)
+                self._cache_set(
+                    problem,
+                    response,
+                    explanation,
+                )
 
             return response
 
@@ -124,7 +139,10 @@ class ReasoningService:
 
         if self._is_reasoning_problem(problem):
 
-            response = self._solve_reasoning_only(problem)
+            response = self._solve_reasoning_only(
+                problem,
+                explanation=explanation,
+            )
 
             response["elapsed_ms"] = round(
                 (time.perf_counter() - started) * 1000,
@@ -137,7 +155,10 @@ class ReasoningService:
         # 4. COMPLEX COMPUTATIONAL PATH
         # -----------------------------------------------------
 
-        response = self._solve_complex(problem)
+        response = self._solve_complex(
+            problem,
+            explanation=explanation,
+        )
 
         response["elapsed_ms"] = round(
             (time.perf_counter() - started) * 1000,
@@ -150,7 +171,11 @@ class ReasoningService:
     # REASONING-ONLY PATH
     # =========================================================
 
-    def _solve_reasoning_only(self, problem: str):
+    def _solve_reasoning_only(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ):
 
         system = r"""
 You are the reasoning engine of a mathematical problem solver.
@@ -205,7 +230,11 @@ Usually use 4-8 logical steps.
     # COMPLEX COMPUTATIONAL PIPELINE
     # =========================================================
 
-    def _solve_complex(self, problem: str):
+    def _solve_complex(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ):
 
         planner_system = r"""
 You are the mathematical strategy engine.
@@ -540,6 +569,16 @@ Return ONLY JSON.
         if match:
             equation = match.group(1).strip()
 
+            # Remove trailing natural-language explanation requests
+            # before passing the equation to the symbolic solver.
+            equation = re.sub(
+                r"(?is)\s+(?:and\s+)?(?:please\s+)?(?:explain|show|give|provide)"
+                r"(?:\s+(?:the\s+)?(?:steps|step-by-step|solution|working|work))?\s*$",
+                "",
+                equation,
+            ).strip()
+
+
             equation = re.sub(
                 r"[.!?]+$",
                 "",
@@ -637,7 +676,7 @@ Return ONLY JSON.
         # -----------------------------------------------------
 
         match = re.match(
-            r"(?is)^\s*(?:differentiate|find\s+(?:the\s+)?derivative|derive)\s+(.+?)\s*[.!?]?\s*$",
+           r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?|derive\s+)(.+?)\s*[.!?]?\s*$",
             text,
         )
 
@@ -1442,9 +1481,16 @@ Return only the final mathematical solution.
     # CACHE
     # =========================================================
 
-    def _cache_get(self, problem: str):
+    def _cache_get(
+        self,
+        problem: str,
+        explanation: str,
+    ):
 
-        key = problem.strip().lower()
+        key = (
+            problem.strip().lower(),
+            explanation,
+        )
 
         with self._cache_lock:
 
@@ -1465,9 +1511,13 @@ Return only the final mathematical solution.
         self,
         problem: str,
         result: dict,
+        explanation: str,
     ):
 
-        key = problem.strip().lower()
+        key = (
+            problem.strip().lower(),
+            explanation,
+        )
 
         # Don't cache failures.
         if not result.get("success"):
@@ -1485,7 +1535,6 @@ Return only the final mathematical solution.
                 self._cache.popitem(
                     last=False
                 )
-
     # =========================================================
     # ERROR
     # =========================================================
@@ -1501,5 +1550,8 @@ Return only the final mathematical solution.
             "tool_calls": [],
             "cached": False,
         }
+
+
+
 
 

@@ -1,0 +1,1560 @@
+﻿import json
+import re
+import time
+from collections import OrderedDict
+from threading import Lock
+from typing import Any
+
+from backend.services.provider_router import ProviderRouter
+from backend.services.expression_normalizer import normalize_expression
+
+
+class ReasoningService:
+
+    # =========================================================
+    # PERFORMANCE CONFIG
+    # =========================================================
+
+    MAX_TOOL_CALLS = 2
+
+    # Qwen is deliberately kept compact.
+    PLANNER_TOKENS = 220
+    FINAL_TOKENS = 260
+
+    # Small in-memory cache for repeated CAS requests.
+    CACHE_SIZE = 256
+
+    def __init__(self):
+        self.router = ProviderRouter()
+
+        self._cache = OrderedDict()
+        self._cache_lock = Lock()
+
+    # =========================================================
+    # PUBLIC API
+    # =========================================================
+
+    def solve(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ) -> dict[str, Any]:
+
+        started = time.perf_counter()
+
+        if not problem or not problem.strip():
+            return self._error("Problem is empty.")
+
+        problem = problem.strip()
+
+        # -----------------------------------------------------
+        # 1. EXACT CACHE
+        # -----------------------------------------------------
+
+        cached = self._cache_get(
+            problem,
+            explanation,
+        )
+
+        if cached is not None:
+            cached["cached"] = True
+            cached["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            return cached
+
+        # -----------------------------------------------------
+        # 2. VERY FAST DIRECT CAS PATH
+        # -----------------------------------------------------
+
+        if self._is_simple_expression(problem):
+
+            result = self.router.calculate(
+                query=normalize_expression(problem),
+                provider="wolfram",
+            )
+
+            response = {
+                "success": result["success"],
+                "answer": result.get("result"),
+                "error": result.get("error"),
+                "engine": "wolfram",
+                "steps": [],
+                "tool_calls": [],
+                "cached": False,
+            }
+
+            if result["success"]:
+                self._cache_set(
+                    problem,
+                    response,
+                    explanation,
+                )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+
+            return response
+
+        # -----------------------------------------------------
+        # 3. DIRECT EXPLICIT SYMBOLIC OPERATION PATH
+        #
+        # If the user explicitly requests a supported symbolic
+        # operation, the requested operation is already known.
+        # Do not spend a Qwen planner call deciding what to do.
+        # -----------------------------------------------------
+
+        direct_operation = self._detect_explicit_operation(problem)
+
+        if direct_operation is not None:
+
+            response = self._solve_direct_operation(
+                problem,
+                direct_operation,
+            )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+
+            if response.get("success"):
+                self._cache_set(
+                    problem,
+                    response,
+                    explanation,
+                )
+
+            return response
+
+        # -----------------------------------------------------
+        # 4. OBVIOUS REASONING / PROOF PATH
+        #
+        # Do NOT waste one Qwen call generating a plan and then
+        # another call generating the answer.
+        # -----------------------------------------------------
+
+        if self._is_reasoning_problem(problem):
+
+            response = self._solve_reasoning_only(
+                problem,
+                explanation=explanation,
+            )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+
+            return response
+
+        # -----------------------------------------------------
+        # 4. COMPLEX COMPUTATIONAL PATH
+        # -----------------------------------------------------
+
+        response = self._solve_complex(
+            problem,
+            explanation=explanation,
+        )
+
+        response["elapsed_ms"] = round(
+            (time.perf_counter() - started) * 1000,
+            2,
+        )
+
+        return response
+
+    # =========================================================
+    # REASONING-ONLY PATH
+    # =========================================================
+
+    def _solve_reasoning_only(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ):
+
+        system = r"""
+You are the reasoning engine of a mathematical problem solver.
+
+Solve the user's problem directly.
+
+Use rigorous mathematical reasoning.
+
+IMPORTANT:
+- Do not invent unspecified values.
+- Do not assume an unspecified function has a particular form.
+- Do not use a calculator.
+- Do not mention internal tools.
+- If assumptions are contradictory, prove the contradiction clearly.
+- Show the key equations.
+- Prefer mathematical notation over unnecessary prose.
+
+Return ONLY the solution.
+
+Keep it concise but complete.
+Usually use 4-8 logical steps.
+"""
+
+        response = self.router.generate(
+            prompt=problem,
+            system_prompt=system,
+            max_tokens=self.FINAL_TOKENS,
+            temperature=0,
+            enable_thinking=False,
+        )
+
+        if not response["success"]:
+            return self._error(response["error"])
+
+        answer = response["result"].strip()
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm",
+            "steps": [
+                {
+                    "type": "reasoning",
+                    "content": answer,
+                }
+            ],
+            "tool_calls": [],
+            "cached": False,
+        }
+
+    # =========================================================
+    # COMPLEX COMPUTATIONAL PIPELINE
+    # =========================================================
+
+    def _solve_complex(
+        self,
+        problem: str,
+        explanation: bool = True,
+    ):
+
+        planner_system = r"""
+You are the mathematical strategy engine.
+
+Analyze the problem and solve it.
+
+Your job is to distinguish between:
+
+A) Pure reasoning:
+   Return a complete solution directly.
+
+B) Exact symbolic computation:
+   Request one of the allowed Wolfram tools.
+
+Do NOT use Wolfram merely because the problem contains mathematics.
+
+IMPORTANT:
+1. Never invent unspecified functions, values, constants,
+   distributions, matrices, integrals, or assumptions.
+
+2. Never send natural language to Wolfram.
+
+3. Never convert a statement involving an unspecified function
+   into a numerical calculation.
+
+4. Use the appropriate Wolfram tool whenever the user explicitly
+   requests an exact symbolic operation such as solving an equation,
+   differentiating, integrating, factoring, expanding, simplifying,
+   or evaluating a limit.
+
+5. Pure reasoning is for problems whose solution depends primarily
+   on a proof, derivation, logical argument, inequality argument,
+   definition, probability argument, geometry argument, or similar
+   reasoning rather than an explicit symbolic computation.
+
+6. When a Wolfram tool is used, let Wolfram perform the exact
+   symbolic computation and use the returned result as the basis
+   for the final explanation.
+
+7. Match explicit user requests to the corresponding tool:
+   - "solve", "find the roots", or "find the solutions" of an
+     equation → use the solve tool.
+   - "factor" or "factorize" an expression → use the factor tool.
+   - "differentiate" or "find the derivative" → use differentiate.
+   - "integrate" or "find the integral" → use integrate.
+   - "simplify" → use simplify.
+   - "expand" → use expand.
+   - "limit" or "evaluate the limit" → use limit.
+
+8. Do not replace an explicitly requested solve operation with
+   factorization merely because factoring could help obtain the
+   answer.
+
+9. A failed computation is NOT a result.
+
+Allowed tools:
+
+simplify:
+{"expression":"valid Wolfram expression"}
+
+factor:
+{"expression":"valid Wolfram expression"}
+
+expand:
+{"expression":"valid Wolfram expression"}
+
+differentiate:
+{"expression":"valid Wolfram expression","variable":"x"}
+
+integrate:
+{"expression":"valid Wolfram expression","variable":"x"}
+
+solve:
+{"equation":"valid Wolfram equation","variable":"x"}
+
+limit:
+{"expression":"valid Wolfram expression","variable":"x","value":"0"}
+
+If pure reasoning is sufficient, return:
+
+{
+  "type": "final",
+  "idea": "key idea",
+  "reasoning": [
+    "complete logical step 1",
+    "complete logical step 2",
+    "complete logical step 3"
+  ]
+}
+
+The reasoning must actually solve the problem.
+
+If exact computation is genuinely required:
+
+{
+  "type": "plan",
+  "idea": "key idea",
+  "reasoning": [
+    "step 1",
+    "step 2"
+  ],
+  "calls": [
+    {
+      "tool": "simplify",
+      "arguments": {
+        "expression": "..."
+      }
+    }
+  ]
+}
+
+Maximum 2 tool calls.
+
+Return ONLY JSON.
+"""
+
+        planner = self.router.generate(
+            prompt=problem,
+            system_prompt=planner_system,
+            max_tokens=self.PLANNER_TOKENS,
+            temperature=0,
+            enable_thinking=False,
+        )
+
+        if not planner["success"]:
+            return self._error(planner["error"])
+
+        plan = self._parse_json(planner["result"])
+
+        if plan is None:
+            return self._error(
+                "Local reasoning model returned an invalid plan."
+            )
+
+        # -----------------------------------------------------
+        # PURE REASONING
+        # -----------------------------------------------------
+
+        if plan.get("type") == "final":
+
+            return self._final_from_reasoning(
+                problem,
+                plan,
+            )
+
+        # -----------------------------------------------------
+        # TOOL PLAN
+        # -----------------------------------------------------
+
+        if plan.get("type") != "plan":
+            return self._error(
+                "Invalid reasoning plan type."
+            )
+
+        calls = plan.get("calls", [])
+
+        if not isinstance(calls, list):
+            calls = []
+
+        calls = calls[:self.MAX_TOOL_CALLS]
+
+        # -----------------------------------------------------
+        # ENFORCE EXPLICIT USER-REQUESTED OPERATIONS
+        #
+        # The planner may choose a mathematically equivalent
+        # operation, such as factor instead of solve. When the
+        # user explicitly requests an operation, preserve that
+        # requested operation.
+        # -----------------------------------------------------
+
+        lowered_problem = problem.lower()
+
+        explicit_tool = None
+
+        if re.search(
+            r"\b(solve|find the roots|find roots|find the solutions|find solutions)\b",
+            lowered_problem,
+        ):
+            explicit_tool = "solve"
+        elif re.search(r"\b(factor|factorize)\b", lowered_problem):
+            explicit_tool = "factor"
+        elif re.search(
+            r"\b(differentiate|derivative|derive|find the derivative|find derivative)\b",
+            lowered_problem,
+        ):
+            explicit_tool = "differentiate"
+        elif re.search(
+            r"\b(integrate|integral|find the integral|find integral)\b",
+            lowered_problem,
+        ):
+            explicit_tool = "integrate"
+        elif re.search(r"\b(simplify)\b", lowered_problem):
+            explicit_tool = "simplify"
+        elif re.search(r"\b(expand)\b", lowered_problem):
+            explicit_tool = "expand"
+        elif re.search(
+            r"\b(limit|evaluate the limit|evaluate limit)\b",
+            lowered_problem,
+        ):
+            explicit_tool = "limit"
+
+        if explicit_tool and calls:
+            first_call = calls[0]
+
+            if isinstance(first_call, dict):
+                first_call["tool"] = explicit_tool
+
+                arguments = first_call.get("arguments")
+
+                if not isinstance(arguments, dict):
+                    arguments = {}
+                    first_call["arguments"] = arguments
+
+                if explicit_tool == "solve":
+                    equation_match = re.search(
+                        r"(?i)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
+                        problem,
+                    )
+
+                    if equation_match:
+                        equation = equation_match.group(1).strip()
+
+                        equation = re.sub(
+                            r"[.!?]+$",
+                            "",
+                            equation,
+                        ).strip()
+
+                        equation = re.sub(
+                            r"\s*=\s*",
+                            " == ",
+                            equation,
+                        )
+
+                        if "==" not in equation:
+                            equation = f"{equation} == 0"
+
+                        arguments["equation"] = equation
+
+                    arguments.setdefault("variable", "x")
+
+        # -----------------------------------------------------
+        # NEVER SEND UNKNOWN FUNCTIONS TO WOLFRAM
+        # -----------------------------------------------------
+
+        # -----------------------------------------------------
+        # NEVER SEND UNKNOWN FUNCTIONS TO WOLFRAM
+        # -----------------------------------------------------
+
+        if self._contains_undefined_function_call(calls):
+
+            # The planner has already produced reasoning.
+            # Do not spend another expensive Qwen call.
+            return self._final_from_reasoning(
+                problem,
+                {
+                    "idea": plan.get("idea", ""),
+                    "reasoning": plan.get("reasoning", []),
+                },
+            )
+
+        # -----------------------------------------------------
+        # EXECUTE VERIFIED TOOL CALLS
+        # -----------------------------------------------------
+
+        tool_results = []
+
+        for call in calls:
+
+            validated = self._validate_tool_call(call)
+
+            if not validated["valid"]:
+                return self._error(
+                    validated["error"]
+                )
+
+            result = self._execute_tool(
+                validated["tool"],
+                validated["arguments"],
+            )
+
+            # CRITICAL:
+            # Never give failed CAS output to Qwen.
+            if not result.get("success"):
+
+                return self._error(
+                    "Wolfram verification failed: "
+                    + str(result.get("error"))
+                )
+
+            tool_results.append({
+                "tool": validated["tool"],
+                "arguments": validated["arguments"],
+                "result": result.get("result"),
+            })
+
+        # -----------------------------------------------------
+        # ONE FINAL LLM CALL
+        # -----------------------------------------------------
+
+        return self._final_explanation(
+            problem=problem,
+            idea=plan.get("idea", ""),
+            reasoning=plan.get("reasoning", []),
+            tool_results=tool_results,
+        )
+
+    # =========================================================
+    # DIRECT EXPLICIT SYMBOLIC OPERATIONS
+    # =========================================================
+
+    def _detect_explicit_operation(self, problem: str):
+        """
+        Detect a clearly requested symbolic operation without
+        invoking the language model.
+
+        Returns:
+            (tool, arguments) or None
+        """
+
+        text = problem.strip()
+
+        # -----------------------------------------------------
+        # SOLVE
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            equation = match.group(1).strip()
+
+            # Remove trailing natural-language explanation requests
+            # before passing the equation to the symbolic solver.
+            equation = re.sub(
+                r"(?is)\s+(?:and\s+)?",
+                r"(?:please\s+)?",
+                r"(?:explain|show|give|provide)",
+                r"(?:\s+(?:the\s+)?(?:steps|step-by-step|solution|working|work))?",
+                r"\s*$",
+                "",
+                equation,
+            ).strip()
+
+
+            equation = re.sub(
+                r"[.!?]+$",
+                "",
+                equation,
+            ).strip()
+
+            equation = re.sub(
+                r"\s*=\s*",
+                " == ",
+                equation,
+            )
+
+            if "==" not in equation:
+                equation = f"{equation} == 0"
+
+            return (
+                "solve",
+                {
+                    "equation": equation,
+                    "variable": "x",
+                },
+            )
+
+        # -----------------------------------------------------
+        # FACTOR
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*(?:factor|factorize)\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = re.sub(
+                r"[.!?]+$",
+                "",
+                match.group(1).strip(),
+            )
+
+            return (
+                "factor",
+                {
+                    "expression": expression,
+                },
+            )
+
+        # -----------------------------------------------------
+        # EXPAND
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*expand\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = re.sub(
+                r"[.!?]+$",
+                "",
+                match.group(1).strip(),
+            )
+
+            return (
+                "expand",
+                {
+                    "expression": expression,
+                },
+            )
+
+        # -----------------------------------------------------
+        # SIMPLIFY
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*simplify\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = re.sub(
+                r"[.!?]+$",
+                "",
+                match.group(1).strip(),
+            )
+
+            return (
+                "simplify",
+                {
+                    "expression": expression,
+                },
+            )
+
+        # -----------------------------------------------------
+        # DIFFERENTIATE
+        # -----------------------------------------------------
+
+        match = re.match(
+           r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?|derive\s+)(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = match.group(1).strip()
+
+            expression = re.sub(
+                r"(?is)\s+with\s+respect\s+to\s+[a-zA-Z]\s*$",
+                "",
+                expression,
+            )
+
+            expression = re.sub(
+                r"(?is)\s+wrt\s+[a-zA-Z]\s*$",
+                "",
+                expression,
+            )
+
+            expression = re.sub(
+                r"[.!?]+$",
+                "",
+                expression,
+            ).strip()
+
+            return (
+                "differentiate",
+                {
+                    "expression": expression,
+                    "variable": "x",
+                },
+            )
+
+        # -----------------------------------------------------
+        # INTEGRATE
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*(?:integrate|find\s+(?:the\s+)?integral)\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = match.group(1).strip()
+
+            variable_match = re.search(
+                r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
+                expression,
+            )
+
+            variable = "x"
+
+            if variable_match:
+                variable = variable_match.group(1)
+                expression = expression[:variable_match.start()]
+
+            expression = re.sub(
+                r"[.!?]+$",
+                "",
+                expression,
+            ).strip()
+
+            return (
+                "integrate",
+                {
+                    "expression": expression,
+                    "variable": variable,
+                },
+            )
+
+        # -----------------------------------------------------
+        # LIMIT
+        # -----------------------------------------------------
+
+        match = re.match(
+            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+
+        if match:
+            expression = match.group(1).strip()
+
+            limit_match = re.match(
+                r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
+                expression,
+            )
+
+            if limit_match:
+                return (
+                    "limit",
+                    {
+                        "expression": limit_match.group(1).strip(),
+                        "variable": limit_match.group(2),
+                        "value": limit_match.group(3),
+                    },
+                )
+
+        return None
+
+    def _solve_direct_operation(
+        self,
+        problem: str,
+        operation,
+    ):
+        """
+        Execute an explicitly requested symbolic operation directly
+        through the verified Wolfram tool path.
+
+        No Qwen planner or final-answer generation is required.
+        """
+
+        tool, arguments = operation
+
+        validation = self._validate_tool_call(
+            {
+                "tool": tool,
+                "arguments": arguments,
+            }
+        )
+
+        if not validation["valid"]:
+            return self._error(
+                validation["error"]
+            )
+
+        result = self._execute_tool(
+            validation["tool"],
+            validation["arguments"],
+        )
+
+        if not result.get("success"):
+            return self._error(
+                "Wolfram verification failed: "
+                + str(result.get("error"))
+            )
+
+        tool_result = {
+            "tool": validation["tool"],
+            "arguments": validation["arguments"],
+            "result": result.get("result"),
+        }
+
+        answer = result.get("result")
+
+        if tool == "solve":
+            answer = (
+                f"Solutions: {result.get('result')}"
+            )
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "wolfram",
+            "steps": [
+                {
+                    "type": "verification",
+                    "content": [tool_result],
+                }
+            ],
+            "tool_calls": [tool_result],
+            "cached": False,
+        }
+
+    # =========================================================
+    # FAST PROBLEM CLASSIFICATION
+    # =========================================================
+
+    def _is_simple_expression(self, problem: str) -> bool:
+
+        text = problem.strip()
+
+        if len(text) > 120:
+            return False
+
+        lowered = text.lower()
+
+        # -----------------------------------------------------
+        # NATURAL-LANGUAGE COMPUTATION REQUESTS
+        #
+        # These must not enter the direct Wolfram calculate()
+        # path. They need the reasoning/tool pipeline so that
+        # the requested operation is interpreted correctly.
+        # -----------------------------------------------------
+
+        computational_markers = (
+            "integrate ",
+            "integral ",
+            "differentiate ",
+            "derivative ",
+            "derive ",
+            "solve ",
+            "factor ",
+            "factorize ",
+            "expand ",
+            "simplify ",
+            "limit ",
+            "find the derivative",
+            "find derivative",
+            "find the integral",
+            "find integral",
+            "find the roots",
+            "find roots",
+            "find the solutions",
+            "find solutions",
+            "evaluate the limit",
+            "evaluate limit",
+        )
+
+        if any(
+            marker in lowered
+            for marker in computational_markers
+        ):
+            return False
+        semantic_phrases = (
+            "prove",
+            "show that",
+            "show",
+            "explain",
+            "determine whether",
+            "determine if",
+            "why",
+            "suppose",
+            "given",
+            "continuous",
+            "function",
+            "sequence",
+            "probability",
+            "geometry",
+            "physics",
+            "chemistry",
+            "maximum",
+            "minimum",
+            "area",
+            "volume",
+            "find the",
+            "let ",
+            "such that",
+            "if ",
+        )
+
+        if any(
+            phrase in lowered
+            for phrase in semantic_phrases
+        ):
+            return False
+
+        # Long alphabetic prose is not a direct expression.
+        words = re.findall(r"[A-Za-z]+", text)
+
+        if len(words) > 8:
+            return False
+
+        # At least one mathematical structure should exist.
+        if not re.search(
+            r"[0-9xXyYzZÏ€âˆš+\-*/^=<>()[\]{}]",
+            text,
+        ):
+            return False
+
+        return True
+
+    def _is_reasoning_problem(self, problem: str) -> bool:
+
+        text = problem.lower()
+
+        # Strong indicators that the problem is semantic rather
+        # than simply asking Wolfram to evaluate an expression.
+        reasoning_markers = [
+            "prove",
+            "prove that",
+            "show that",
+            "determine whether",
+            "determine if",
+            "can there exist",
+            "does there exist",
+            "is it possible",
+            "why",
+            "explain why",
+            "suppose",
+            "assume",
+            "given that",
+            "let f",
+            "let g",
+            "continuous",
+            "positive for every",
+            "nonnegative",
+            "contradiction",
+            "inequality",
+            "if and only if",
+        ]
+
+        score = 0
+
+        for marker in reasoning_markers:
+            if marker in text:
+                score += 1
+
+        # Questions containing an explicitly unspecified function
+        # are usually reasoning problems unless a concrete definition
+        # is also present.
+        if re.search(
+            r"\b[fghp]\s*\(\s*[a-zA-Z]\s*\)",
+            text,
+        ):
+            score += 2
+
+        # Multiple assumptions are usually semantic problems.
+        if text.count(",") >= 2:
+            score += 1
+
+        return score >= 1
+
+    # =========================================================
+    # TOOL VALIDATION
+    # =========================================================
+
+    def _validate_tool_call(self, call: dict):
+
+        if not isinstance(call, dict):
+            return {
+                "valid": False,
+                "error": "Tool call is not an object.",
+            }
+
+        tool = call.get("tool")
+        arguments = call.get("arguments")
+
+        allowed = {
+            "simplify",
+            "factor",
+            "expand",
+            "differentiate",
+            "integrate",
+            "solve",
+            "limit",
+        }
+
+        if tool not in allowed:
+            return {
+                "valid": False,
+                "error": f"Unsupported tool: {tool}",
+            }
+
+        if not isinstance(arguments, dict):
+            return {
+                "valid": False,
+                "error": "Tool arguments must be an object.",
+            }
+
+        # -----------------------------------------------------
+        # Argument safety
+        # -----------------------------------------------------
+
+        for key, value in arguments.items():
+
+            if not isinstance(value, str):
+                continue
+
+            if len(value) > 500:
+                return {
+                    "valid": False,
+                    "error": "Tool argument is too long.",
+                }
+
+            lowered = value.lower()
+
+            natural_language_patterns = [
+                r"\bintegral_\d",
+                r"\bfrom\s+\d+\s+to\s+\d+",
+                r"\bwhere\b",
+                r"\bgiven\b",
+                r"\bsuppose\b",
+                r"\bcontinuous\b",
+                r"\bfunction\s+f\b",
+                r"\bprove\b",
+                r"\bfind\s+the\b",
+            ]
+
+            if any(
+                re.search(pattern, lowered)
+                for pattern in natural_language_patterns
+            ):
+                return {
+                    "valid": False,
+                    "error": (
+                        "Rejected unsafe/natural-language "
+                        f"Wolfram argument: {value}"
+                    ),
+                }
+
+        # -----------------------------------------------------
+        # Required arguments
+        # -----------------------------------------------------
+
+        if tool in {
+            "simplify",
+            "factor",
+            "expand",
+            "differentiate",
+            "integrate",
+        }:
+            if not arguments.get("expression"):
+                return {
+                    "valid": False,
+                    "error": f"{tool} requires an expression.",
+                }
+
+        if tool == "solve":
+
+            if not arguments.get("equation"):
+                return {
+                    "valid": False,
+                    "error": "solve requires an equation.",
+                }
+
+            if not arguments.get("variable"):
+                return {
+                    "valid": False,
+                    "error": "solve requires a variable.",
+                }
+
+        if tool == "limit":
+
+            for field in (
+                "expression",
+                "variable",
+                "value",
+            ):
+                if not arguments.get(field):
+                    return {
+                        "valid": False,
+                        "error": f"limit requires {field}.",
+                    }
+
+        return {
+            "valid": True,
+            "tool": tool,
+            "arguments": arguments,
+        }
+
+    # =========================================================
+    # UNKNOWN FUNCTION DETECTION
+    # =========================================================
+
+    def _contains_undefined_function_call(
+        self,
+        calls: list,
+    ) -> bool:
+
+        known_functions = {
+            "sin",
+            "cos",
+            "tan",
+            "cot",
+            "sec",
+            "csc",
+            "asin",
+            "acos",
+            "atan",
+            "sinh",
+            "cosh",
+            "tanh",
+            "sqrt",
+            "log",
+            "ln",
+            "exp",
+            "abs",
+            "floor",
+            "ceil",
+            "sign",
+        }
+
+        for call in calls:
+
+            arguments = call.get(
+                "arguments",
+                {},
+            )
+
+            for value in arguments.values():
+
+                if not isinstance(value, str):
+                    continue
+
+                # f(x), g(x), h(x), etc.
+                matches = re.findall(
+                    r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+                    value,
+                )
+
+                for name in matches:
+
+                    if name.lower() not in known_functions:
+                        return True
+
+                # Explicit Wolfram Integrate containing
+                # unknown parenthesized functions.
+                if re.search(
+                    r"\bIntegrate\s*\[.*"
+                    r"[A-Za-z_][A-Za-z0-9_]*\s*\(",
+                    value,
+                    flags=re.IGNORECASE,
+                ):
+                    return True
+
+        return False
+
+    # =========================================================
+    # TOOL EXECUTION
+    # =========================================================
+
+    def _execute_tool(
+        self,
+        tool: str,
+        arguments: dict,
+    ) -> dict:
+
+        try:
+
+            provider = self.router.get_provider("wolfram")
+
+            if tool == "simplify":
+
+                raw = provider.engine.simplify(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "factor":
+
+                raw = provider.engine.factor(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "expand":
+
+                raw = provider.engine.expand(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "differentiate":
+
+                raw = provider.engine.differentiate(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "integrate":
+
+                raw = provider.engine.integrate(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "solve":
+
+                raw = provider.engine.solve(
+                    normalize_expression(
+                        arguments["equation"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "limit":
+
+                raw = provider.engine.limit(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                    arguments["value"],
+                )
+
+            else:
+
+                return {
+                    "success": False,
+                    "result": None,
+                    "error": f"Unknown tool: {tool}",
+                }
+
+            if raw.success:
+
+                return {
+                    "success": True,
+                    "result": raw.result,
+                    "error": None,
+                }
+
+            return {
+                "success": False,
+                "result": None,
+                "error": raw.error,
+            }
+
+        except Exception as exc:
+
+            return {
+                "success": False,
+                "result": None,
+                "error": str(exc),
+            }
+
+    # =========================================================
+    # PURE REASONING RESULT
+    # =========================================================
+
+    def _final_from_reasoning(
+        self,
+        problem: str,
+        plan: dict,
+    ):
+
+        reasoning = plan.get(
+            "reasoning",
+            [],
+        )
+
+        if not isinstance(reasoning, list):
+            reasoning = []
+
+        answer_parts = []
+
+        idea = plan.get("idea", "")
+
+        if isinstance(idea, str) and idea.strip():
+            answer_parts.append(
+                idea.strip()
+            )
+
+        for step in reasoning:
+
+            if isinstance(step, str):
+                step = step.strip()
+
+                if step:
+                    answer_parts.append(step)
+
+        answer = "\n\n".join(
+            answer_parts
+        )
+
+        if not answer:
+            return self._error(
+                "The reasoning model returned no solution."
+            )
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm",
+            "steps": [
+                {
+                    "type": "reasoning",
+                    "content": answer,
+                }
+            ],
+            "tool_calls": [],
+            "cached": False,
+        }
+
+    # =========================================================
+    # FINAL EXPLANATION AFTER CAS
+    # =========================================================
+
+    def _final_explanation(
+        self,
+        problem: str,
+        idea: str,
+        reasoning: list,
+        tool_results: list,
+    ):
+
+        final_system = r"""
+You are a concise mathematical solution writer.
+
+The computational results below have already been verified.
+
+Solve the original problem using ONLY:
+1. the original problem,
+2. the supplied reasoning,
+3. the verified results.
+
+Rules:
+- Never invent results.
+- Never change a verified result.
+- Never assume missing information.
+- If assumptions contradict each other, explicitly show why.
+- Include important equations.
+- Be rigorous but concise.
+- Do not mention AI, Wolfram, tools, prompts, or internal processing.
+
+Return only the final mathematical solution.
+"""
+
+        payload = {
+            "problem": problem,
+            "idea": idea,
+            "reasoning": reasoning,
+            "verified_results": tool_results,
+        }
+
+        response = self.router.generate(
+            prompt=json.dumps(
+                payload,
+                ensure_ascii=False,
+            ),
+            system_prompt=final_system,
+            max_tokens=self.FINAL_TOKENS,
+            temperature=0,
+            enable_thinking=False,
+        )
+
+        if not response["success"]:
+            return self._error(
+                response["error"]
+            )
+
+        return {
+            "success": True,
+            "answer": response["result"],
+            "engine": "local_llm+wolfram",
+            "steps": [
+                {
+                    "type": "reasoning",
+                    "content": idea,
+                    "details": reasoning,
+                },
+                {
+                    "type": "verification",
+                    "content": tool_results,
+                },
+            ],
+            "tool_calls": tool_results,
+            "cached": False,
+        }
+
+    # =========================================================
+    # JSON PARSER
+    # =========================================================
+
+    def _parse_json(self, text: str):
+
+        if not isinstance(text, str):
+            return None
+
+        text = text.strip()
+
+        try:
+            return json.loads(text)
+
+        except json.JSONDecodeError:
+            pass
+
+        # Remove markdown fences.
+        text = re.sub(
+            r"^```(?:json)?\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        text = re.sub(
+            r"\s*```$",
+            "",
+            text,
+        )
+
+        try:
+            return json.loads(text)
+
+        except json.JSONDecodeError:
+            pass
+
+        # Recover the first JSON object if the model added
+        # a tiny amount of surrounding text.
+        start = text.find("{")
+        end = text.rfind("}")
+
+        if start != -1 and end > start:
+
+            candidate = text[
+                start:end + 1
+            ]
+
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        return None
+
+    # =========================================================
+    # CACHE
+    # =========================================================
+
+    def _cache_get(
+        self,
+        problem: str,
+        explanation: str,
+    ):
+
+        key = (
+            problem.strip().lower(),
+            explanation,
+        )
+
+        with self._cache_lock:
+
+            value = self._cache.get(key)
+
+            if value is None:
+                return None
+
+            # LRU behavior.
+            self._cache.move_to_end(key)
+
+            # Return a copy so callers don't mutate cache.
+            return json.loads(
+                json.dumps(value)
+            )
+
+    def _cache_set(
+        self,
+        problem: str,
+        result: dict,
+        explanation: str,
+    ):
+
+        key = (
+            problem.strip().lower(),
+            explanation,
+        )
+
+        # Don't cache failures.
+        if not result.get("success"):
+            return
+
+        with self._cache_lock:
+
+            self._cache[key] = json.loads(
+                json.dumps(result)
+            )
+
+            self._cache.move_to_end(key)
+
+            while len(self._cache) > self.CACHE_SIZE:
+                self._cache.popitem(
+                    last=False
+                )
+    # =========================================================
+    # ERROR
+    # =========================================================
+
+    def _error(self, message: str):
+
+        return {
+            "success": False,
+            "answer": None,
+            "error": message,
+            "engine": None,
+            "steps": [],
+            "tool_calls": [],
+            "cached": False,
+        }
+
+
+
+
+

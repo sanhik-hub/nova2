@@ -186,6 +186,92 @@ def _normalize_superscripts(expression: str) -> str:
     return "".join(result)
 
 
+
+# ---------------------------------------------------------
+# Inverse trigonometric notation
+# ---------------------------------------------------------
+
+def _normalize_inverse_trig_functions(expression: str) -> str:
+    """
+    Convert conventional inverse-trigonometric notation.
+
+        sin^-1(x) -> ArcSin[x]
+        cos^-1(x) -> ArcCos[x]
+        tan^-1(x) -> ArcTan[x]
+        cot^-1(x) -> ArcCot[x]
+        sec^-1(x) -> ArcSec[x]
+        csc^-1(x) -> ArcCsc[x]
+
+    Only the -1 exponent immediately attached to the
+    trigonometric function name is treated as inverse-function
+    notation. Ordinary powers such as sin(x)^-1 are untouched.
+    """
+
+    result = expression
+
+    inverse_map = {
+        "sin": "ArcSin",
+        "cos": "ArcCos",
+        "tan": "ArcTan",
+        "cot": "ArcCot",
+        "sec": "ArcSec",
+        "csc": "ArcCsc",
+    }
+
+    function_names = "|".join(
+        re.escape(name)
+        for name in inverse_map
+    )
+
+    pattern = re.compile(
+        r"(?<![A-Za-z])("
+        + function_names
+        + r")\s*\^\s*-1\s*\(",
+        re.IGNORECASE,
+    )
+
+    while True:
+        match = pattern.search(result)
+
+        if not match:
+            break
+
+        start = match.start()
+        open_paren = match.end() - 1
+
+        depth = 0
+        close_paren = None
+
+        for i in range(open_paren, len(result)):
+            if result[i] == "(":
+                depth += 1
+            elif result[i] == ")":
+                depth -= 1
+
+                if depth == 0:
+                    close_paren = i
+                    break
+
+        if close_paren is None:
+            break
+
+        name = match.group(1).lower()
+        wolfram_name = inverse_map[name]
+
+        argument = result[
+            open_paren + 1:close_paren
+        ]
+
+        replacement = f"{wolfram_name}[{argument}]"
+
+        result = (
+            result[:start]
+            + replacement
+            + result[close_paren + 1:]
+        )
+
+    return result
+
 # ---------------------------------------------------------
 # Function normalization
 # ---------------------------------------------------------
@@ -505,6 +591,7 @@ def normalize_expression_result(expression: str) -> NormalizationResult:
     result = _normalize_brackets(result)
     result = _normalize_superscripts(result)
     result = _normalize_constants(result)
+    result = _normalize_inverse_trig_functions(result)
     result = _normalize_functions(result)
     result = _normalize_comparisons(result)
     result = _normalize_multiplication(result)
