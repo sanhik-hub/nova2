@@ -38,12 +38,26 @@ def root():
 
 @app.get("/api/health")
 def health():
+    engine = computation.router.providers["wolfram"].engine
+    session = engine.status()
+
     return {
         "status": "healthy",
-        "wolfram": True,
-        "executable": computation.router.providers[
-            "wolfram"
-        ].engine.executable,
+        "wolfram": session["session_started"],
+        "wolfram_session": session,
+        "executable": engine.executable,
+    }
+
+
+@app.post("/api/wolfram/restart")
+def restart_wolfram():
+    engine = computation.router.providers["wolfram"].engine
+    engine.restart()
+
+    return {
+        "success": True,
+        "message": "Wolfram session reset. The kernel will start on the next evaluation.",
+        "wolfram_session": engine.status(),
     }
 
 
