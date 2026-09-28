@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import urllib.request
@@ -55,30 +55,18 @@ def log(message: str):
     print(line, flush=True)
 
 
-def ps(command: str, timeout: int = 15) -> str:
-    completed = subprocess.run(
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            command,
-        ],
+def run_command(
+    args: list[str],
+    timeout: int = 15,
+) -> subprocess.CompletedProcess[str]:
+    """Run a native Windows command without spawning PowerShell."""
+    return subprocess.run(
+        args,
         cwd=str(NOVA_ROOT),
         capture_output=True,
         text=True,
         timeout=timeout,
     )
-
-    if completed.returncode != 0:
-        raise RuntimeError(
-            completed.stderr.strip()
-            or completed.stdout.strip()
-            or f"PowerShell exited with {completed.returncode}"
-        )
-
-    return completed.stdout.strip()
 
 
 def load_llm_config():
@@ -131,33 +119,48 @@ def load_llm_config():
 
 
 def get_processes():
-    command = r"""
-Get-CimInstance Win32_Process |
-    Where-Object {
-        $_.Name -in @(
-            "python.exe",
-            "pythonw.exe",
-            "llama-server.exe",
-            "WolframKernel.exe",
-            "node.exe"
-        )
-    } |
-    Select-Object ProcessId, ParentProcessId, Name, CommandLine |
-    ConvertTo-Json -Compress -Depth 4
-"""
+    """Inspect relevant processes using native tasklist, not PowerShell."""
+    names = {
+        "python.exe",
+        "pythonw.exe",
+        "llama-server.exe",
+        "WolframKernel.exe",
+        "node.exe",
+    }
 
     try:
-        raw = ps(command)
+        result = run_command(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            timeout=10,
+        )
 
-        if not raw:
-            return []
+        if result.returncode != 0:
+            raise RuntimeError(
+                result.stderr.strip()
+                or f"tasklist exited with {result.returncode}"
+            )
 
-        data = json.loads(raw)
+        import csv
+        from io import StringIO
 
-        if isinstance(data, dict):
-            data = [data]
+        processes = []
+        for row in csv.reader(StringIO(result.stdout)):
+            if len(row) < 2 or row[0] not in names:
+                continue
 
-        return data
+            try:
+                pid = int(row[1])
+            except ValueError:
+                continue
+
+            processes.append({
+                "ProcessId": pid,
+                "ParentProcessId": None,
+                "Name": row[0],
+                "CommandLine": "",
+            })
+
+        return processes
 
     except Exception as exc:
         log(f"Process inspection failed: {exc}")
@@ -165,32 +168,54 @@ Get-CimInstance Win32_Process |
 
 
 def port_listener(port: int):
-    command = f"""
-Get-NetTCPConnection `
-    -LocalPort {port} `
-    -State Listen `
-    -ErrorAction SilentlyContinue |
-    Select-Object -First 1 `
-        OwningProcess,
-        LocalAddress,
-        LocalPort,
-        State |
-    ConvertTo-Json -Compress
-"""
+    """Find a listening TCP port using native netstat.
 
+    No-listener is a normal startup/restart state and is not logged.
+    """
     try:
-        raw = ps(command)
+        result = run_command(
+            ["netstat", "-ano", "-p", "tcp"],
+            timeout=10,
+        )
 
-        if not raw:
-            return None
+        if result.returncode != 0:
+            raise RuntimeError(
+                result.stderr.strip()
+                or f"netstat exited with {result.returncode}"
+            )
 
-        return json.loads(raw)
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if len(parts) < 5 or parts[0].upper() != "TCP":
+                continue
+
+            local = parts[1]
+            state = parts[3].upper()
+            pid = parts[4]
+
+            if state != "LISTENING":
+                continue
+
+            try:
+                local_port = int(local.rsplit(":", 1)[1])
+                owning_pid = int(pid)
+            except (ValueError, IndexError):
+                continue
+
+            if local_port != port:
+                continue
+
+            return {
+                "OwningProcess": owning_pid,
+                "LocalAddress": local.rsplit(":", 1)[0],
+                "LocalPort": local_port,
+                "State": "Listen",
+            }
+
+        return None
 
     except Exception as exc:
-        log(
-            f"Port inspection failed for "
-            f"{port}: {exc}"
-        )
+        log(f"Port inspection failed for {port}: {exc}")
         return None
 
 
@@ -478,14 +503,9 @@ def health_status():
                 processes["llm"][0]["pid"]
                 if processes["llm"]
                 else (
-                    port_listener(
-                        8080
+                    (
+                        port_listener(8080) or {}
                     ).get("OwningProcess")
-                    if isinstance(
-                        port_listener(8080),
-                        dict
-                    )
-                    else None
                 )
             ),
             "server_url": config.get(
@@ -604,37 +624,48 @@ def start_llm():
     return {"ok": True, "message": "Local model server start requested."}
 
 
+def wait_for_http(url: str, timeout: int, name: str):
+    deadline = time.time() + timeout
+
+    while time.time() < deadline:
+        if http_check(url).get("ok"):
+            log(f"{name} is ready.")
+            return True
+        time.sleep(0.5)
+
+    log(f"{name} did not become ready within {timeout} seconds.")
+    return False
+
+
 def start_all():
-    if not RUNNER.exists():
-        raise RuntimeError(
-            f"Runner not found: {RUNNER}"
-        )
+    """Start Nova natively so Control Center does not spawn PowerShell."""
+    log("Starting Nova services natively...")
 
-    log(
-        "Starting Nova through "
-        "run_nova.ps1..."
-    )
+    start_llm()
+    config = load_llm_config()
+    llm_url = str(config.get("server_url", "")).rstrip("/")
 
-    subprocess.Popen(
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(RUNNER),
-        ],
-        cwd=str(NOVA_ROOT),
-        creationflags=(
-            subprocess.CREATE_NEW_PROCESS_GROUP
-        ),
-    )
+    if not llm_url or not wait_for_http(
+        f"{llm_url}/health", 60, "Local model server"
+    ):
+        raise RuntimeError("The local model server did not become ready.")
 
+    start_backend()
+    if not wait_for_http(
+        f"http://{HOST}:{BACKEND_PORT}/docs", 30, "Backend"
+    ):
+        raise RuntimeError("Backend did not become ready.")
+
+    start_frontend()
+    if not wait_for_http(
+        f"http://{HOST}:{FRONTEND_PORT}/", 30, "Frontend"
+    ):
+        raise RuntimeError("Frontend did not become ready.")
+
+    log("Nova services are running.")
     return {
         "ok": True,
-        "message": (
-            "run_nova.ps1 started."
-        ),
+        "message": "Nova services started.",
     }
 
 
@@ -787,87 +818,47 @@ def test_wolfram():
     if not status["backend"]["process"]:
         return {
             "ok": False,
-            "message": (
-                "Backend is not running."
-            ),
+            "message": "Backend is not running.",
         }
 
-    log(
-        "Testing Wolfram through "
-        "/api/reason with 2 + 2..."
-    )
-
-    command = r"""
-$body = @{
-    query = "2 + 2"
-    explanation = $false
-} | ConvertTo-Json
-
-try {
-    $r = Invoke-RestMethod `
-        -Uri "http://127.0.0.1:8000/api/reason" `
-        -Method Post `
-        -ContentType "application/json" `
-        -Body $body `
-        -TimeoutSec 15
-
-    $r | ConvertTo-Json `
-        -Depth 10 `
-        -Compress
-}
-catch {
-    [pscustomobject]@{
-        success = $false
-        error = $_.Exception.Message
-    } | ConvertTo-Json -Compress
-}
-"""
+    log("Testing Wolfram through /api/reason with 2 + 2...")
 
     try:
-        raw = ps(
-            command,
-            timeout=20,
+        body = json.dumps({
+            "query": "2 + 2",
+            "explanation": False,
+        }).encode("utf-8")
+
+        request = urllib.request.Request(
+            f"http://{HOST}:{BACKEND_PORT}/api/reason",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
 
-        result = (
-            json.loads(raw)
-            if raw
-            else {}
-        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+
+        result = json.loads(raw) if raw else {}
 
         if result.get("success"):
-            log(
-                "Wolfram/reasoning "
-                "test succeeded."
-            )
-
+            log("Wolfram/reasoning test succeeded.")
             return {
                 "ok": True,
-                "message": (
-                    "Computation test succeeded."
-                ),
+                "message": "Computation test succeeded.",
                 "result": result,
             }
 
-        log(
-            "Computation test failed: "
-            f"{result.get('error', 'Unknown error')}"
-        )
-
+        error = result.get("error", "Computation test failed.")
+        log(f"Computation test failed: {error}")
         return {
             "ok": False,
-            "message": result.get(
-                "error",
-                "Computation test failed.",
-            ),
+            "message": error,
             "result": result,
         }
 
     except Exception as exc:
-        log(
-            f"Wolfram test failed: {exc}"
-        )
-
+        log(f"Wolfram test failed: {exc}")
         return {
             "ok": False,
             "message": str(exc),
@@ -1116,12 +1107,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    if not RUNNER.exists():
-        log(
-            "WARNING: runner does not exist: "
-            f"{RUNNER}"
-        )
-
     log(
         "PrismOffline Control Center starting."
     )
