@@ -1403,12 +1403,6 @@ Return ONLY JSON.
             "success": True,
             "answer": answer,
             "engine": "local_llm",
-            "steps": [
-                {
-                    "type": "reasoning",
-                    "content": answer,
-                }
-            ],
             "tool_calls": [],
             "cached": False,
         }
@@ -1608,7 +1602,6 @@ Rules:
             "answer": None,
             "error": message,
             "engine": None,
-            "steps": [],
             "tool_calls": [],
             "cached": False,
         }
