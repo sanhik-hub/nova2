@@ -20,20 +20,6 @@ function extractText(value: unknown): string {
   return "";
 }
 
-function extractStepContent(step: unknown): string {
-  if (
-    typeof step === "object" &&
-    step !== null &&
-    "content" in step
-  ) {
-    return extractText(
-      (step as { content?: unknown }).content,
-    );
-  }
-
-  return extractText(step);
-}
-
 export function ReasonResult({
   response,
 }: {
@@ -61,15 +47,10 @@ export function ReasonResult({
 
   const answer = extractText(response.answer);
 
-  const steps = (response.steps ?? [])
-    .map(extractStepContent)
-    .map((step) => step.trim())
-    .filter(Boolean);
-
   return (
     <section className="result-card card">
       <div className="result-heading">
-        <span className="result-icon success">✓</span>
+        <span className="result-icon success">?</span>
 
         <div>
           <div className="eyebrow">SOLUTION</div>
@@ -90,22 +71,6 @@ export function ReasonResult({
           )}
         </div>
       </div>
-
-      {steps.length > 0 && (
-        <div className="steps-section">
-          <div className="answer-label">Steps</div>
-
-          <div className="steps-content">
-            {steps.map((step, index) => (
-              <WorkspaceSolutionText
-                key={index}
-              >
-                {step}
-              </WorkspaceSolutionText>
-            ))}
-          </div>
-        </div>
-      )}
 
       {response.elapsed_ms !== undefined && (
         <div className="result-meta">
