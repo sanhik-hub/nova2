@@ -3,8 +3,7 @@
   answer?: unknown;
   error?: string | null;
   engine?: string | null;
-  steps?: unknown[];
-  tool_calls?: unknown[];
+   tool_calls?: unknown[];
   cached?: boolean;
   elapsed_ms?: number;
 };
