@@ -840,26 +840,71 @@ Return ONLY JSON.
             "result": result.get("result"),
         }
 
-        answer = result.get("result")
+        if not explanation:
+            operation_names = {
+                "differentiate": "The derivative",
+                "integrate": "The integral",
+                "factor": "The factorization",
+                "expand": "The expansion",
+                "simplify": "The simplified expression",
+                "solve": "The solution",
+                "limit": "The limit",
+            }
 
-        if tool == "solve":
-            answer = (
-                f"Solutions: {result.get('result')}"
+            label = operation_names.get(
+                tool,
+                "The result",
             )
 
-        return {
-            "success": True,
-            "answer": answer,
-            "engine": "wolfram",
-            "steps": [
-                {
-                    "type": "verification",
-                    "content": [tool_result],
-                }
-            ],
-            "tool_calls": [tool_result],
-            "cached": False,
-        }
+            if tool == "solve":
+                answer = f"Solutions: {result.get('result')}"
+            elif tool == "differentiate":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            elif tool == "integrate":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            elif tool == "factor":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            elif tool == "expand":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            elif tool == "simplify":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            elif tool == "limit":
+                answer = (
+                    f"{label} of {arguments.get('expression')} "
+                    f"is {result.get('result')}."
+                )
+            else:
+                answer = str(result.get("result"))
+
+            return {
+                "success": True,
+                "answer": answer,
+                "engine": "wolfram",
+                "tool_calls": [tool_result],
+                "cached": False,
+            }
+
+        return self._final_explanation(
+            problem=problem,
+            idea="",
+            reasoning=[],
+            tool_results=[tool_result],
+        )
 
     # =========================================================
     # FAST PROBLEM CLASSIFICATION
