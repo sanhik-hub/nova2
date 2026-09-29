@@ -1426,25 +1426,24 @@ Return ONLY JSON.
     ):
 
         final_system = r"""
-You are a concise mathematical solution writer.
+You are a mathematical solution writer.
 
 The computational results below have already been verified.
 
-Solve the original problem using ONLY:
-1. the original problem,
-2. the supplied reasoning,
-3. the verified results.
+Write ONE complete mathematical solution to the original problem.
 
 Rules:
+- Use ONLY the original problem, supplied reasoning, and verified results.
 - Never invent results.
 - Never change a verified result.
 - Never assume missing information.
-- If assumptions contradict each other, explicitly show why.
-- Include important equations.
+- Show the important mathematical equations.
+- Explain the reasoning clearly.
 - Be rigorous but concise.
 - Do not mention AI, Wolfram, tools, prompts, or internal processing.
-
-Return only the final mathematical solution.
+- Do not create separate "answer" and "steps" sections.
+- Do not repeat the solution.
+- Return ONLY the complete solution.
 """
 
         payload = {
