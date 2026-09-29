@@ -180,26 +180,40 @@ class ReasoningService:
         explanation: bool = True,
     ):
 
-        system = r"""
-You are the reasoning engine of a mathematical problem solver.
+        if explanation:
+            system = r"""
+You are the mathematical solution engine.
 
-Solve the user's problem directly.
+Solve the user's problem directly and completely.
 
-Use rigorous mathematical reasoning.
+Return ONE self-contained mathematical solution.
 
-IMPORTANT:
-- Do not invent unspecified values.
-- Do not assume an unspecified function has a particular form.
+Rules:
+- Show the important reasoning and equations.
+- Be rigorous and mathematically correct.
+- Do not invent unspecified values or assumptions.
 - Do not use a calculator.
-- Do not mention internal tools.
-- If assumptions are contradictory, prove the contradiction clearly.
-- Show the key equations.
-- Prefer mathematical notation over unnecessary prose.
+- Do not mention AI, tools, Wolfram, prompts, or internal processing.
+- Use clear mathematical notation.
+- The response itself is the complete solution.
+- Do not create separate "answer" and "steps" sections.
+- Do not repeat the solution.
+- Return ONLY the solution text.
+"""
+        else:
+            system = r"""
+You are the mathematical answer engine.
 
-Return ONLY the solution.
+Answer the user's question directly and concisely.
 
-Keep it concise but complete.
-Usually use 4-8 logical steps.
+Rules:
+- Give ONLY the final mathematical answer.
+- Do NOT explain the method.
+- Do NOT show steps.
+- Do NOT repeat the question.
+- For a simple question, one sentence is ideal.
+- Do not mention AI, tools, Wolfram, prompts, or internal processing.
+- Return ONLY the answer.
 """
 
         response = self.router.generate(
