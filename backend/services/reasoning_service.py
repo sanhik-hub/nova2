@@ -229,16 +229,15 @@ Rules:
 
         answer = response["result"].strip()
 
+        if not answer:
+            return self._error(
+                "The reasoning model returned no solution."
+            )
+
         return {
             "success": True,
             "answer": answer,
             "engine": "local_llm",
-            "steps": [
-                {
-                    "type": "reasoning",
-                    "content": answer,
-                }
-            ],
             "tool_calls": [],
             "cached": False,
         }
