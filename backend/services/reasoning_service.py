@@ -795,12 +795,18 @@ Return ONLY JSON.
         self,
         problem: str,
         operation,
+        explanation: bool = True,
     ):
         """
         Execute an explicitly requested symbolic operation directly
-        through the verified Wolfram tool path.
+        through the verified Wolfram path.
 
-        No Qwen planner or final-answer generation is required.
+        With explanation=False, return a concise deterministic answer
+        without spending a Qwen generation.
+
+        With explanation=True, Wolfram computes the exact result and
+        one Qwen call turns that verified result into a complete
+        mathematical solution.
         """
 
         tool, arguments = operation
