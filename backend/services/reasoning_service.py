@@ -1469,21 +1469,17 @@ Rules:
                 response["error"]
             )
 
+        answer = response["result"].strip()
+
+        if not answer:
+            return self._error(
+                "The reasoning model returned no solution."
+            )
+
         return {
             "success": True,
-            "answer": response["result"],
+            "answer": answer,
             "engine": "local_llm+wolfram",
-            "steps": [
-                {
-                    "type": "reasoning",
-                    "content": idea,
-                    "details": reasoning,
-                },
-                {
-                    "type": "verification",
-                    "content": tool_results,
-                },
-            ],
             "tool_calls": tool_results,
             "cached": False,
         }
