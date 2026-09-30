@@ -17,9 +17,12 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Qwen is deliberately kept compact.
-    PLANNER_TOKENS = 220
-    FINAL_TOKENS = 260
+    # Token budgets are selected adaptively. Small symbolic answers should
+    # not reserve the same generation budget as full multi-step solutions.
+    PLANNER_MIN_TOKENS = 96
+    PLANNER_MAX_TOKENS = 220
+    FINAL_MIN_TOKENS = 128
+    FINAL_MAX_TOKENS = 320
 
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
@@ -219,7 +222,11 @@ Rules:
         response = self.router.generate(
             prompt=problem,
             system_prompt=system,
-            max_tokens=self.FINAL_TOKENS,
+            max_tokens=self._final_token_budget(
+                problem=problem,
+                reasoning=reasoning,
+                tool_results=tool_results,
+            ),
             temperature=0,
             enable_thinking=False,
         )
@@ -370,7 +377,7 @@ Return ONLY JSON.
         planner = self.router.generate(
             prompt=problem,
             system_prompt=planner_system,
-            max_tokens=self.PLANNER_TOKENS,
+            max_tokens=self._planner_token_budget(problem),
             temperature=0,
             enable_thinking=False,
         )
@@ -797,8 +804,7 @@ Return ONLY JSON.
         operation,
         explanation: bool = True,
     ):
-        """
-        Execute an explicitly requested symbolic operation directly
+        """        Execute an explicitly requested symbolic operation directly
         through the verified Wolfram path.
 
         With explanation=False, return a concise deterministic answer
@@ -1483,6 +1489,84 @@ Rules:
         }
 
     # =========================================================
+    # ADAPTIVE TOKEN BUDGETS
+    # =========================================================
+
+    def _planner_token_budget(self, problem: str) -> int:
+        """
+        Reserve enough tokens for the planner's JSON, but avoid paying
+        the maximum generation budget for short/simple requests.
+
+        This affects only the complex computational path, where the
+        planner is actually needed.
+        """
+
+        length = len(problem.strip())
+
+        if length <= 80:
+            return self.PLANNER_MIN_TOKENS
+
+        if length <= 180:
+            return 128
+
+        if length <= 320:
+            return 160
+
+        if length <= 600:
+            return 192
+
+        return self.PLANNER_MAX_TOKENS
+
+    def _final_token_budget(
+        self,
+        problem: str,
+        reasoning: list,
+        tool_results: list,
+    ) -> int:
+        """
+        Adapt the final writer budget to the amount of mathematical
+        material that must be turned into one complete solution.
+
+        Short explicit symbolic operations get a compact budget.
+        Longer reasoning/tool pipelines retain progressively more room.
+        """
+
+        problem_length = len(problem.strip())
+
+        reasoning_count = (
+            len(reasoning)
+            if isinstance(reasoning, list)
+            else 0
+        )
+
+        tool_count = (
+            len(tool_results)
+            if isinstance(tool_results, list)
+            else 0
+        )
+
+        # One direct CAS result with no planner reasoning is the common
+        # fast path.  160 tokens is materially closer to the direct-Qwen
+        # benchmark while still leaving room for a complete explanation.
+        if (
+            tool_count == 1
+            and reasoning_count == 0
+            and problem_length <= 120
+        ):
+            return 160
+
+        # A single tool result plus a small amount of planner reasoning.
+        if tool_count <= 1 and reasoning_count <= 3 and problem_length <= 240:
+            return 192
+
+        # Moderate multi-step solutions.
+        if tool_count <= 2 and reasoning_count <= 6 and problem_length <= 500:
+            return 256
+
+        # Long or genuinely complex solutions need the full headroom.
+        return self.FINAL_MAX_TOKENS
+
+    # =========================================================
     # JSON PARSER
     # =========================================================
 
@@ -1609,7 +1693,6 @@ Rules:
             "tool_calls": [],
             "cached": False,
         }
-
 
 
 
