@@ -617,6 +617,18 @@ def start_llm():
             str(LLAMA_SERVER), "-m", model_path,
             "--host", parsed.hostname or HOST,
             "--port", str(port),
+            "--ctx-size", str(
+                load_llm_config().get("context_size", 32768)
+            ),
+            "--threads", str(
+                load_llm_config().get("threads", 6)
+            ),
+            "--batch-size", str(
+                load_llm_config().get("batch_size", 128)
+            ),
+            "--n-gpu-layers", str(
+                load_llm_config().get("n_gpu_layers", 0)
+            ),
         ],
         cwd=str(NOVA_ROOT),
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
