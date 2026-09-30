@@ -113,60 +113,7 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 3. DIRECT EXPLICIT SYMBOLIC OPERATION PATH
-        #
-        # If the user explicitly requests a supported symbolic
-        # operation, the requested operation is already known.
-        # Do not spend a Qwen planner call deciding what to do.
-        # -----------------------------------------------------
-
-        direct_operation = self._detect_explicit_operation(problem)
-
-        if direct_operation is not None:
-
-            response = self._solve_direct_operation(
-                problem,
-                direct_operation,
-                explanation=explanation,
-            )
-
-            response["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-
-            if response.get("success"):
-                self._cache_set(
-                    problem,
-                    response,
-                    explanation,
-                )
-
-            return response
-
-        # -----------------------------------------------------
-        # 4. OBVIOUS REASONING / PROOF PATH
-        #
-        # Do NOT waste one Qwen call generating a plan and then
-        # another call generating the answer.
-        # -----------------------------------------------------
-
-        if self._is_reasoning_problem(problem):
-
-            response = self._solve_reasoning_only(
-                problem,
-                explanation=explanation,
-            )
-
-            response["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-
-            return response
-
-        # -----------------------------------------------------
-        # 4. COMPLEX COMPUTATIONAL PATH
+        # 3. MODEL-DRIVEN REQUEST PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
@@ -745,7 +692,10 @@ Rules:
         reasoning: list,
         tool_results: list,
         explanation: str = "detailed",
-        estimated_ans        if explanation == "concise":
+        estimated_answer_tokens: int | None = None,
+    ):
+
+        if explanation == "concise":
             final_system = r"""
 You are Nova's concise mathematical solution writer.
 Write ONE self-contained solution. Use very little prose, but preserve all
