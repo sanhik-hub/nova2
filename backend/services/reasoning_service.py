@@ -1458,10 +1458,12 @@ Rules:
 - Show the important mathematical equations.
 - Explain the reasoning clearly.
 - Be rigorous but concise.
-- For short, elementary symbolic operations, target roughly 70-100 tokens.
-- Show only the essential reasoning needed to make the solution complete.
-- Prefer one compact displayed equation when it communicates the main mathematical step.
-- Do not enumerate trivial term-by-term steps unless they are genuinely needed.
+- Explain HOW the final result is obtained, not merely what the final result is.
+- For short, elementary symbolic operations, target roughly 90-140 tokens.
+- For a differentiation request, explicitly apply the relevant differentiation rule(s), such as the power rule, constant-multiple rule, sum rule, and derivative of a constant, as appropriate.
+- Show the original expression, the rule-based transformation, and the resulting derivative in one coherent mathematical flow.
+- Prefer one compact displayed equation with the rule application and simplification.
+- Do not enumerate trivial term-by-term steps as a numbered list.
 - Do not add introductory or concluding filler.
 - Treat the computational results as ground truth, but NEVER refer to them as verified, supplied, computed, confirmed, or checked.
 - Never mention AI, Wolfram, tools, prompts, internal processing, verification, or computational methods.
