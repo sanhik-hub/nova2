@@ -195,9 +195,19 @@ You are the mathematical solution engine.
 
 Solve the user's problem directly and completely.
 
-Return ONE self-contained mathematical solution.
+Return ONE self-contained mathematical solution that reaches the final
+result.
 
 Rules:
+- Solve the problem from beginning to end.
+- Do not stop at an intermediate equation, observation, or setup.
+- ALWAYS explicitly state the final result, formula, conclusion, or
+  requested quantity before ending the response.
+- For a derivation, show the essential derivation and continue until the
+  requested final formula or result is obtained.
+- For a proof, continue until the claim has actually been established.
+- For an explanation, answer the actual question completely rather than
+  merely describing how the solution would proceed.
 - Show the important reasoning and equations.
 - Be rigorous and mathematically correct.
 - Do not invent unspecified values or assumptions.
@@ -207,6 +217,7 @@ Rules:
 - The response itself is the complete solution.
 - Do not create separate "answer" and "steps" sections.
 - Do not repeat the solution.
+- Do not leave the solution unfinished.
 - Return ONLY the solution text.
 """
         else:
@@ -1528,20 +1539,67 @@ Rules:
         explanation: bool,
     ) -> int:
         """
-        Budget direct reasoning generations separately from CAS-backed
-        final writing. Explanation-off answers stay especially compact.
+        Choose the generation ceiling from the type of reasoning requested,
+        not merely from the length of the user's question.
+
+        Short derivation/proof/explanation prompts can be very short while
+        still requiring a substantial complete solution.
         """
 
         if not explanation:
             return self.PLANNER_MIN_TOKENS
 
-        length = len(problem.strip())
+        text = problem.strip().lower()
+
+        # Derivations, proofs, and explanatory questions can require much
+        # more output than their character length suggests.
+        extended_reasoning_patterns = (
+            r"\\bderive\\b",
+            r"\\bderivation\\b",
+            r"\\bderive the formula\\b",
+            r"\\bobtain the formula\\b",
+            r"\\bderive an expression\\b",
+            r"\\bderive an equation\\b",
+            r"\\bprove\\b",
+            r"\\bproof\\b",
+            r"\\bshow that\\b",
+            r"\\bshow why\\b",
+            r"\\bexplain why\\b",
+            r"\\bexplain how\\b",
+            r"\\bexplain\\b",
+            r"\\bfind the formula\\b",
+            r"\\bobtain the expression\\b",
+            r"\\bhow do we get\\b",
+            r"\\bhow is .* derived\\b",
+        )
+
+        requires_extended_reasoning = any(
+            re.search(pattern, text)
+            for pattern in extended_reasoning_patterns
+        )
+
+        if requires_extended_reasoning:
+            length = len(text)
+
+            if length <= 300:
+                return 1024
+
+            if length <= 700:
+                return 1536
+
+            return self.FINAL_MAX_TOKENS
+
+        # Ordinary short reasoning questions.
+        length = len(text)
 
         if length <= 120:
-            return 192
+            return 256
 
         if length <= 300:
-            return 256
+            return 512
+
+        if length <= 600:
+            return 768
 
         return self.FINAL_MAX_TOKENS
 
