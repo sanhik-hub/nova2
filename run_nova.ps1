@@ -200,7 +200,15 @@ else {
             "--host",
             $LocalLLMHost,
             "--port",
-            [string]$LocalLLMPort
+            [string]$LocalLLMPort,
+            "--ctx-size",
+            [string]$LocalLLMConfig.context_size,
+            "--threads",
+            [string]$LocalLLMConfig.threads,
+            "--batch-size",
+            [string]$LocalLLMConfig.batch_size,
+            "--n-gpu-layers",
+            [string]$LocalLLMConfig.n_gpu_layers
         ) `
         -WorkingDirectory $NovaRoot `
         -WindowStyle Hidden
