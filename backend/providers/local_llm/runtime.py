@@ -76,10 +76,13 @@ class LocalLLMRuntime:
                 "content": system_prompt,
             })
 
+        # Thinking mode is controlled explicitly through
+        # chat_template_kwargs below. Do not also inject /no_think into
+        # the user prompt: Qwen's template can treat that literal control
+        # token as part of the user's request and change the response
+        # behavior. Direct llama.cpp requests use the same message content
+        # with chat_template_kwargs.enable_thinking=False.
         user_content = prompt
-
-        if not enable_thinking:
-            user_content = "/no_think\n" + user_content
 
         messages.append({
             "role": "user",
