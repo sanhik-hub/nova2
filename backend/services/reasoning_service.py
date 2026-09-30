@@ -241,22 +241,20 @@ Rules:
             explanation=explanation,
         )
 
-        # Qwen3's explicit reasoning mode is important for open-ended
-        # derivations/proofs.  Without it, the model can emit a plausible
-        # setup and terminate before carrying the derivation to its result.
-        # This is still one model generation; the thinking trace is kept
-        # internal by the provider and only the final answer is returned.
-        extended_reasoning = (
-            explanation
-            and self._requires_extended_reasoning(problem)
-        )
+        # Keep derivations in Qwen's normal answer mode.  The model was
+        # already producing the correct derivation, but the previous
+        # adaptive ceiling could leave it without enough room to reach
+        # the final result.  Give extended derivations the full response
+        # ceiling instead of enabling a separate thinking trace.
+        if explanation and self._requires_extended_reasoning(problem):
+            reasoning_budget = self.FINAL_MAX_TOKENS
 
         response = self.router.generate(
             prompt=problem,
             system_prompt=system,
             max_tokens=reasoning_budget,
             temperature=0,
-            enable_thinking=extended_reasoning,
+            enable_thinking=False,
         )
 
         if not response["success"]:
