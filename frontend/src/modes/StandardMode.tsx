@@ -1,14 +1,12 @@
 ﻿import { useState } from "react";
-import { reasonQuestion, type ReasonResponse } from "../services/api";
+import { reasonQuestion, type ExplanationPreference, type ReasonResponse } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
-
-type ExplanationPreference = "with" | "without";
 
 export function StandardMode() {
   const [question, setQuestion] = useState("");
   const [explanation, setExplanation] =
-    useState<ExplanationPreference>("with");
+    useState<ExplanationPreference>("detailed");
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +23,7 @@ export function StandardMode() {
     try {
       const result = await reasonQuestion(
         trimmed,
-        explanation === "with",
+        explanation,
       );
 
       setResponse(result);
@@ -95,46 +93,23 @@ export function StandardMode() {
         <div className="settings-card card">
           <div className="field-label">Explanation</div>
 
-          <button
-            className={
-              explanation === "with"
-                ? "choice-button selected"
-                : "choice-button"
-            }
-            type="button"
-            onClick={() => setExplanation("with")}
-          >
-            <span className="choice-radio">
-              {explanation === "with" ? "●" : "○"}
-            </span>
-
-            <span>
-              <strong>With explanation</strong>
-              <small>Show reasoning and relevant steps.</small>
-            </span>
+          <button className={explanation === "off" ? "choice-button selected" : "choice-button"} type="button" onClick={() => setExplanation("off")}>
+            <span className="choice-radio">{explanation === "off" ? "●" : "○"}</span>
+            <span><strong>Off</strong><small>Return the result without an explanation.</small></span>
           </button>
 
-          <button
-            className={
-              explanation === "without"
-                ? "choice-button selected"
-                : "choice-button"
-            }
-            type="button"
-            onClick={() => setExplanation("without")}
-          >
-            <span className="choice-radio">
-              {explanation === "without" ? "●" : "○"}
-            </span>
+          <button className={explanation === "concise" ? "choice-button selected" : "choice-button"} type="button" onClick={() => setExplanation("concise")}>
+            <span className="choice-radio">{explanation === "concise" ? "●" : "○"}</span>
+            <span><strong>Concise</strong><small>Very short explanation with the important mathematics.</small></span>
+          </button>
 
-            <span>
-              <strong>Without explanation</strong>
-              <small>Prefer a concise computational result.</small>
-            </span>
+          <button className={explanation === "detailed" ? "choice-button selected" : "choice-button"} type="button" onClick={() => setExplanation("detailed")}>
+            <span className="choice-radio">{explanation === "detailed" ? "●" : "○"}</span>
+            <span><strong>Detailed</strong><small>Complete explanation and derivation.</small></span>
           </button>
 
           <div className="info-box">
-            Explanation preference is sent directly with the request.
+            Concise keeps the mathematical expressions while minimizing text. Detailed gives the complete solution.
           </div>
         </div>
       </div>
