@@ -107,6 +107,10 @@ def load_llm_config():
                 if model_path
                 else ""
             ),
+            "context_size": int(data.get("context_size", 32768)),
+            "threads": int(data.get("threads", 6)),
+            "batch_size": int(data.get("batch_size", 128)),
+            "n_gpu_layers": int(data.get("n_gpu_layers", 0)),
         }
 
     except Exception as exc:
