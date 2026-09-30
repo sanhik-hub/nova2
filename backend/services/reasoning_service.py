@@ -554,6 +554,15 @@ Return ONLY JSON.
             })
 
         # -----------------------------------------------------
+        # EXPLANATION OFF: RETURN ONLY THE CAS RESULT
+        # -----------------------------------------------------
+
+        if not explanation:
+            return self._cas_result_only(
+                tool_results=tool_results,
+            )
+
+        # -----------------------------------------------------
         # ONE FINAL LLM CALL
         # -----------------------------------------------------
 
@@ -848,63 +857,10 @@ Return ONLY JSON.
         }
 
         if not explanation:
-            operation_names = {
-                "differentiate": "The derivative",
-                "integrate": "The integral",
-                "factor": "The factorization",
-                "expand": "The expansion",
-                "simplify": "The simplified expression",
-                "solve": "The solution",
-                "limit": "The limit",
-            }
-
-            label = operation_names.get(
-                tool,
-                "The result",
+            return self._cas_result_only(
+                tool_results=[tool_result],
             )
 
-            if tool == "solve":
-                answer = f"Solutions: {result.get('result')}"
-            elif tool == "differentiate":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            elif tool == "integrate":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            elif tool == "factor":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            elif tool == "expand":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            elif tool == "simplify":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            elif tool == "limit":
-                answer = (
-                    f"{label} of {arguments.get('expression')} "
-                    f"is {result.get('result')}."
-                )
-            else:
-                answer = str(result.get("result"))
-
-            return {
-                "success": True,
-                "answer": answer,
-                "engine": "wolfram",
-                "tool_calls": [tool_result],
-                "cached": False,
-            }
 
         return self._final_explanation(
             problem=problem,
@@ -1415,6 +1371,57 @@ Return ONLY JSON.
         }
 
     # =========================================================
+    # RESULT-ONLY CAS RESPONSE
+    # =========================================================
+
+    def _cas_result_only(
+        self,
+        tool_results: list,
+    ):
+        """
+        Return only the exact symbolic result when explanation is off.
+
+        No explanatory prose, tool metadata, steps, or verification
+        details are exposed to the caller.
+        """
+
+        if not tool_results:
+            return self._error(
+                "No computational result was produced."
+            )
+
+        results = [
+            item.get("result")
+            for item in tool_results
+            if isinstance(item, dict)
+            and item.get("result") is not None
+        ]
+
+        if not results:
+            return self._error(
+                "No computational result was produced."
+            )
+
+        answer = "\n".join(
+            str(result).strip()
+            for result in results
+            if str(result).strip()
+        )
+
+        if not answer:
+            return self._error(
+                "The computational result was empty."
+            )
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "wolfram",
+            "tool_calls": [],
+            "cached": False,
+        }
+
+    # =========================================================
     # FINAL EXPLANATION AFTER CAS
     # =========================================================
 
@@ -1442,6 +1449,11 @@ Rules:
 - Show the important mathematical equations.
 - Explain the reasoning clearly.
 - Be rigorous but concise.
+- For short, elementary symbolic operations, target roughly 70-100 tokens.
+- Show only the essential reasoning needed to make the solution complete.
+- Prefer one compact displayed equation when it communicates the main mathematical step.
+- Do not enumerate trivial term-by-term steps unless they are genuinely needed.
+- Do not add introductory or concluding filler.
 - Treat the computational results as ground truth, but NEVER refer to them as verified, supplied, computed, confirmed, or checked.
 - Never mention AI, Wolfram, tools, prompts, internal processing, verification, or computational methods.
 - Never say that a result came from a tool or was verified by a tool.
