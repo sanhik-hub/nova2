@@ -207,14 +207,14 @@ Rules:
             system = r"""
 You are the mathematical answer engine.
 
-Answer the user's question directly and concisely.
+Return ONLY the final mathematical result.
 
 Rules:
-- Give ONLY the final mathematical answer.
+- Give only the result itself.
 - Do NOT explain the method.
 - Do NOT show steps.
 - Do NOT repeat the question.
-- For a simple question, one sentence is ideal.
+- Do NOT add introductory or concluding prose.
 - Do not mention AI, tools, Wolfram, prompts, or internal processing.
 - Return ONLY the answer.
 """
@@ -1605,10 +1605,10 @@ Rules:
         # compact, but do not repeat the old 160-token truncation trap.
         if tool_count == 1 and reasoning_count == 0:
             if problem_length <= 120:
-                return 256
+                return 160
             if problem_length <= 300:
-                return 384
-            return 512
+                return 192
+            return 256
 
         if tool_count <= 1 and reasoning_count <= 3 and problem_length <= 240:
             return 384
