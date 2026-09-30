@@ -45,9 +45,11 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
+export type ExplanationPreference = "off" | "concise" | "detailed";
+
 export async function reasonQuestion(
   query: string,
-  explanation: boolean,
+  explanation: ExplanationPreference,
 ): Promise<ReasonResponse> {
   const response = await fetch("/api/reason", {
     method: "POST",
