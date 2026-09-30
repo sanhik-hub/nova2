@@ -43,10 +43,12 @@ class ReasoningService:
     def solve(
         self,
         problem: str,
-        explanation: bool = True,
+        explanation: bool | str = "detailed",
     ) -> dict[str, Any]:
 
         started = time.perf_counter()
+
+        explanation = self._normalize_explanation_preference(explanation)
 
         if not problem or not problem.strip():
             return self._error("Problem is empty.")
@@ -81,7 +83,7 @@ class ReasoningService:
                 provider="wolfram",
             )
 
-            if not explanation and result["success"]:
+            if explanation == "off" and result["success"]:
                 response = {
                     "success": True,
                     "answer": result.get("result"),
@@ -179,142 +181,13 @@ class ReasoningService:
 
         return response
 
-    # =========================================================
-    # REASONING-ONLY PATH
-    # =========================================================
-
-    def _solve_reasoning_only(
-        self,
-        problem: str,
-        explanation: bool = True,
-    ):
-
-        if explanation:
-            system = r"""
-You are the mathematical solution engine.
-
-Solve the user's problem directly and completely.
-
-Return ONE self-contained mathematical solution that reaches the final
-result.
-
-Rules:
-- Solve the problem from beginning to end.
-- Do not stop at an intermediate equation, observation, or setup.
-- ALWAYS explicitly state the final result, formula, conclusion, or
-  requested quantity before ending the response.
-- For a derivation, show the essential derivation and continue until the
-  requested final formula or result is obtained.
-- For a proof, continue until the claim has actually been established.
-- For an explanation, answer the actual question completely rather than
-  merely describing how the solution would proceed.
-- Show the important reasoning and equations.
-- Be rigorous and mathematically correct.
-- Do not invent unspecified values or assumptions.
-- Do not use a calculator.
-- Do not mention AI, tools, Wolfram, prompts, or internal processing.
-- Use clear mathematical notation.
-- The response itself is the complete solution.
-- Do not create separate "answer" and "steps" sections.
-- Do not repeat the solution.
-- Do not leave the solution unfinished.
-- Before ending, silently check that every requested derivation,
-  calculation, or proof has been completed.
-- NEVER end after an intermediate setup, an unfinished sentence, a colon,
-  or an unevaluated integral.
-- If the solution contains an integral, equation transformation, or
-  algebraic operation needed for the requested result, actually perform
-  that operation before ending.
-- The final line MUST state the requested final formula, result, or
-  conclusion explicitly.
-- Do not stop merely because the main idea has been established.
-- Return ONLY the solution text.
-"""
-        else:
-            system = r"""
-You are the mathematical answer engine.
-
-Return ONLY the final mathematical result.
-
-Rules:
-- Give only the result itself.
-- Do NOT explain the method.
-- Do NOT show steps.
-- Do NOT repeat the question.
-- Do NOT add introductory or concluding prose.
-- Do not mention AI, tools, Wolfram, prompts, or internal processing.
-- Return ONLY the answer.
-"""
-
-        reasoning_budget = self._reasoning_token_budget(
-            problem=problem,
-            explanation=explanation,
-        )
-
-        # Keep derivations in Qwen's normal answer mode.  The model was
-        # already producing the correct derivation, but the previous
-        # adaptive ceiling could leave it without enough room to reach
-        # the final result.  Give extended derivations the full response
-        # ceiling instead of enabling a separate thinking trace.
-        if explanation and self._requires_extended_reasoning(problem):
-            reasoning_budget = self.FINAL_MAX_TOKENS
-
-        response = self.router.generate(
-            prompt=problem,
-            system_prompt=system,
-            max_tokens=reasoning_budget,
-            temperature=0,
-            enable_thinking=False,
-        )
-
-        if not response["success"]:
-            return self._error(response["error"])
-
-        answer = response["result"].strip()
-
-        if not answer:
-            return self._error(
-                "The reasoning model returned no solution."
-            )
-
-        if not explanation:
-            return {
-                "success": True,
-                "answer": answer,
-            }
-
-        return {
-            "success": True,
-            "answer": answer,
-            "engine": "local_llm",
-            "tool_calls": [],
-            "cached": False,
-        }
-
-    def _requires_extended_reasoning(self, problem: str) -> bool:
-        text = problem.strip().lower()
-
-        patterns = (
-            r"\bderive\b",
-            r"\bderivation\b",
-            r"\bderive the formula\b",
-            r"\bobtain the formula\b",
-            r"\bderive an expression\b",
-            r"\bderive an equation\b",
-            r"\bprove\b",
-            r"\bproof\b",
-            r"\bshow that\b",
-            r"\bshow why\b",
-            r"\bexplain why\b",
-            r"\bexplain how\b",
-            r"\bexplain\b",
-            r"\bfind the formula\b",
-            r"\bobtain the expression\b",
-            r"\bhow do we get\b",
-            r"\bhow is .* derived\b",
-        )
-
-        return any(re.search(pattern, text) for pattern in patterns)
+    def _normalize_explanation_preference(self, explanation: bool | str) -> str:
+        if explanation is True:
+            return "detailed"
+        if explanation is False:
+            return "off"
+        value = str(explanation).strip().lower()
+        return value if value in {"off", "concise", "detailed"} else "detailed"
 
     # =========================================================
     # COMPLEX COMPUTATIONAL PIPELINE
@@ -327,124 +200,45 @@ Rules:
     ):
 
         planner_system = r"""
-You are the mathematical strategy engine.
+You are Nova's mathematical request planner.
 
-Analyze the problem and solve it.
+Analyze the user's request semantically. Do not classify it by matching
+specific trigger words. Determine the actual mathematical intent.
 
-Your job is to distinguish between:
-
-A) Pure reasoning:
-   Return a complete solution directly.
-
-B) Exact symbolic computation:
-   Request one of the allowed Wolfram tools.
-
-Do NOT use Wolfram merely because the problem contains mathematics.
-
-IMPORTANT:
-1. Never invent unspecified functions, values, constants,
-   distributions, matrices, integrals, or assumptions.
-
-2. Never send natural language to Wolfram.
-
-3. Never convert a statement involving an unspecified function
-   into a numerical calculation.
-
-4. Use the appropriate Wolfram tool whenever the user explicitly
-   requests an exact symbolic operation such as solving an equation,
-   differentiating, integrating, factoring, expanding, simplifying,
-   or evaluating a limit.
-
-5. Pure reasoning is for problems whose solution depends primarily
-   on a proof, derivation, logical argument, inequality argument,
-   definition, probability argument, geometry argument, or similar
-   reasoning rather than an explicit symbolic computation.
-
-6. When a Wolfram tool is used, let Wolfram perform the exact
-   symbolic computation and use the returned result as the basis
-   for the final explanation.
-
-7. Match explicit user requests to the corresponding tool:
-   - "solve", "find the roots", or "find the solutions" of an
-     equation → use the solve tool.
-   - "factor" or "factorize" an expression → use the factor tool.
-   - "differentiate" or "find the derivative" → use differentiate.
-   - "integrate" or "find the integral" → use integrate.
-   - "simplify" → use simplify.
-   - "expand" → use expand.
-   - "limit" or "evaluate the limit" → use limit.
-
-8. Do not replace an explicitly requested solve operation with
-   factorization merely because factoring could help obtain the
-   answer.
-
-9. A failed computation is NOT a result.
-
-Allowed tools:
-
-simplify:
-{"expression":"valid Wolfram expression"}
-
-factor:
-{"expression":"valid Wolfram expression"}
-
-expand:
-{"expression":"valid Wolfram expression"}
-
-differentiate:
-{"expression":"valid Wolfram expression","variable":"x"}
-
-integrate:
-{"expression":"valid Wolfram expression","variable":"x"}
-
-solve:
-{"equation":"valid Wolfram equation","variable":"x"}
-
-limit:
-{"expression":"valid Wolfram expression","variable":"x","value":"0"}
-
-If pure reasoning is sufficient, return:
-
-{
-  "type": "final",
-  "idea": "key idea",
-  "reasoning": [
-    "complete logical step 1",
-    "complete logical step 2",
-    "complete logical step 3"
-  ]
-}
-
-The reasoning must actually solve the problem.
-
-If exact computation is genuinely required:
-
+Return ONLY JSON:
 {
   "type": "plan",
-  "idea": "key idea",
-  "reasoning": [
-    "step 1",
-    "step 2"
-  ],
-  "calls": [
-    {
-      "tool": "simplify",
-      "arguments": {
-        "expression": "..."
-      }
-    }
-  ]
+  "request_type": "symbolic_operation | derivation | proof | explanation | reasoning | computation | other",
+  "needs_computation": true,
+  "idea": "central mathematical idea",
+  "reasoning": ["essential mathematical reasoning"],
+  "calls": [{"tool": "simplify | factor | expand | differentiate | integrate | solve | limit", "arguments": {}}],
+  "generation_tokens": 600,
+  "final_result": null
 }
 
-Maximum 2 tool calls.
-
-Return ONLY JSON.
+Rules:
+- Choose the request_type semantically, not from keywords.
+- Use exact computation only when genuinely useful or required.
+- Tool arguments must be valid mathematical expressions, never prose.
+- Never invent unspecified values, functions, geometry, conditions, or assumptions.
+- For derivations, proofs, explanations and reasoning, put the essential
+  mathematical chain in reasoning and leave calls empty unless computation
+  is genuinely needed.
+- generation_tokens is your estimate of the final solution's required output
+  based on mathematical content and requested depth, not a fixed keyword or
+  character-length rule.
+- For explanation mode "off", put the result in final_result when it can be
+  determined without a final explanatory generation.
+- Do not write the polished final solution here.
+- Maximum 2 tool calls.
+- Return valid JSON only.
 """
 
         planner = self.router.generate(
-            prompt=problem,
+            prompt=(f"Explanation preference: {explanation}\n\nUser request:\n{problem}"),
             system_prompt=planner_system,
-            max_tokens=self._planner_token_budget(problem),
+            max_tokens=None,
             temperature=0,
             enable_thinking=False,
         )
@@ -460,131 +254,23 @@ Return ONLY JSON.
             )
 
         # -----------------------------------------------------
-        # PURE REASONING
-        # -----------------------------------------------------
-
-        if plan.get("type") == "final":
-
-            return self._final_from_reasoning(
-                problem,
-                plan,
-            )
-
-        # -----------------------------------------------------
-        # TOOL PLAN
+        # PLANNED REASONING / COMPUTATION
         # -----------------------------------------------------
 
         if plan.get("type") != "plan":
-            return self._error(
-                "Invalid reasoning plan type."
-            )
+            return self._error("Invalid reasoning plan type.")
 
         calls = plan.get("calls", [])
-
         if not isinstance(calls, list):
             calls = []
-
         calls = calls[:self.MAX_TOOL_CALLS]
-
-        # -----------------------------------------------------
-        # ENFORCE EXPLICIT USER-REQUESTED OPERATIONS
-        #
-        # The planner may choose a mathematically equivalent
-        # operation, such as factor instead of solve. When the
-        # user explicitly requests an operation, preserve that
-        # requested operation.
-        # -----------------------------------------------------
-
-        lowered_problem = problem.lower()
-
-        explicit_tool = None
-
-        if re.search(
-            r"\b(solve|find the roots|find roots|find the solutions|find solutions)\b",
-            lowered_problem,
-        ):
-            explicit_tool = "solve"
-        elif re.search(r"\b(factor|factorize)\b", lowered_problem):
-            explicit_tool = "factor"
-        elif re.search(
-            r"\b(differentiate|derivative|find the derivative|find derivative)\b",
-            lowered_problem,
-        ):
-            explicit_tool = "differentiate"
-        elif re.search(
-            r"\b(integrate|integral|find the integral|find integral)\b",
-            lowered_problem,
-        ):
-            explicit_tool = "integrate"
-        elif re.search(r"\b(simplify)\b", lowered_problem):
-            explicit_tool = "simplify"
-        elif re.search(r"\b(expand)\b", lowered_problem):
-            explicit_tool = "expand"
-        elif re.search(
-            r"\b(limit|evaluate the limit|evaluate limit)\b",
-            lowered_problem,
-        ):
-            explicit_tool = "limit"
-
-        if explicit_tool and calls:
-            first_call = calls[0]
-
-            if isinstance(first_call, dict):
-                first_call["tool"] = explicit_tool
-
-                arguments = first_call.get("arguments")
-
-                if not isinstance(arguments, dict):
-                    arguments = {}
-                    first_call["arguments"] = arguments
-
-                if explicit_tool == "solve":
-                    equation_match = re.search(
-                        r"(?i)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
-                        problem,
-                    )
-
-                    if equation_match:
-                        equation = equation_match.group(1).strip()
-
-                        equation = re.sub(
-                            r"[.!?]+$",
-                            "",
-                            equation,
-                        ).strip()
-
-                        equation = re.sub(
-                            r"\s*=\s*",
-                            " == ",
-                            equation,
-                        )
-
-                        if "==" not in equation:
-                            equation = f"{equation} == 0"
-
-                        arguments["equation"] = equation
-
-                    arguments.setdefault("variable", "x")
-
-        # -----------------------------------------------------
-        # NEVER SEND UNKNOWN FUNCTIONS TO WOLFRAM
-        # -----------------------------------------------------
 
         # -----------------------------------------------------
         # NEVER SEND UNKNOWN FUNCTIONS TO WOLFRAM
         # -----------------------------------------------------
 
         if self._contains_undefined_function_call(calls):
-
-            # The planner has already produced reasoning.
-            # Do not spend another expensive Qwen call.
-            return self._final_from_reasoning(
-                problem,
-                {
-                    "idea": plan.get("idea", ""),
-                    "reasoning": plan.get("reasoning", []),
-                },
-            )
+            calls = []
 
         # -----------------------------------------------------
         # EXECUTE VERIFIED TOOL CALLS
@@ -622,13 +308,18 @@ Return ONLY JSON.
             })
 
         # -----------------------------------------------------
-        # EXPLANATION OFF: RETURN ONLY THE CAS RESULT
+        # EXPLANATION OFF
         # -----------------------------------------------------
 
-        if not explanation:
-            return self._cas_result_only(
-                tool_results=tool_results,
-            )
+        if explanation == "off":
+            if tool_results:
+                return self._cas_result_only(tool_results=tool_results)
+
+            final_result = plan.get("final_result")
+            if isinstance(final_result, str) and final_result.strip():
+                return {"success": True, "answer": final_result.strip(), "engine": "local_llm", "tool_calls": [], "cached": False}
+
+            return self._error("The planner could not determine a final result without explanation.")
 
         # -----------------------------------------------------
         # ONE FINAL LLM CALL
@@ -639,465 +330,9 @@ Return ONLY JSON.
             idea=plan.get("idea", ""),
             reasoning=plan.get("reasoning", []),
             tool_results=tool_results,
-            estimated_answer_tokens=plan.get(
-                "estimated_answer_tokens"
-            ),
+            explanation=explanation,
+            estimated_answer_tokens=plan.get("generation_tokens"),
         )
-
-    # =========================================================
-    # DIRECT EXPLICIT SYMBOLIC OPERATIONS
-    # =========================================================
-
-    def _detect_explicit_operation(self, problem: str):
-        """
-        Detect a clearly requested symbolic operation without
-        invoking the language model.
-
-        Returns:
-            (tool, arguments) or None
-        """
-
-        text = problem.strip()
-
-        # -----------------------------------------------------
-        # SOLVE
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            equation = match.group(1).strip()
-
-            # Remove trailing natural-language explanation requests
-            # before passing the equation to the symbolic solver.
-            equation = re.sub(
-                r"(?is)\s+(?:and\s+)?(?:please\s+)?(?:explain|show|give|provide)"
-                r"(?:\s+(?:the\s+)?(?:steps|step-by-step|solution|working|work))?\s*$",
-                "",
-                equation,
-            ).strip()
-
-
-            equation = re.sub(
-                r"[.!?]+$",
-                "",
-                equation,
-            ).strip()
-
-            equation = re.sub(
-                r"\s*=\s*",
-                " == ",
-                equation,
-            )
-
-            if "==" not in equation:
-                equation = f"{equation} == 0"
-
-            return (
-                "solve",
-                {
-                    "equation": equation,
-                    "variable": "x",
-                },
-            )
-
-        # -----------------------------------------------------
-        # FACTOR
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*(?:factor|factorize)\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = re.sub(
-                r"[.!?]+$",
-                "",
-                match.group(1).strip(),
-            )
-
-            return (
-                "factor",
-                {
-                    "expression": expression,
-                },
-            )
-
-        # -----------------------------------------------------
-        # EXPAND
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*expand\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = re.sub(
-                r"[.!?]+$",
-                "",
-                match.group(1).strip(),
-            )
-
-            return (
-                "expand",
-                {
-                    "expression": expression,
-                },
-            )
-
-        # -----------------------------------------------------
-        # SIMPLIFY
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*simplify\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = re.sub(
-                r"[.!?]+$",
-                "",
-                match.group(1).strip(),
-            )
-
-            return (
-                "simplify",
-                {
-                    "expression": expression,
-                },
-            )
-
-        # -----------------------------------------------------
-        # DIFFERENTIATE
-        #
-        # "derive" is intentionally NOT treated as a direct
-        # differentiation command. In natural-language physics and
-        # mathematics, "derive the formula/expression" commonly means
-        # perform a derivation, not differentiate an expression.
-        # Such requests must remain on the reasoning path so the model
-        # can produce the complete derivation.
-        # -----------------------------------------------------
-
-        match = re.match(
-           r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = match.group(1).strip()
-
-            expression = re.sub(
-                r"(?is)\s+with\s+respect\s+to\s+[a-zA-Z]\s*$",
-                "",
-                expression,
-            )
-
-            expression = re.sub(
-                r"(?is)\s+wrt\s+[a-zA-Z]\s*$",
-                "",
-                expression,
-            )
-
-            expression = re.sub(
-                r"[.!?]+$",
-                "",
-                expression,
-            ).strip()
-
-            return (
-                "differentiate",
-                {
-                    "expression": expression,
-                    "variable": "x",
-                },
-            )
-
-        # -----------------------------------------------------
-        # INTEGRATE
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*(?:integrate|find\s+(?:the\s+)?integral)\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = match.group(1).strip()
-
-            variable_match = re.search(
-                r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
-                expression,
-            )
-
-            variable = "x"
-
-            if variable_match:
-                variable = variable_match.group(1)
-                expression = expression[:variable_match.start()]
-
-            expression = re.sub(
-                r"[.!?]+$",
-                "",
-                expression,
-            ).strip()
-
-            return (
-                "integrate",
-                {
-                    "expression": expression,
-                    "variable": variable,
-                },
-            )
-
-        # -----------------------------------------------------
-        # LIMIT
-        # -----------------------------------------------------
-
-        match = re.match(
-            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(.+?)\s*[.!?]?\s*$",
-            text,
-        )
-
-        if match:
-            expression = match.group(1).strip()
-
-            limit_match = re.match(
-                r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
-                expression,
-            )
-
-            if limit_match:
-                return (
-                    "limit",
-                    {
-                        "expression": limit_match.group(1).strip(),
-                        "variable": limit_match.group(2),
-                        "value": limit_match.group(3),
-                    },
-                )
-
-        return None
-    def _solve_direct_operation(
-        self,
-        problem: str,
-        operation,
-        explanation: bool = True,
-    ):
-        """        Execute an explicitly requested symbolic operation directly
-        through the verified Wolfram path.
-
-        With explanation=False, return a concise deterministic answer
-        without spending a Qwen generation.
-
-        With explanation=True, Wolfram computes the exact result and
-        one Qwen call turns that verified result into a complete
-        mathematical solution.
-        """
-
-        tool, arguments = operation
-
-        validation = self._validate_tool_call(
-            {
-                "tool": tool,
-                "arguments": arguments,
-            }
-        )
-
-        if not validation["valid"]:
-            return self._error(
-                validation["error"]
-            )
-
-        result = self._execute_tool(
-            validation["tool"],
-            validation["arguments"],
-        )
-
-        if not result.get("success"):
-            return self._error(
-                "Wolfram verification failed: "
-                + str(result.get("error"))
-            )
-
-        tool_result = {
-            "tool": validation["tool"],
-            "arguments": validation["arguments"],
-            "result": result.get("result"),
-        }
-
-        if not explanation:
-            return self._cas_result_only(
-                tool_results=[tool_result],
-            )
-
-
-        return self._final_explanation(
-            problem=problem,
-            idea="",
-            reasoning=[],
-            tool_results=[tool_result],
-        )
-
-    # =========================================================
-    # FAST PROBLEM CLASSIFICATION
-    # =========================================================
-
-    def _is_simple_expression(self, problem: str) -> bool:
-
-        text = problem.strip()
-
-        if len(text) > 120:
-            return False
-
-        lowered = text.lower()
-
-        # -----------------------------------------------------
-        # NATURAL-LANGUAGE COMPUTATION REQUESTS
-        #
-        # These must not enter the direct Wolfram calculate()
-        # path. They need the reasoning/tool pipeline so that
-        # the requested operation is interpreted correctly.
-        # -----------------------------------------------------
-
-        computational_markers = (
-            "integrate ",
-            "integral ",
-            "differentiate ",
-            "derivative ",
-            "derive ",
-            "solve ",
-            "factor ",
-            "factorize ",
-            "expand ",
-            "simplify ",
-            "limit ",
-            "find the derivative",
-            "find derivative",
-            "find the integral",
-            "find integral",
-            "find the roots",
-            "find roots",
-            "find the solutions",
-            "find solutions",
-            "evaluate the limit",
-            "evaluate limit",
-        )
-
-        if any(
-            marker in lowered
-            for marker in computational_markers
-        ):
-            return False
-        semantic_phrases = (
-            "prove",
-            "show that",
-            "show",
-            "explain",
-            "determine whether",
-            "determine if",
-            "why",
-            "suppose",
-            "given",
-            "continuous",
-            "function",
-            "sequence",
-            "probability",
-            "geometry",
-            "physics",
-            "chemistry",
-            "maximum",
-            "minimum",
-            "area",
-            "volume",
-            "find the",
-            "let ",
-            "such that",
-            "if ",
-        )
-
-        if any(
-            phrase in lowered
-            for phrase in semantic_phrases
-        ):
-            return False
-
-        # Long alphabetic prose is not a direct expression.
-        words = re.findall(r"[A-Za-z]+", text)
-
-        if len(words) > 8:
-            return False
-
-        # At least one mathematical structure should exist.
-        if not re.search(
-            r"[0-9xXyYzZÏ€âˆš+\-*/^=<>()[\]{}]",
-            text,
-        ):
-            return False
-
-        return True
-
-    def _is_reasoning_problem(self, problem: str) -> bool:
-
-        text = problem.lower()
-
-        # Strong indicators that the problem is semantic rather
-        # than simply asking Wolfram to evaluate an expression.
-        reasoning_markers = [
-            "prove",
-            "prove that",
-            "show that",
-            "determine whether",
-            "determine if",
-            "can there exist",
-            "does there exist",
-            "is it possible",
-            "why",
-            "explain why",
-            "suppose",
-            "assume",
-            "given that",
-            "let f",
-            "let g",
-            "continuous",
-            "positive for every",
-            "nonnegative",
-            "contradiction",
-            "inequality",
-            "if and only if",
-            "derive",
-            "derivation",
-            "obtain the formula",
-            "derive the formula",
-            "derive an expression",
-            "derive an equation",
-        ]
-
-        score = 0
-
-        for marker in reasoning_markers:
-            if marker in text:
-                score += 1
-
-        # Questions containing an explicitly unspecified function
-        # are usually reasoning problems unless a concrete definition
-        # is also present.
-        if re.search(
-            r"\b[fghp]\s*\(\s*[a-zA-Z]\s*\)",
-            text,
-        ):
-            score += 2
-
-        # Multiple assumptions are usually semantic problems.
-        if text.count(",") >= 2:
-            score += 1
-
-        return score >= 1
 
     # =========================================================
     # TOOL VALIDATION
@@ -1509,39 +744,27 @@ Return ONLY JSON.
         idea: str,
         reasoning: list,
         tool_results: list,
-        estimated_answer_tokens: int | None = None,
-    ):
-
-        final_system = r"""
-You are a mathematical solution writer.
-
-The computational results below are internal facts to use silently.
-
-Write ONE complete, self-contained mathematical solution to the original problem.
-
-Rules:
-- Use ONLY the original problem, supplied reasoning, and computational results.
-- Never invent results.
-- Never change a computational result.
-- Never assume missing information.
-- Show the important mathematical equations.
-- Explain the reasoning clearly.
-- Be rigorous but concise.
-- Explain HOW the final result is obtained, not merely what the final result is.
-- For short, elementary symbolic operations, target roughly 90-140 tokens.
-- For a differentiation request, explicitly apply the relevant differentiation rule(s), such as the power rule, constant-multiple rule, sum rule, and derivative of a constant, as appropriate.
-- Show the original expression, the rule-based transformation, and the resulting derivative in one coherent mathematical flow.
-- Prefer one compact displayed equation with the rule application and simplification.
-- Do not enumerate trivial term-by-term steps as a numbered list.
-- Do not add introductory or concluding filler.
-- Treat the computational results as ground truth, but NEVER refer to them as verified, supplied, computed, confirmed, or checked.
-- Never mention AI, Wolfram, tools, prompts, internal processing, verification, or computational methods.
-- Never say that a result came from a tool or was verified by a tool.
-- Present the mathematics directly as a normal self-contained solution.
-- Do not create separate "answer" and "steps" sections.
-- Do not repeat the solution or restate the final result unnecessarily.
-- For an indefinite integral, include the constant of integration (+ C).
-- Return ONLY the complete solution.
+        explanation: str = "detailed",
+        estimated_ans        if explanation == "concise":
+            final_system = r"""
+You are Nova's concise mathematical solution writer.
+Write ONE self-contained solution. Use very little prose, but preserve all
+important mathematical expressions, transformations, substitutions, and
+essential rule applications. For derivations and proofs, reach the requested
+final result. Never stop at an intermediate expression. Never invent missing
+information. Do not mention tools, AI, prompts, or internal processing.
+Return ONLY the solution text.
+"""
+        else:
+            final_system = r"""
+You are Nova's detailed mathematical solution writer.
+Write ONE complete, self-contained mathematical solution from beginning to
+end. Explain HOW the result is obtained and show important equations and
+transformations. For differentiation, explicitly apply the relevant rules.
+For derivations and proofs, continue to the requested final formula, result,
+or conclusion. Never stop at an intermediate setup or partial argument.
+Never invent missing information or assumptions. Do not mention tools, AI,
+prompts, or internal processing. Return ONLY the complete solution text.
 """
 
         payload = {
@@ -1557,12 +780,7 @@ Rules:
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=self._final_token_budget(
-                problem=problem,
-                reasoning=reasoning,
-                tool_results=tool_results,
-                estimated_answer_tokens=estimated_answer_tokens,
-            ),
+            max_tokens=self._final_token_budget(estimated_answer_tokens),
             temperature=0,
             enable_thinking=False,
         )
@@ -1588,162 +806,13 @@ Rules:
         }
 
     # =========================================================
-    # ADAPTIVE TOKEN BUDGETS
+    # DYNAMIC FINAL GENERATION BUDGET
     # =========================================================
 
-    def _reasoning_token_budget(
-        self,
-        problem: str,
-        explanation: bool,
-    ) -> int:
-        """
-        Choose the generation ceiling from the type of reasoning requested,
-        not merely from the length of the user's question.
-
-        Short derivation/proof/explanation prompts can be very short while
-        still requiring a substantial complete solution.
-        """
-
-        if not explanation:
-            return self.PLANNER_MIN_TOKENS
-
-        text = problem.strip().lower()
-
-        # Derivations, proofs, and explanatory questions can require much
-        # more output than their character length suggests.
-        extended_reasoning_patterns = (
-            r"\bderive\b",
-            r"\bderivation\b",
-            r"\bderive the formula\b",
-            r"\bobtain the formula\b",
-            r"\bderive an expression\b",
-            r"\bderive an equation\b",
-            r"\bprove\b",
-            r"\bproof\b",
-            r"\bshow that\b",
-            r"\bshow why\b",
-            r"\bexplain why\b",
-            r"\bexplain how\b",
-            r"\bexplain\b",
-            r"\bfind the formula\b",
-            r"\bobtain the expression\b",
-            r"\bhow do we get\b",
-            r"\bhow is .* derived\b",
-        )
-
-        requires_extended_reasoning = any(
-            re.search(pattern, text)
-            for pattern in extended_reasoning_patterns
-        )
-
-        if requires_extended_reasoning:
-            length = len(text)
-
-            if length <= 300:
-                return 1024
-
-            if length <= 700:
-                return 1536
-
-            return self.FINAL_MAX_TOKENS
-
-        # Ordinary short reasoning questions.
-        length = len(text)
-
-        if length <= 120:
-            return 256
-
-        if length <= 300:
-            return 512
-
-        if length <= 600:
-            return 768
-
-        return self.FINAL_MAX_TOKENS
-
-    def _planner_token_budget(self, problem: str) -> int:
-        """
-        Reserve enough tokens for the planner's JSON, but avoid paying
-        the maximum generation budget for short/simple requests.
-
-        This affects only the complex computational path, where the
-        planner is actually needed.
-        """
-
-        length = len(problem.strip())
-
-        if length <= 80:
-            return self.PLANNER_MIN_TOKENS
-
-        if length <= 180:
-            return 128
-
-        if length <= 320:
-            return 160
-
-        if length <= 600:
-            return 192
-
-        return self.PLANNER_MAX_TOKENS
-
-    def _final_token_budget(
-        self,
-        problem: str,
-        reasoning: list,
-        tool_results: list,
-        estimated_answer_tokens: int | None = None,
-    ) -> int:
-        """
-        Choose a generation ceiling without forcing the model to emit
-        that many tokens.
-
-        For the complex path, the planner supplies an approximate answer
-        length in the same generation that already had to happen, so no
-        extra estimator request is needed. The ceiling includes a safety
-        margin because an estimate is only a hint.
-
-        For direct symbolic operations there is no planner call, so the
-        deterministic fallback keeps those requests fast. In every case
-        llama.cpp still stops naturally when the solution is complete;
-        max_tokens only prevents premature truncation.
-        """
-
-        problem_length = len(problem.strip())
-
-        reasoning_count = (
-            len(reasoning)
-            if isinstance(reasoning, list)
-            else 0
-        )
-
-        tool_count = (
-            len(tool_results)
-            if isinstance(tool_results, list)
-            else 0
-        )
-
-        if isinstance(estimated_answer_tokens, int):
-            estimate = max(1, estimated_answer_tokens)
-            budget = int(estimate * 1.30) + 64
-            budget = max(self.FINAL_MIN_TOKENS, budget)
-            return min(self.FINAL_MAX_TOKENS, budget)
-
-        # Direct explicit symbolic operation: keep the common path
-        # compact, but do not repeat the old 160-token truncation trap.
-        if tool_count == 1 and reasoning_count == 0:
-            if problem_length <= 120:
-                return 160
-            if problem_length <= 300:
-                return 192
-            return 256
-
-        if tool_count <= 1 and reasoning_count <= 3 and problem_length <= 240:
-            return 384
-
-        if tool_count <= 2 and reasoning_count <= 6 and problem_length <= 500:
-            return 768
-
-        return self.FINAL_MAX_TOKENS
+    def _final_token_budget(self, estimated_answer_tokens: int | None = None) -> int | None:
+        if isinstance(estimated_answer_tokens, int) and estimated_answer_tokens > 0:
+            return estimated_answer_tokens
+        return None
 
     # =========================================================
     # JSON PARSER
