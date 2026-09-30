@@ -22,7 +22,7 @@ class ReasoningService:
     PLANNER_MIN_TOKENS = 96
     PLANNER_MAX_TOKENS = 220
     FINAL_MIN_TOKENS = 128
-    FINAL_MAX_TOKENS = 320
+    FINAL_MAX_TOKENS = 12000
 
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
@@ -86,7 +86,6 @@ class ReasoningService:
                 "answer": result.get("result"),
                 "error": result.get("error"),
                 "engine": "wolfram",
-                "steps": [],
                 "tool_calls": [],
                 "cached": False,
             }
@@ -120,6 +119,7 @@ class ReasoningService:
             response = self._solve_direct_operation(
                 problem,
                 direct_operation,
+                explanation=explanation,
             )
 
             response["elapsed_ms"] = round(
@@ -562,6 +562,9 @@ Return ONLY JSON.
             idea=plan.get("idea", ""),
             reasoning=plan.get("reasoning", []),
             tool_results=tool_results,
+            estimated_answer_tokens=plan.get(
+                "estimated_answer_tokens"
+            ),
         )
 
     # =========================================================
@@ -1421,6 +1424,7 @@ Return ONLY JSON.
         idea: str,
         reasoning: list,
         tool_results: list,
+        estimated_answer_tokens: int | None = None,
     ):
 
         final_system = r"""
@@ -1465,6 +1469,7 @@ Rules:
                 problem=problem,
                 reasoning=reasoning,
                 tool_results=tool_results,
+                estimated_answer_tokens=estimated_answer_tokens,
             ),
             temperature=0,
             enable_thinking=False,
@@ -1547,13 +1552,21 @@ Rules:
         problem: str,
         reasoning: list,
         tool_results: list,
+        estimated_answer_tokens: int | None = None,
     ) -> int:
         """
-        Adapt the final writer budget to the amount of mathematical
-        material that must be turned into one complete solution.
+        Choose a generation ceiling without forcing the model to emit
+        that many tokens.
 
-        Short explicit symbolic operations get a compact budget.
-        Longer reasoning/tool pipelines retain progressively more room.
+        For the complex path, the planner supplies an approximate answer
+        length in the same generation that already had to happen, so no
+        extra estimator request is needed. The ceiling includes a safety
+        margin because an estimate is only a hint.
+
+        For direct symbolic operations there is no planner call, so the
+        deterministic fallback keeps those requests fast. In every case
+        llama.cpp still stops naturally when the solution is complete;
+        max_tokens only prevents premature truncation.
         """
 
         problem_length = len(problem.strip())
@@ -1570,25 +1583,27 @@ Rules:
             else 0
         )
 
-        # One direct CAS result with no planner reasoning is the common
-        # fast path.  160 tokens is materially closer to the direct-Qwen
-        # benchmark while still leaving room for a complete explanation.
-        if (
-            tool_count == 1
-            and reasoning_count == 0
-            and problem_length <= 120
-        ):
-            return 160
+        if isinstance(estimated_answer_tokens, int):
+            estimate = max(1, estimated_answer_tokens)
+            budget = int(estimate * 1.30) + 64
+            budget = max(self.FINAL_MIN_TOKENS, budget)
+            return min(self.FINAL_MAX_TOKENS, budget)
 
-        # A single tool result plus a small amount of planner reasoning.
+        # Direct explicit symbolic operation: keep the common path
+        # compact, but do not repeat the old 160-token truncation trap.
+        if tool_count == 1 and reasoning_count == 0:
+            if problem_length <= 120:
+                return 256
+            if problem_length <= 300:
+                return 384
+            return 512
+
         if tool_count <= 1 and reasoning_count <= 3 and problem_length <= 240:
-            return 192
+            return 384
 
-        # Moderate multi-step solutions.
         if tool_count <= 2 and reasoning_count <= 6 and problem_length <= 500:
-            return 256
+            return 768
 
-        # Long or genuinely complex solutions need the full headroom.
         return self.FINAL_MAX_TOKENS
 
     # =========================================================
