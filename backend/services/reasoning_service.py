@@ -76,7 +76,7 @@ class ReasoningService:
         # 2. VERY FAST DIRECT CAS PATH
         # -----------------------------------------------------
 
-        if self._is_simple_expression(problem):
+        if explanation == "off" and self._is_simple_expression(problem):
 
             result = self.router.calculate(
                 query=normalize_expression(problem),
@@ -160,7 +160,7 @@ Return ONLY JSON:
   "idea": "central mathematical idea",
   "reasoning": ["essential mathematical reasoning"],
   "calls": [{"tool": "simplify | factor | expand | differentiate | integrate | solve | limit", "arguments": {}}],
-  "generation_tokens": 600,
+  "generation_tokens": null,
   "final_result": null
 }
 
