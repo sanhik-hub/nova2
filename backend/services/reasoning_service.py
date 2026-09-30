@@ -222,10 +222,9 @@ Rules:
         response = self.router.generate(
             prompt=problem,
             system_prompt=system,
-            max_tokens=self._final_token_budget(
+            max_tokens=self._reasoning_token_budget(
                 problem=problem,
-                reasoning=reasoning,
-                tool_results=tool_results,
+                explanation=explanation,
             ),
             temperature=0,
             enable_thinking=False,
@@ -797,7 +796,6 @@ Return ONLY JSON.
                 )
 
         return None
-
     def _solve_direct_operation(
         self,
         problem: str,
@@ -1463,7 +1461,11 @@ Rules:
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=self.FINAL_TOKENS,
+            max_tokens=self._final_token_budget(
+                problem=problem,
+                reasoning=reasoning,
+                tool_results=tool_results,
+            ),
             temperature=0,
             enable_thinking=False,
         )
@@ -1491,6 +1493,29 @@ Rules:
     # =========================================================
     # ADAPTIVE TOKEN BUDGETS
     # =========================================================
+
+    def _reasoning_token_budget(
+        self,
+        problem: str,
+        explanation: bool,
+    ) -> int:
+        """
+        Budget direct reasoning generations separately from CAS-backed
+        final writing. Explanation-off answers stay especially compact.
+        """
+
+        if not explanation:
+            return self.PLANNER_MIN_TOKENS
+
+        length = len(problem.strip())
+
+        if length <= 120:
+            return 192
+
+        if length <= 300:
+            return 256
+
+        return self.FINAL_MAX_TOKENS
 
     def _planner_token_budget(self, problem: str) -> int:
         """
@@ -1693,7 +1718,6 @@ Rules:
             "tool_calls": [],
             "cached": False,
         }
-
 
 
 
