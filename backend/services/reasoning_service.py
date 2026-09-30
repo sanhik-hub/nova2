@@ -1070,6 +1070,12 @@ Return ONLY JSON.
             "contradiction",
             "inequality",
             "if and only if",
+            "derive",
+            "derivation",
+            "obtain the formula",
+            "derive the formula",
+            "derive an expression",
+            "derive an equation",
         ]
 
         score = 0
