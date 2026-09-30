@@ -81,14 +81,20 @@ class ReasoningService:
                 provider="wolfram",
             )
 
-            response = {
-                "success": result["success"],
-                "answer": result.get("result"),
-                "error": result.get("error"),
-                "engine": "wolfram",
-                "tool_calls": [],
-                "cached": False,
-            }
+            if not explanation and result["success"]:
+                response = {
+                    "success": True,
+                    "answer": result.get("result"),
+                }
+            else:
+                response = {
+                    "success": result["success"],
+                    "answer": result.get("result"),
+                    "error": result.get("error"),
+                    "engine": "wolfram",
+                    "tool_calls": [],
+                    "cached": False,
+                }
 
             if result["success"]:
                 self._cache_set(
@@ -239,6 +245,12 @@ Rules:
             return self._error(
                 "The reasoning model returned no solution."
             )
+
+        if not explanation:
+            return {
+                "success": True,
+                "answer": answer,
+            }
 
         return {
             "success": True,
@@ -1416,9 +1428,6 @@ Return ONLY JSON.
         return {
             "success": True,
             "answer": answer,
-            "engine": "wolfram",
-            "tool_calls": [],
-            "cached": False,
         }
 
     # =========================================================
