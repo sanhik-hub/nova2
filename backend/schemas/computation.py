@@ -1,12 +1,12 @@
 ﻿from pydantic import BaseModel, Field
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 
 class ComputationRequest(BaseModel):
     query: str = Field(..., min_length=1)
     operation: str = "compute"
     provider: str = "wolfram"
-    explanation: bool = True
+    explanation: bool | Literal["off", "concise", "detailed"] = "detailed"
 
 
 class ExpressionRequest(BaseModel):
