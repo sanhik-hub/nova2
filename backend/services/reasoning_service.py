@@ -236,15 +236,27 @@ Rules:
 - Return ONLY the answer.
 """
 
+        reasoning_budget = self._reasoning_token_budget(
+            problem=problem,
+            explanation=explanation,
+        )
+
+        # Qwen3's explicit reasoning mode is important for open-ended
+        # derivations/proofs.  Without it, the model can emit a plausible
+        # setup and terminate before carrying the derivation to its result.
+        # This is still one model generation; the thinking trace is kept
+        # internal by the provider and only the final answer is returned.
+        extended_reasoning = (
+            explanation
+            and self._requires_extended_reasoning(problem)
+        )
+
         response = self.router.generate(
             prompt=problem,
             system_prompt=system,
-            max_tokens=self._reasoning_token_budget(
-                problem=problem,
-                explanation=explanation,
-            ),
+            max_tokens=reasoning_budget,
             temperature=0,
-            enable_thinking=False,
+            enable_thinking=extended_reasoning,
         )
 
         if not response["success"]:
@@ -270,6 +282,31 @@ Rules:
             "tool_calls": [],
             "cached": False,
         }
+
+    def _requires_extended_reasoning(self, problem: str) -> bool:
+        text = problem.strip().lower()
+
+        patterns = (
+            r"\bderive\b",
+            r"\bderivation\b",
+            r"\bderive the formula\b",
+            r"\bobtain the formula\b",
+            r"\bderive an expression\b",
+            r"\bderive an equation\b",
+            r"\bprove\b",
+            r"\bproof\b",
+            r"\bshow that\b",
+            r"\bshow why\b",
+            r"\bexplain why\b",
+            r"\bexplain how\b",
+            r"\bexplain\b",
+            r"\bfind the formula\b",
+            r"\bobtain the expression\b",
+            r"\bhow do we get\b",
+            r"\bhow is .* derived\b",
+        )
+
+        return any(re.search(pattern, text) for pattern in patterns)
 
     # =========================================================
     # COMPLEX COMPUTATIONAL PIPELINE
