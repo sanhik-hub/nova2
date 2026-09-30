@@ -22,11 +22,11 @@ class LocalLLMConfig:
 
     # CPU-first configuration
     n_gpu_layers: int = 0
-    context_size: int = 4096
+    context_size: int = 32768
     threads: int = 6
 
     # Keep generation short by default.
-    max_tokens: int = 384
+    max_tokens: int = 4096
 
     # Deterministic reasoning.
     temperature: float = 0.0
