@@ -17,13 +17,6 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Token budgets are selected adaptively. Small symbolic answers should
-    # not reserve the same generation budget as full multi-step solutions.
-    PLANNER_MIN_TOKENS = 96
-    PLANNER_MAX_TOKENS = 220
-    FINAL_MIN_TOKENS = 128
-    FINAL_MAX_TOKENS = 12000
-
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
 
@@ -143,7 +136,7 @@ class ReasoningService:
     def _solve_complex(
         self,
         problem: str,
-        explanation: bool = True,
+        explanation: str = "detailed",
     ):
 
         planner_system = r"""
