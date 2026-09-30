@@ -218,6 +218,16 @@ Rules:
 - Do not create separate "answer" and "steps" sections.
 - Do not repeat the solution.
 - Do not leave the solution unfinished.
+- Before ending, silently check that every requested derivation,
+  calculation, or proof has been completed.
+- NEVER end after an intermediate setup, an unfinished sentence, a colon,
+  or an unevaluated integral.
+- If the solution contains an integral, equation transformation, or
+  algebraic operation needed for the requested result, actually perform
+  that operation before ending.
+- The final line MUST state the requested final formula, result, or
+  conclusion explicitly.
+- Do not stop merely because the main idea has been established.
 - Return ONLY the solution text.
 """
         else:
