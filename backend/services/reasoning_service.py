@@ -507,7 +507,7 @@ Return ONLY JSON.
         elif re.search(r"\b(factor|factorize)\b", lowered_problem):
             explicit_tool = "factor"
         elif re.search(
-            r"\b(differentiate|derivative|derive|find the derivative|find derivative)\b",
+            r"\b(differentiate|derivative|find the derivative|find derivative)\b",
             lowered_problem,
         ):
             explicit_tool = "differentiate"
@@ -775,10 +775,17 @@ Return ONLY JSON.
 
         # -----------------------------------------------------
         # DIFFERENTIATE
+        #
+        # "derive" is intentionally NOT treated as a direct
+        # differentiation command. In natural-language physics and
+        # mathematics, "derive the formula/expression" commonly means
+        # perform a derivation, not differentiate an expression.
+        # Such requests must remain on the reasoning path so the model
+        # can produce the complete derivation.
         # -----------------------------------------------------
 
         match = re.match(
-           r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?|derive\s+)(.+?)\s*[.!?]?\s*$",
+           r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
             text,
         )
 
