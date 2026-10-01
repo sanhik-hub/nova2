@@ -582,7 +582,7 @@ def main() -> int:
             args.model,
             config,
             args.runs,
-            args.max_tokens,
+            args.search_tokens,
             args.startup_timeout,
             TESTS[:1],
         )
