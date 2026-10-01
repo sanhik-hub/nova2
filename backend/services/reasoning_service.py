@@ -1172,6 +1172,20 @@ information or assumptions. Do not mention tools, AI, prompts, token budgets,
 or internal processing. Return ONLY the complete solution text.
 """
 
+        # The planner's estimate is guidance, not a hard generation cutoff.
+        # Passing it as an internal target lets Qwen stay concise without
+        # allowing a bad estimate to truncate a mathematically incomplete
+        # answer. llama.cpp is allowed to terminate naturally at EOS.
+        if type(estimated_answer_tokens) is int and estimated_answer_tokens > 0:
+            final_system += (
+                "\n\nInternal answer-size guidance: aim for approximately "
+                f"{estimated_answer_tokens} completion tokens. "
+                "Treat this as a target, not a hard limit. If more tokens are "
+                "mathematically necessary to complete the requested solution, "
+                "continue until the solution is complete. If fewer are "
+                "sufficient, stop when the solution is complete."
+            )
+
         payload = {
             "problem": problem,
             "idea": idea,
@@ -1187,7 +1201,7 @@ or internal processing. Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=self._final_token_budget(estimated_answer_tokens),
+            max_tokens=None,
             temperature=0,
             enable_thinking=False,
         )
@@ -1221,17 +1235,12 @@ or internal processing. Return ONLY the complete solution text.
         }
 
     # =========================================================
-    # DYNAMIC FINAL GENERATION BUDGET
+    # FINAL GENERATION BUDGET
     # =========================================================
 
-    def _final_token_budget(self, estimated_answer_tokens: int | None = None) -> int | None:
-        # A valid planner estimate is used as the generation budget. When the
-        # small planner cannot provide a trustworthy estimate, return None so
-        # the llama.cpp server uses natural EOS termination rather than an
-        # arbitrary hardcoded cap.
-        if type(estimated_answer_tokens) is int and estimated_answer_tokens > 0:
-            return estimated_answer_tokens
-        return None
+    # The planner estimate is intentionally advisory. Final generation uses
+    # natural EOS termination rather than converting the estimate into a hard
+    # max_tokens cutoff.
 
     # =========================================================
     # JSON PARSER
