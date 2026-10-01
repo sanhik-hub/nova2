@@ -278,8 +278,22 @@ more structured Wolfram operations.
 Wolfram arguments must be machine-readable mathematical expressions, never
 natural-language instructions. Never invent missing values or assumptions.
 
-For derivations, proofs, conceptual explanations, and reasoning, do not call
-Wolfram unless an exact symbolic verification is genuinely useful.
+For derivations, proofs, conceptual explanations, and reasoning, do not call Wolfram unless an exact symbolic verification is genuinely useful.
+
+For derivation or conceptual reasoning requests, do not invent a symbolic
+formula merely to create a Wolfram call. If the user's request does not
+contain a concrete mathematical expression that can be safely verified,
+set "needs_wolfram" to false and "wolfram" to null.
+
+Only emit a Wolfram operation when the operation and every argument are
+directly grounded in the user's request or an explicit intermediate
+expression supplied by the user. Wolfram is a verifier, not a source of
+missing physical assumptions or formulas.
+
+"idea" summarizes the intended approach without inventing facts.
+"reasoning" contains concise planning notes, not a final answer.
+"final_result" is used only when a result can be stated without a final
+solution-writing generation; otherwise return an empty string.
 """
 
         schema = {
@@ -315,6 +329,12 @@ Wolfram unless an exact symbolic verification is genuinely useful.
                         "additionalProperties": False,
                     },
                 },
+                "idea": {"type": "string"},
+                "reasoning": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "final_result": {"type": "string"},
             },
             "required": [
                 "type",
@@ -322,6 +342,9 @@ Wolfram unless an exact symbolic verification is genuinely useful.
                 "depth",
                 "needs_wolfram",
                 "wolfram",
+                "idea",
+                "reasoning",
+                "final_result",
             ],
             "additionalProperties": False,
         }
