@@ -33,7 +33,12 @@ class PlannerLLMRuntime:
                 f"Planner LLM server is not running at {self._base_url()}."
             ) from exc
 
-    def generate_json(self, prompt: str, system_prompt: str) -> str:
+    def generate_json(
+        self,
+        prompt: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+    ) -> str:
         if not self._available:
             self.load()
 
@@ -50,6 +55,12 @@ class PlannerLLMRuntime:
             "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
         }
+
+        # Some planner tasks, such as Guided Attempt, intentionally return a
+        # larger structured JSON document. Let the caller reserve enough
+        # completion space for that document without imposing a global budget.
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
 
         request = urllib.request.Request(
             f"{self._base_url()}/v1/chat/completions",
