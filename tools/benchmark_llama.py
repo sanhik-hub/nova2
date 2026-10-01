@@ -9,7 +9,6 @@ down, and then tries the next configuration.
 Examples:
     python tools/benchmark_llama.py
     python tools/benchmark_llama.py --runs 2 --apply
-    python tools/benchmark_llama.py --runs 3 --max-tokens 384 --apply
 """
 
 from __future__ import annotations
@@ -231,6 +230,8 @@ def start_server(
         str(config.batch_size),
         "--n-gpu-layers",
         str(config.n_gpu_layers),
+        "-np",
+        "1",
     ]
 
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -635,7 +636,7 @@ def main() -> int:
                 args.model,
                 config,
                 args.runs,
-                args.max_tokens,
+                args.search_tokens,
                 args.startup_timeout,
                 TESTS[:1],
             )
@@ -659,7 +660,6 @@ def main() -> int:
             args.model,
             config,
             args.runs,
-            1,
             args.verify_tokens,
             args.startup_timeout,
             TESTS,
