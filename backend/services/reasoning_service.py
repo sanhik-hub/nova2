@@ -326,6 +326,8 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             "additionalProperties": False,
         }
 
+        planner_started = time.perf_counter()
+
         planner = self.router.plan(
             prompt=json.dumps(
                 {
@@ -338,8 +340,19 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             schema=schema,
         )
 
+        planner_ms = round(
+            (time.perf_counter() - planner_started) * 1000,
+            2,
+        )
+
         if not planner["success"]:
-            return self._error(planner["error"])
+            response = self._error(planner["error"])
+            response["timings_ms"] = {
+                "planner": planner_ms,
+                "wolfram": 0.0,
+                "final_llm": 0.0,
+            }
+            return response
 
         plan = self._parse_json(planner["result"])
 
@@ -358,6 +371,7 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             return self._error("Planner produced an unsupported function call.")
 
         tool_results = []
+        wolfram_ms_total = 0.0
 
         for call in calls:
             validated = self._validate_tool_call({
@@ -368,9 +382,16 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             if not validated["valid"]:
                 return self._error(validated["error"])
 
+            tool_started = time.perf_counter()
+
             result = self._execute_tool(
                 validated["tool"],
                 validated["arguments"],
+            )
+
+            wolfram_ms_total += round(
+                (time.perf_counter() - tool_started) * 1000,
+                2,
             )
 
             if not result.get("success"):
@@ -391,11 +412,28 @@ Wolfram unless an exact symbolic verification is genuinely useful.
 
         if explanation == "off":
             if tool_results:
-                return self._cas_result_only(tool_results=tool_results)
+                response = self._cas_result_only(tool_results=tool_results)
+                response["timings_ms"] = {
+                    "planner": planner_ms,
+                    "wolfram": wolfram_ms_total,
+                    "final_llm": 0.0,
+                }
+                return response
 
             final_result = plan.get("final_result")
             if isinstance(final_result, str) and final_result.strip():
-                return {"success": True, "answer": final_result.strip(), "engine": "local_llm", "tool_calls": [], "cached": False}
+                return {
+                    "success": True,
+                    "answer": final_result.strip(),
+                    "engine": "local_llm",
+                    "tool_calls": [],
+                    "cached": False,
+                    "timings_ms": {
+                        "planner": planner_ms,
+                        "wolfram": wolfram_ms_total,
+                        "final_llm": 0.0,
+                    },
+                }
 
             return self._error("The planner could not determine a final result without explanation.")
 
@@ -403,7 +441,7 @@ Wolfram unless an exact symbolic verification is genuinely useful.
         # ONE FINAL LLM CALL
         # -----------------------------------------------------
 
-        return self._final_explanation(
+        response = self._final_explanation(
             problem=problem,
             idea=plan.get("idea", ""),
             reasoning=plan.get("reasoning", []),
@@ -411,6 +449,12 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             explanation=explanation,
             estimated_answer_tokens=None,
         )
+        response["timings_ms"] = {
+            "planner": planner_ms,
+            "wolfram": wolfram_ms_total,
+            "final_llm": response.pop("_final_llm_ms", 0.0),
+        }
+        return response
 
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
@@ -527,9 +571,16 @@ Wolfram unless an exact symbolic verification is genuinely useful.
         if not validation["valid"]:
             return self._error(validation["error"])
 
+        tool_started = time.perf_counter()
+
         result = self._execute_tool(
             validation["tool"],
             validation["arguments"],
+        )
+
+        wolfram_ms = round(
+            (time.perf_counter() - tool_started) * 1000,
+            2,
         )
 
         if not result.get("success"):
@@ -545,11 +596,17 @@ Wolfram unless an exact symbolic verification is genuinely useful.
         }
 
         if explanation == "off":
-            return self._cas_result_only(
+            response = self._cas_result_only(
                 tool_results=[tool_result],
             )
+            response["timings_ms"] = {
+                "planner": 0.0,
+                "wolfram": wolfram_ms,
+                "final_llm": 0.0,
+            }
+            return response
 
-        return self._final_explanation(
+        response = self._final_explanation(
             problem=problem,
             idea="",
             reasoning=[],
@@ -557,6 +614,12 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             explanation=explanation,
             estimated_answer_tokens=None,
         )
+        response["timings_ms"] = {
+            "planner": 0.0,
+            "wolfram": wolfram_ms,
+            "final_llm": response.pop("_final_llm_ms", 0.0),
+        }
+        return response
 
     # =========================================================
     # TOOL VALIDATION
@@ -1001,6 +1064,8 @@ prompts, or internal processing. Return ONLY the complete solution text.
             "verified_results": tool_results,
         }
 
+        final_llm_started = time.perf_counter()
+
         response = self.router.generate(
             prompt=json.dumps(
                 payload,
@@ -1012,17 +1077,24 @@ prompts, or internal processing. Return ONLY the complete solution text.
             enable_thinking=False,
         )
 
+        final_llm_ms = round(
+            (time.perf_counter() - final_llm_started) * 1000,
+            2,
+        )
+
         if not response["success"]:
-            return self._error(
-                response["error"]
-            )
+            result = self._error(response["error"])
+            result["_final_llm_ms"] = final_llm_ms
+            return result
 
         answer = response["result"].strip()
 
         if not answer:
-            return self._error(
+            result = self._error(
                 "The reasoning model returned no solution."
             )
+            result["_final_llm_ms"] = final_llm_ms
+            return result
 
         return {
             "success": True,
@@ -1030,6 +1102,7 @@ prompts, or internal processing. Return ONLY the complete solution text.
             "engine": "local_llm+wolfram",
             "tool_calls": tool_results,
             "cached": False,
+            "_final_llm_ms": final_llm_ms,
         }
 
     # =========================================================
