@@ -1,6 +1,7 @@
 from backend.providers.wolfram.provider import WolframProvider
 from backend.providers.sympy.provider import SymPyProvider
 from backend.providers.local_llm.provider import LocalLLMProvider
+from backend.providers.planner_llm.provider import PlannerLLMProvider
 
 
 class ProviderRouter:
@@ -11,6 +12,7 @@ class ProviderRouter:
             "wolfram": WolframProvider(),
             "sympy": SymPyProvider(),
             "local_llm": LocalLLMProvider(),
+            "planner_llm": PlannerLLMProvider(),
         }
 
     def get_provider(self, name: str):
@@ -23,6 +25,13 @@ class ProviderRouter:
             )
 
         return provider
+
+    def plan(self, prompt: str, system_prompt: str, schema: dict):
+        return self.get_provider("planner_llm").plan(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            schema=schema,
+        )
 
     def calculate(
         self,
