@@ -271,15 +271,9 @@ You are Nova's semantic mathematical request planner.
 Analyze the user's request. Do not solve it and do not write the final answer.
 
 Return ONLY one JSON object with EXACTLY these fields:
-{
-  "type": "plan",
-  "intent": "short description of the user's mathematical task",
-  "needs_wolfram": false,
-  "wolfram": null,
-  "idea": "short approach for the final solver",
-  "reasoning": ["short planning note"],
-  "answer_tokens": 180
-}
+type, intent, needs_wolfram, wolfram, idea, reasoning, answer_tokens.
+
+The value of answer_tokens must be a positive integer chosen for this request.
 
 Rules:
 - "type" is always "plan".
@@ -554,7 +548,7 @@ missing, leave Wolfram unused rather than guessing it.
         operation,
         explanation: str = "detailed",
     ):
-        """Execute one validated symbolic operation without planner overhead."""
+        """Execute one validated symbolic operation with a planner-derived final budget."""
 
         tool, arguments = operation
 
@@ -643,10 +637,9 @@ Estimate only how many completion tokens the final mathematical answer
 actually needs.
 
 Return ONLY one JSON object with EXACTLY these fields:
-{
-  "type": "answer_budget",
-  "answer_tokens": 180
-}
+type, answer_tokens.
+
+The value of answer_tokens must be a positive integer chosen for this request.
 
 Rules:
 - "type" is always "answer_budget".
