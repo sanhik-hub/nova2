@@ -26,8 +26,8 @@ export function StandardMode() {
   const [taskMode, setTaskMode] = useState<TaskMode>("solution");
   const [explanation, setExplanation] =
     useState<ExplanationPreference>("detailed");
-  const [includeHints, setIncludeHints] = useState(true);
-  const [includeFullSolution, setIncludeFullSolution] = useState(true);
+  const [includeHints, setIncludeHints] = useState(false);
+  const [includeFullSolution, setIncludeFullSolution] = useState(false);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [guided, setGuided] = useState<GuidedState | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -68,7 +68,7 @@ export function StandardMode() {
     setSelectedOption(null);
 
     try {
-      const result = await startGuidedAttempt(trimmed, includeHints);
+      const result = await startGuidedAttempt(trimmed, includeHints, includeFullSolution);
 
       if (!result.success || !result.steps?.length) {
         setResponse({
@@ -459,7 +459,6 @@ export function StandardMode() {
                     ? "Correct"
                     : "Not quite"}
                 </strong>
-                <p>{currentStep.explanation}</p>
               </div>
             )}
 
@@ -504,7 +503,7 @@ export function StandardMode() {
             <p>
               {guided.score === guided.steps.length
                 ? "All steps were answered correctly."
-                : "Review the solution below to see the complete path."}
+                : "Review the steps you missed and try the problem again."}
             </p>
             <button
               className="secondary-button"
