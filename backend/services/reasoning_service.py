@@ -271,7 +271,7 @@ You are Nova's semantic mathematical request planner.
 Analyze the user's request. Do not solve it and do not write the final answer.
 
 Return ONLY one JSON object with EXACTLY these fields:
-type, intent, needs_wolfram, wolfram, idea, reasoning, answer_tokens.
+type, intent, needs_wolfram, wolfram, answer_tokens.
 
 The value of answer_tokens must be a positive integer chosen for this request.
 
@@ -288,7 +288,6 @@ Rules:
   "needs_wolfram" to false and "wolfram" to null.
 - Use Wolfram only when a concrete expression/equation from the user's request
   is available and exact symbolic verification is genuinely useful.
-- "idea" and "reasoning" are planning notes only. Do not write the final solution.
 - "answer_tokens" is the planner's estimate of the completion tokens actually
   required for the final answer. It is not a global cap or preset.
 - Estimate it from the mathematical task, explanation mode, genuine derivation
@@ -342,8 +341,6 @@ missing, leave Wolfram unused rather than guessing it.
             "intent": str,
             "needs_wolfram": bool,
             "wolfram": (list, type(None)),
-            "idea": str,
-            "reasoning": list,
             "answer_tokens": int,
         }
 
@@ -352,11 +349,6 @@ missing, leave Wolfram unused rather than guessing it.
                 return self._error(
                     f"Planner returned an invalid plan field: {field}."
                 )
-
-        if not all(isinstance(item, str) for item in plan["reasoning"]):
-            return self._error(
-                "Planner returned invalid reasoning notes."
-            )
 
         if type(plan["answer_tokens"]) is not int or plan["answer_tokens"] <= 0:
             return self._error(
@@ -432,8 +424,8 @@ missing, leave Wolfram unused rather than guessing it.
 
         response = self._final_explanation(
             problem=problem,
-            idea=plan.get("idea", ""),
-            reasoning=plan.get("reasoning", []),
+            idea="",
+            reasoning=[],
             tool_results=tool_results,
             explanation=explanation,
             estimated_answer_tokens=plan["answer_tokens"],
