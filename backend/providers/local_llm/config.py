@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -20,7 +21,8 @@ class LocalLLMConfig:
         "http://127.0.0.1:8080",
     )
 
-    # CPU-first configuration
+    # CPU-first defaults. A device-local benchmark profile may override
+    # runtime tuning values without changing the repository configuration.
     n_gpu_layers: int = 0
     context_size: int = 32768
     threads: int = 6
@@ -35,6 +37,32 @@ class LocalLLMConfig:
 
     # Never allow a request to hang indefinitely.
     request_timeout: int = 90
+
+    def __post_init__(self) -> None:
+        profile_path = (
+            Path(__file__).resolve().parents[3]
+            / ".nova"
+            / "llama_benchmark.json"
+        )
+
+        try:
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+            tuned = profile.get("config", {})
+        except (FileNotFoundError, OSError, json.JSONDecodeError, AttributeError):
+            return
+
+        if not isinstance(tuned, dict):
+            return
+
+        for field in (
+            "n_gpu_layers",
+            "context_size",
+            "threads",
+            "batch_size",
+        ):
+            value = tuned.get(field)
+            if isinstance(value, int) and value >= 0:
+                setattr(self, field, value)
 
 
 def main() -> int:
