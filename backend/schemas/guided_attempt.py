@@ -6,6 +6,7 @@ class GuidedAttemptRequest(BaseModel):
     query: str = Field(..., min_length=1)
     include_hints: bool = False
     include_full_solution: bool = False
+    step_count: int | None = Field(default=None, ge=2, le=8)
 
 
 class GuidedOption(BaseModel):
