@@ -36,7 +36,7 @@ class LocalLLMConfig:
     batch_size: int = 128
 
     # Never allow a request to hang indefinitely.
-    request_timeout: int = 90
+    request_timeout: int = 180
 
     def __post_init__(self) -> None:
         profile_path = (
