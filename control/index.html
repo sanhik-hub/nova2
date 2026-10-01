@@ -365,6 +365,39 @@ pre {
 
         <section class="card">
             <div class="card-header">
+                <div class="card-title">Planner Model</div>
+                <span id="plannerBadge" class="badge unknown">CHECKING</span>
+            </div>
+
+            <div class="details">
+                <div class="row">
+                    <span class="label">Server</span>
+                    <span id="plannerServer" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">PID</span>
+                    <span id="plannerPid" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Model</span>
+                    <span id="plannerModel" class="value">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Health</span>
+                    <span id="plannerHealth" class="value">—</span>
+                </div>
+            </div>
+
+            <div class="controls actions">
+                <button onclick="startComponent('planner')">Start</button>
+                <button class="danger" onclick="terminatePlanner()">Terminate</button>
+                <button onclick="restartComponent('planner')">Restart</button>
+            </div>
+        </section>
+
+
+        <section class="card">
+            <div class="card-header">
                 <div class="card-title">Wolfram Engine</div>
                 <span id="wolframBadge" class="badge unknown">CHECKING</span>
             </div>
@@ -477,6 +510,18 @@ async function refresh(force = false) {
         document.getElementById("frontendHttp").textContent = status.frontend.http.ok ? "Healthy" : "Unavailable";
         document.getElementById("frontendRoot").textContent = fmt(status.frontend.root);
 
+        const plannerRunning = status.planner.process && status.planner.health.ok;
+        setBadge(
+            "plannerBadge",
+            plannerRunning ? "running" : "stopped",
+            plannerRunning ? "RUNNING" : "STOPPED"
+        );
+        document.getElementById("plannerServer").textContent = fmt(status.planner.server_url);
+        document.getElementById("plannerPid").textContent = fmt(status.planner.pid);
+        document.getElementById("plannerModel").textContent = fmt(status.planner.model_name);
+        document.getElementById("plannerHealth").textContent =
+            status.planner.health.ok ? "Healthy" : "Unavailable";
+
         const llmRunning = status.llm.process && status.llm.health.ok;
         setBadge(
             "llmBadge",
@@ -550,6 +595,7 @@ async function manualRefresh() {
 function startAll() { action("/api/start"); }
 function terminateBackend() { action("/api/terminate/backend"); }
 function terminateLLM() { action("/api/terminate/llm"); }
+function terminatePlanner() { action("/api/terminate/planner"); }
 function terminateFrontend() { action("/api/terminate/frontend"); }
 function terminateWolfram() { action("/api/terminate/wolfram"); }
 
