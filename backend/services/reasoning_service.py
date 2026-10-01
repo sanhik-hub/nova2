@@ -106,7 +106,41 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 3. MODEL-DRIVEN REQUEST PLANNING
+        # 3. EXPLICIT SYMBOLIC OPERATION PATH
+        # -----------------------------------------------------
+        #
+        # Natural-language requests such as "Differentiate x^2 + 3x"
+        # are not simple expressions, but their requested operation is
+        # already unambiguous. Route them directly to the structured
+        # Wolfram path. This avoids wasting a planner generation and,
+        # with explanation="off", returns the exact CAS result directly.
+        # -----------------------------------------------------
+
+        explicit_operation = self._detect_explicit_operation(problem)
+
+        if explicit_operation is not None:
+            response = self._solve_direct_operation(
+                problem,
+                explicit_operation,
+                explanation=explanation,
+            )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+
+            if response.get("success"):
+                self._cache_set(
+                    problem,
+                    response,
+                    explanation,
+                )
+
+            return response
+
+        # -----------------------------------------------------
+        # 4. MODEL-DRIVEN REQUEST PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
@@ -374,6 +408,152 @@ Wolfram unless an exact symbolic verification is genuinely useful.
             idea=plan.get("idea", ""),
             reasoning=plan.get("reasoning", []),
             tool_results=tool_results,
+            explanation=explanation,
+            estimated_answer_tokens=None,
+        )
+
+    def _detect_explicit_operation(self, problem: str):
+        """Detect an unambiguous symbolic operation and build safe arguments."""
+
+        text = problem.strip()
+
+        # DIFFERENTIATE
+        match = re.match(
+            r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+        if match:
+            expression = match.group(1).strip()
+            expression = re.sub(
+                r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
+                "",
+                expression,
+            ).strip()
+            expression = re.sub(r"[.!?]+$", "", expression).strip()
+            variable = "x"
+            variable_match = re.search(
+                r"(?is)\s+(?:with\s+respect\s+to|wrt)\s+([a-zA-Z])\s*$",
+                match.group(1).strip(),
+            )
+            if variable_match:
+                variable = variable_match.group(1)
+            return ("differentiate", {
+                "expression": expression,
+                "variable": variable,
+            })
+
+        # INTEGRATE
+        match = re.match(
+            r"(?is)^\s*(?:integrate|find\s+(?:the\s+)?integral\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+        if match:
+            expression = match.group(1).strip()
+            variable = "x"
+            variable_match = re.search(
+                r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
+                expression,
+            )
+            if variable_match:
+                variable = variable_match.group(1)
+                expression = expression[:variable_match.start()].strip()
+            expression = re.sub(r"[.!?]+$", "", expression).strip()
+            return ("integrate", {
+                "expression": expression,
+                "variable": variable,
+            })
+
+        # FACTOR / EXPAND / SIMPLIFY
+        for operation, pattern in (
+            ("factor", r"(?is)^\s*(?:factor|factorize)\s+(.+?)\s*[.!?]?\s*$"),
+            ("expand", r"(?is)^\s*expand\s+(.+?)\s*[.!?]?\s*$"),
+            ("simplify", r"(?is)^\s*simplify\s+(.+?)\s*[.!?]?\s*$"),
+        ):
+            match = re.match(pattern, text)
+            if match:
+                expression = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
+                return (operation, {"expression": expression})
+
+        # SOLVE
+        match = re.match(
+            r"(?is)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+        if match:
+            equation = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
+            equation = re.sub(r"\s*=\s*", " == ", equation)
+            if "==" not in equation:
+                equation = f"{equation} == 0"
+            return ("solve", {
+                "equation": equation,
+                "variable": "x",
+            })
+
+        # LIMIT
+        match = re.match(
+            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(.+?)\s*[.!?]?\s*$",
+            text,
+        )
+        if match:
+            expression = match.group(1).strip()
+            limit_match = re.match(
+                r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
+                expression,
+            )
+            if limit_match:
+                return ("limit", {
+                    "expression": limit_match.group(1).strip(),
+                    "variable": limit_match.group(2),
+                    "value": limit_match.group(3),
+                })
+
+        return None
+
+    def _solve_direct_operation(
+        self,
+        problem: str,
+        operation,
+        explanation: str = "detailed",
+    ):
+        """Execute one validated symbolic operation without planner overhead."""
+
+        tool, arguments = operation
+
+        validation = self._validate_tool_call({
+            "tool": tool,
+            "arguments": arguments,
+        })
+
+        if not validation["valid"]:
+            return self._error(validation["error"])
+
+        result = self._execute_tool(
+            validation["tool"],
+            validation["arguments"],
+        )
+
+        if not result.get("success"):
+            return self._error(
+                "Wolfram verification failed: "
+                + str(result.get("error"))
+            )
+
+        tool_result = {
+            "tool": validation["tool"],
+            "arguments": validation["arguments"],
+            "result": result.get("result"),
+        }
+
+        if explanation == "off":
+            return self._cas_result_only(
+                tool_results=[tool_result],
+            )
+
+        return self._final_explanation(
+            problem=problem,
+            idea="",
+            reasoning=[],
+            tool_results=[tool_result],
             explanation=explanation,
             estimated_answer_tokens=None,
         )
