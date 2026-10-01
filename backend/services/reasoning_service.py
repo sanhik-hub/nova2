@@ -289,15 +289,22 @@ Rules:
 - Use Wolfram only when a concrete expression/equation from the user's request
   is available and exact symbolic verification is genuinely useful.
 - "answer_tokens" is the planner's estimate of the completion tokens actually
-  required for the final answer. It is not a global cap or preset.
-- Estimate it from the mathematical task, explanation mode, genuine derivation
-  or proof steps, and amount of explanation actually needed.
-- Use the smallest sufficient estimate. Short symbolic answers should receive
-  a small estimate; ordinary worked solutions a moderate estimate; long proofs,
-  multi-part derivations, or genuinely complex reasoning may receive a much
-  larger estimate, including thousands of tokens when justified.
-- Do not inflate the estimate merely because the problem is difficult, and do
-  not make it so small that required mathematics would be omitted.
+  required for the final answer. It is an advisory generation budget, not a
+  global preset.
+- Estimate the complete final response, not just the final expression or the
+  number of mathematical results.
+- Count the mathematics the writer must actually emit: required equations,
+  substitutions, transformations, derivation/proof steps, and the prose needed
+  by the requested explanation mode.
+- The estimate must be a realistic sufficient budget for the whole answer.
+  Do not output a trivially small estimate when the request requires a
+  derivation, proof, or worked explanation.
+- Use the smallest sufficient estimate for this specific request. Do not
+  inflate it merely because the topic is difficult.
+- If the request is genuinely short, the estimate should also be short.
+- If the request needs a substantial derivation, proof, or multi-part solution,
+  the estimate should grow accordingly, without relying on a fixed table of
+  budgets.
 - The requested explanation mode is supplied separately by the caller; use it
   when estimating answer_tokens.
 
@@ -341,7 +348,6 @@ missing, leave Wolfram unused rather than guessing it.
             "intent": str,
             "needs_wolfram": bool,
             "wolfram": (list, type(None)),
-            "answer_tokens": int,
         }
 
         for field, expected_type in required_fields.items():
@@ -350,19 +356,19 @@ missing, leave Wolfram unused rather than guessing it.
                     f"Planner returned an invalid plan field: {field}."
                 )
 
-        # Small local planners sometimes serialize an integer as a JSON
-        # string even when the semantic value is unambiguous. Normalize that
-        # representation at the planner boundary; the final model still uses
-        # the planner's value and there is no hardcoded answer-size policy.
-        answer_tokens = plan["answer_tokens"]
+        # The answer-size estimate is advisory. Normalize the small planner's
+        # occasional JSON-string integer, but never let an unusable estimate
+        # prevent an otherwise valid mathematical request from being solved.
+        # A missing/invalid estimate means the final model may terminate
+        # naturally rather than receiving an artificial fallback cap.
+        answer_tokens = plan.get("answer_tokens")
         if isinstance(answer_tokens, str) and re.fullmatch(r"\d+", answer_tokens.strip()):
             answer_tokens = int(answer_tokens.strip())
             plan["answer_tokens"] = answer_tokens
 
         if type(answer_tokens) is not int or answer_tokens <= 0:
-            return self._error(
-                "Planner returned an invalid answer token estimate."
-            )
+            answer_tokens = None
+            plan["answer_tokens"] = None
 
         calls = plan.get("wolfram") or []
         calls = calls[:self.MAX_TOOL_CALLS]
@@ -437,7 +443,7 @@ missing, leave Wolfram unused rather than guessing it.
             reasoning=[],
             tool_results=tool_results,
             explanation=explanation,
-            estimated_answer_tokens=plan["answer_tokens"],
+            estimated_answer_tokens=answer_tokens,
         )
         response["timings_ms"] = {
             "planner": planner_ms,
@@ -644,17 +650,17 @@ The value of answer_tokens must be a positive integer chosen for this request.
 
 Rules:
 - "type" is always "answer_budget".
-- "answer_tokens" must be a positive integer.
-- Estimate the smallest sufficient completion budget for a complete answer.
-- Consider the user's mathematical task, explanation mode, genuine reasoning or
-  derivation steps, and amount of explanation actually needed.
-- A short symbolic result may need only a small budget.
-- A normal worked solution needs a moderate budget.
-- A proof, multi-part derivation, or genuinely complex problem may need a much
-  larger budget, including thousands of tokens when genuinely necessary.
+- "answer_tokens" must be a realistic positive integer.
+- Estimate the complete final response, not just its final expression.
+- Account for every equation, substitution, transformation, derivation/proof
+  step, and the amount of prose required by the explanation mode.
+- The estimate must be sufficient for the final writer to finish the requested
+  mathematics without truncation, while remaining as small as reasonably
+  possible for this specific request.
 - Do not use a fixed budget based only on the explanation label.
+- Do not output a trivially small estimate for a request that requires a
+  derivation, proof, or worked explanation.
 - Do not inflate the estimate merely because the problem is difficult.
-- Do not reduce it so far that the final solver would omit required mathematics.
 - This is a generation budget estimate, not a claim about exact output length.
 """
 
@@ -682,21 +688,30 @@ Rules:
 
         plan = self._parse_json(result["result"])
 
-        if (
-            not isinstance(plan, dict)
-            or plan.get("type") != "answer_budget"
-            or type(plan.get("answer_tokens")) is not int
-            or plan["answer_tokens"] <= 0
-        ):
+        if not isinstance(plan, dict) or plan.get("type") != "answer_budget":
             return {
-                "success": False,
-                "error": "Planner returned an invalid answer token estimate.",
+                "success": True,
+                "answer_tokens": None,
+                "planner_ms": elapsed,
+            }
+
+        answer_tokens = plan.get("answer_tokens")
+
+        if isinstance(answer_tokens, str) and re.fullmatch(r"\d+", answer_tokens.strip()):
+            answer_tokens = int(answer_tokens.strip())
+
+        if type(answer_tokens) is not int or answer_tokens <= 0:
+            # The estimate is advisory. Preserve the solved request and let
+            # llama.cpp stop naturally when the model reaches EOS.
+            return {
+                "success": True,
+                "answer_tokens": None,
                 "planner_ms": elapsed,
             }
 
         return {
             "success": True,
-            "answer_tokens": plan["answer_tokens"],
+            "answer_tokens": answer_tokens,
             "planner_ms": elapsed,
         }
 
@@ -1124,23 +1139,37 @@ Do not invent missing information or assumptions.
         elif explanation == "concise":
             final_system = r"""
 You are Nova's concise mathematical solution writer.
-Write ONE self-contained solution. Use very little prose, but preserve all
-important mathematical expressions, transformations, substitutions, and
-essential rule applications. For derivations and proofs, reach the requested
-final result. Never stop at an intermediate expression. Never invent missing
-information. Do not mention tools, AI, prompts, or internal processing.
+Write ONE complete solution and stop as soon as the requested result has been
+fully established.
+
+Use the minimum prose needed for clarity. Keep equations and essential
+transformations, substitutions, and rule applications. For a derivation or
+proof, include every mathematically necessary step, but do not add optional
+background, repeated explanations, alternative methods, summaries, or
+concluding filler.
+
+Do not stop at an intermediate expression. Do not invent missing information.
+Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the solution text.
 """
         else:
             final_system = r"""
 You are Nova's detailed mathematical solution writer.
-Write ONE complete, self-contained mathematical solution from beginning to
-end. Explain HOW the result is obtained and show important equations and
-transformations. For differentiation, explicitly apply the relevant rules.
-For derivations and proofs, continue to the requested final formula, result,
-or conclusion. Never stop at an intermediate setup or partial argument.
-Never invent missing information or assumptions. Do not mention tools, AI,
-prompts, or internal processing. Return ONLY the complete solution text.
+Write ONE complete, self-contained mathematical solution from beginning to end.
+Explain HOW the result is obtained and show the important equations,
+transformations, and rule applications.
+
+For differentiation, explicitly apply the relevant rules. For derivations and
+proofs, continue through every necessary step to the requested final formula,
+result, or conclusion.
+
+Be complete but disciplined: do not repeat the same idea, add unrelated
+background, present alternative methods, or continue after the result is
+established. Stop when the solution is complete.
+
+Never stop at an intermediate setup or partial argument. Never invent missing
+information or assumptions. Do not mention tools, AI, prompts, token budgets,
+or internal processing. Return ONLY the complete solution text.
 """
 
         payload = {
@@ -1196,7 +1225,11 @@ prompts, or internal processing. Return ONLY the complete solution text.
     # =========================================================
 
     def _final_token_budget(self, estimated_answer_tokens: int | None = None) -> int | None:
-        if isinstance(estimated_answer_tokens, int) and estimated_answer_tokens > 0:
+        # A valid planner estimate is used as the generation budget. When the
+        # small planner cannot provide a trustworthy estimate, return None so
+        # the llama.cpp server uses natural EOS termination rather than an
+        # arbitrary hardcoded cap.
+        if type(estimated_answer_tokens) is int and estimated_answer_tokens > 0:
             return estimated_answer_tokens
         return None
 
