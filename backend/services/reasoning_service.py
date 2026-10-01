@@ -269,7 +269,29 @@ class ReasoningService:
 You are Nova's semantic mathematical request planner.
 
 Analyze the user's request semantically. Do not solve it and do not write the
-final response. Return only the requested JSON object.
+final response.
+
+Return ONLY one valid JSON object with EXACTLY these fields:
+{
+  "type": "plan",
+  "intent": "short description of the mathematical intent",
+  "depth": "off|concise|detailed",
+  "needs_wolfram": false,
+  "wolfram": null,
+  "idea": "short approach",
+  "reasoning": ["short planning note"],
+  "final_result": ""
+}
+
+The "type" field must always be "plan".
+The "depth" field must be one of "off", "concise", or "detailed".
+The "needs_wolfram" field must be a boolean.
+The "wolfram" field must be null when no exact symbolic verification is needed;
+otherwise it must be an array of structured operations using only the supported
+operation names and machine-readable mathematical arguments.
+The "reasoning" field must always be an array of strings.
+The "final_result" field should normally be an empty string when explanation is
+requested, because the final solution will be written separately.
 
 The plan must identify the mathematical intent, requested explanation depth,
 whether exact symbolic computation is needed, and (only when needed) one or
