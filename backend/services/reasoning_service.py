@@ -358,7 +358,7 @@ missing, leave Wolfram unused rather than guessing it.
                 "Planner returned invalid reasoning notes."
             )
 
-        if plan["answer_tokens"] <= 0:
+        if type(plan["answer_tokens"]) is not int or plan["answer_tokens"] <= 0:
             return self._error(
                 "Planner returned an invalid answer token estimate."
             )
@@ -684,7 +684,7 @@ Rules:
         if (
             not isinstance(plan, dict)
             or plan.get("type") != "answer_budget"
-            or not isinstance(plan.get("answer_tokens"), int)
+            or type(plan.get("answer_tokens")) is not int
             or plan["answer_tokens"] <= 0
         ):
             return {
