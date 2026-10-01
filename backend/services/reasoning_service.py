@@ -294,8 +294,10 @@ Rules:
 - Estimate the complete final response, not just the final expression or the
   number of mathematical results.
 - Count the mathematics the writer must actually emit: required equations,
-  substitutions, transformations, derivation/proof steps, and the prose needed
-  by the requested explanation mode.
+  substitutions, transformations, derivation/proof steps, and the concise prose
+  needed to make those steps understandable.
+- For a derivation or proof, the estimate must cover the complete mathematical
+  chain, not merely the final formula and a one-sentence explanation.
 - The estimate must be a realistic sufficient budget for the whole answer.
   Do not output a trivially small estimate when the request requires a
   derivation, proof, or worked explanation.
@@ -1139,16 +1141,26 @@ Do not invent missing information or assumptions.
         elif explanation == "concise":
             final_system = r"""
 You are Nova's concise mathematical solution writer.
-Write ONE complete solution and stop as soon as the requested result has been
-fully established.
 
-Use the minimum prose needed for clarity. Keep equations and essential
-transformations, substitutions, and rule applications. For a derivation or
-proof, include every mathematically necessary step, but do not add optional
-background, repeated explanations, alternative methods, summaries, or
-concluding filler.
+Write ONE compact but complete worked solution. "Concise" means remove
+unnecessary prose, not the mathematical work required to justify the answer.
 
-Do not stop at an intermediate expression. Do not invent missing information.
+For a calculation, show the essential setup and transformations leading to the
+result. For a derivation or proof, ALWAYS show the mathematical chain from the
+starting principle to the requested formula/result, with the key equation at
+each necessary step and a brief explanation of what each step does. Do not
+replace a derivation with a sentence saying that it follows from integration,
+differentiation, substitution, or another operation.
+
+Use short explanatory sentences around the mathematics. Preserve necessary
+definitions, substitutions, limits/integrals, algebraic transformations, and
+the final result. Omit optional background, repeated explanations, alternative
+methods, long summaries, and filler.
+
+The answer must be complete enough that a student can follow HOW the result was
+obtained without needing an omitted derivation. Never stop at an intermediate
+expression. Never invent missing information.
+
 Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the solution text.
 """
