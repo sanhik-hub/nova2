@@ -79,3 +79,43 @@ export async function computationRequest(
 
   return parseResponse<ComputationResponse>(response);
 }
+
+
+export type GuidedOption = { text: string };
+
+export type GuidedStep = {
+  question: string;
+  options: GuidedOption[];
+  correct_index: number;
+  hint?: string | null;
+  explanation: string;
+};
+
+export type GuidedAttemptResponse = {
+  success: boolean;
+  query: string;
+  steps?: GuidedStep[];
+  include_hints?: boolean;
+  error?: string | null;
+};
+
+export async function startGuidedAttempt(
+  query: string,
+  includeHints: boolean,
+  stepCount = 4,
+): Promise<GuidedAttemptResponse> {
+  const response = await fetch("/api/guided/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      include_hints: includeHints,
+      include_full_solution: false,
+      step_count: stepCount,
+    }),
+  });
+
+  return parseResponse<GuidedAttemptResponse>(response);
+}
