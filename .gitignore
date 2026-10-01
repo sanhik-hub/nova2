@@ -40,3 +40,6 @@ Thumbs.db
 
 # Test caches
 .pytest_cache/
+
+# Device-local benchmark profiles
+.nova/
