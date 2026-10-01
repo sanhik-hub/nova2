@@ -14,6 +14,7 @@ class GuidedAttemptService:
         self,
         query: str,
         include_hints: bool = False,
+        step_count: int | None = None,
     ) -> dict[str, Any]:
         problem = query.strip()
         if not problem:
@@ -56,11 +57,17 @@ Keep every question and option concise.
 $OPTIONAL_FIELDS
 """.strip().replace("$OPTIONAL_FIELDS", optional_fields)
 
+        count_instruction = (
+            f"Create exactly {step_count} progressive MCQs."
+            if step_count is not None
+            else "Choose the smallest sufficient number of progressive MCQs yourself."
+        )
+
         prompt = f"""
 Problem:
 {problem}
 
-Create the smallest sufficient sequence of progressive MCQs.
+{count_instruction}
 {hint_instruction}
 Output only the JSON object.
 """.strip()
@@ -88,7 +95,7 @@ Output only the JSON object.
                 "error": "Guided attempt planner returned invalid JSON.",
             }
 
-        valid, steps_or_error = self._validate(payload, include_hints)
+        valid, steps_or_error = self._validate(payload, include_hints, step_count)
         if not valid:
             return {"success": False, "error": steps_or_error}
 
@@ -100,13 +107,20 @@ Output only the JSON object.
             "include_full_solution": False,
         }
 
-    def _validate(self, payload: Any, include_hints: bool):
+    def _validate(
+        self,
+        payload: Any,
+        include_hints: bool,
+        requested_step_count: int | None = None,
+    ):
         if not isinstance(payload, dict) or set(payload) != {"steps"}:
             return False, "Guided attempt planner returned an invalid structure."
 
         steps = payload.get("steps")
         if not isinstance(steps, list) or not 2 <= len(steps) <= 8:
             return False, "Guided attempt planner returned an invalid number of steps."
+        if requested_step_count is not None and len(steps) != requested_step_count:
+            return False, "Guided attempt planner returned the wrong number of steps."
 
         normalized = []
         for step in steps:
