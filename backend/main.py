@@ -1,5 +1,6 @@
 ﻿from fastapi import FastAPI
 from backend.services.reasoning_service import ReasoningService
+from backend.services.guided_attempt_service import GuidedAttemptService
 
 from backend.schemas.computation import (
     ComputationRequest,
@@ -10,6 +11,7 @@ from backend.schemas.computation import (
 )
 
 from backend.services.computation_service import ComputationService
+from backend.schemas.guided_attempt import GuidedAttemptRequest
 
 
 app = FastAPI(
@@ -21,6 +23,7 @@ app = FastAPI(
 computation = ComputationService()
 # Reuse the same provider router so Wolfram has one persistent session.
 reasoning = ReasoningService(router=computation.router)
+guided_attempts = GuidedAttemptService(router=computation.router)
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
@@ -28,6 +31,15 @@ def reason(request: ComputationRequest):
         request.query,
         explanation=request.explanation,
     )
+
+@app.post("/api/guided/start")
+def start_guided_attempt(request: GuidedAttemptRequest):
+    return guided_attempts.generate(
+        query=request.query,
+        include_hints=request.include_hints,
+        step_count=request.step_count,
+    )
+
 
 @app.get("/")
 def root():
