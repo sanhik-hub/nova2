@@ -277,7 +277,8 @@ Return ONLY one JSON object with EXACTLY these fields:
   "needs_wolfram": false,
   "wolfram": null,
   "idea": "short approach for the final solver",
-  "reasoning": ["short planning note"]
+  "reasoning": ["short planning note"],
+  "answer_tokens": 180
 }
 
 Rules:
@@ -294,8 +295,18 @@ Rules:
 - Use Wolfram only when a concrete expression/equation from the user's request
   is available and exact symbolic verification is genuinely useful.
 - "idea" and "reasoning" are planning notes only. Do not write the final solution.
-- The requested explanation mode is already supplied separately by the caller;
-  do not return a depth field.
+- "answer_tokens" is the planner's estimate of the completion tokens actually
+  required for the final answer. It is not a global cap or preset.
+- Estimate it from the mathematical task, explanation mode, genuine derivation
+  or proof steps, and amount of explanation actually needed.
+- Use the smallest sufficient estimate. Short symbolic answers should receive
+  a small estimate; ordinary worked solutions a moderate estimate; long proofs,
+  multi-part derivations, or genuinely complex reasoning may receive a much
+  larger estimate, including thousands of tokens when justified.
+- Do not inflate the estimate merely because the problem is difficult, and do
+  not make it so small that required mathematics would be omitted.
+- The requested explanation mode is supplied separately by the caller; use it
+  when estimating answer_tokens.
 
 The planner is a router, not a solver. When information needed for a formula is
 missing, leave Wolfram unused rather than guessing it.
@@ -339,6 +350,7 @@ missing, leave Wolfram unused rather than guessing it.
             "wolfram": (list, type(None)),
             "idea": str,
             "reasoning": list,
+            "answer_tokens": int,
         }
 
         for field, expected_type in required_fields.items():
@@ -350,6 +362,11 @@ missing, leave Wolfram unused rather than guessing it.
         if not all(isinstance(item, str) for item in plan["reasoning"]):
             return self._error(
                 "Planner returned invalid reasoning notes."
+            )
+
+        if plan["answer_tokens"] <= 0:
+            return self._error(
+                "Planner returned an invalid answer token estimate."
             )
 
         calls = plan.get("wolfram") or []
@@ -425,7 +442,7 @@ missing, leave Wolfram unused rather than guessing it.
             reasoning=plan.get("reasoning", []),
             tool_results=tool_results,
             explanation=explanation,
-            estimated_answer_tokens=None,
+            estimated_answer_tokens=plan["answer_tokens"],
         )
         response["timings_ms"] = {
             "planner": planner_ms,
@@ -584,20 +601,110 @@ missing, leave Wolfram unused rather than guessing it.
             }
             return response
 
+        budget = self._plan_answer_tokens(
+            problem=problem,
+            explanation=explanation,
+        )
+
+        if not budget["success"]:
+            return self._error(budget["error"])
+
         response = self._final_explanation(
             problem=problem,
             idea="",
             reasoning=[],
             tool_results=[tool_result],
             explanation=explanation,
-            estimated_answer_tokens=None,
+            estimated_answer_tokens=budget["answer_tokens"],
         )
         response["timings_ms"] = {
-            "planner": 0.0,
+            "planner": budget["planner_ms"],
             "wolfram": wolfram_ms,
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
         return response
+
+    # =========================================================
+    # PLANNER-DRIVEN FINAL ANSWER BUDGET
+    # =========================================================
+
+    def _plan_answer_tokens(
+        self,
+        problem: str,
+        explanation: str,
+    ) -> dict[str, Any]:
+        """Ask the small planner for a semantic final-answer budget."""
+
+        planner_system = r"""
+You are Nova's final-answer budget planner.
+
+Do not solve the problem and do not write any solution text.
+Estimate only how many completion tokens the final mathematical answer
+actually needs.
+
+Return ONLY one JSON object with EXACTLY these fields:
+{
+  "type": "answer_budget",
+  "answer_tokens": 180
+}
+
+Rules:
+- "type" is always "answer_budget".
+- "answer_tokens" must be a positive integer.
+- Estimate the smallest sufficient completion budget for a complete answer.
+- Consider the user's mathematical task, explanation mode, genuine reasoning or
+  derivation steps, and amount of explanation actually needed.
+- A short symbolic result may need only a small budget.
+- A normal worked solution needs a moderate budget.
+- A proof, multi-part derivation, or genuinely complex problem may need a much
+  larger budget, including thousands of tokens when genuinely necessary.
+- Do not use a fixed budget based only on the explanation label.
+- Do not inflate the estimate merely because the problem is difficult.
+- Do not reduce it so far that the final solver would omit required mathematics.
+- This is a generation budget estimate, not a claim about exact output length.
+"""
+
+        started = time.perf_counter()
+
+        result = self.router.plan(
+            prompt=json.dumps(
+                {
+                    "explanation_preference": explanation,
+                    "user_request": problem,
+                },
+                ensure_ascii=False,
+            ),
+            system_prompt=planner_system,
+        )
+
+        elapsed = round((time.perf_counter() - started) * 1000, 2)
+
+        if not result["success"]:
+            return {
+                "success": False,
+                "error": result["error"],
+                "planner_ms": elapsed,
+            }
+
+        plan = self._parse_json(result["result"])
+
+        if (
+            not isinstance(plan, dict)
+            or plan.get("type") != "answer_budget"
+            or not isinstance(plan.get("answer_tokens"), int)
+            or plan["answer_tokens"] <= 0
+        ):
+            return {
+                "success": False,
+                "error": "Planner returned an invalid answer token estimate.",
+                "planner_ms": elapsed,
+            }
+
+        return {
+            "success": True,
+            "answer_tokens": plan["answer_tokens"],
+            "planner_ms": elapsed,
+        }
 
     # =========================================================
     # TOOL VALIDATION
