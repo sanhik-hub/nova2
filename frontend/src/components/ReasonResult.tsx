@@ -1,6 +1,15 @@
 ﻿import type { ReasonResponse } from "../services/api";
 import WorkspaceSolutionText from "./WorkspaceSolutionText";
 
+function formatElapsed(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, elapsedMs) / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds - minutes * 60;
+  return minutes > 0
+    ? `${minutes}m ${seconds.toFixed(1).padStart(4, "0")}s`
+    : `${seconds.toFixed(1)}s`;
+}
+
 function extractText(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
@@ -74,7 +83,7 @@ export function ReasonResult({
 
       {response.elapsed_ms !== undefined && (
         <div className="result-meta">
-          <span>{response.elapsed_ms} ms</span>
+          <strong>Elapsed: {formatElapsed(response.elapsed_ms)}</strong>
 
           {response.cached && (
             <span>Cached result</span>
