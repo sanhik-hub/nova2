@@ -1181,6 +1181,12 @@ The answer must be complete enough that a student can follow HOW the result was
 obtained without needing an omitted derivation. Never stop at an intermediate
 expression. Never invent missing information.
 
+For a derivation or proof, do NOT state or preview the requested final formula,
+result, or conclusion before the derivation is complete. Build the result
+step by step using the necessary intermediate equations. State the requested
+final formula, result, or conclusion exactly ONCE, at the end of the solution.
+Do not repeat it in an introduction, summary, or second final-answer section.
+
 Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the solution text.
 """
@@ -1200,8 +1206,17 @@ background, present alternative methods, or continue after the result is
 established. Stop when the solution is complete.
 
 Never stop at an intermediate setup or partial argument. Never invent missing
-information or assumptions. Do not mention tools, AI, prompts, token budgets,
-or internal processing. Return ONLY the complete solution text.
+information or assumptions.
+
+For a derivation or proof, do NOT state or preview the requested final formula,
+result, or conclusion before the derivation is complete. Build the result
+step by step using the necessary intermediate equations. State the requested
+final formula, result, or conclusion exactly ONCE, as the final mathematical
+statement of the solution. Do not repeat it in an introduction, summary, or
+second final-answer section.
+
+Do not mention tools, AI, prompts, token budgets, or internal processing.
+Return ONLY the complete solution text.
 """
 
         # The planner's estimate is guidance, not a hard generation cutoff.
