@@ -37,13 +37,17 @@ class PlannerLLMRuntime:
         if not self._available:
             self.load()
 
+        # llama.cpp handles JSON-object mode reliably here, but the full
+        # response schema can trigger constrained-decoding stalls on the
+        # lightweight planner model. Keep the semantic schema in the
+        # reasoning service and enforce its shape after parsing there.
         payload = {
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             "temperature": self.config.temperature,
-            "response_format": {"type": "json_object", "schema": schema},
+            "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
         }
 
