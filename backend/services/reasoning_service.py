@@ -284,10 +284,21 @@ Rules:
 - Wolfram arguments must be machine-readable mathematical expressions.
 - Never use natural-language instructions as Wolfram arguments.
 - Never invent a formula, value, variable, condition, or assumption.
-- For derivations, proofs, conceptual explanations, and reasoning, normally set
-  "needs_wolfram" to false and "wolfram" to null.
+- For derivations, proofs, conceptual explanations, and reasoning, set
+  "needs_wolfram" to false and "wolfram" to null unless the user explicitly
+  supplies a concrete expression/equation that needs exact symbolic computation.
+- A request to "derive", "prove", or "show that" a formula is normally a
+  reasoning task, not a Wolfram task. Do not invent a Wolfram call for it.
 - Use Wolfram only when a concrete expression/equation from the user's request
-  is available and exact symbolic verification is genuinely useful.
+  is available and exact symbolic computation or verification is genuinely useful.
+- If no Wolfram call is needed, the value MUST be null, not an empty string,
+  natural-language instruction, or placeholder.
+- If Wolfram is needed, every array entry MUST be an object with exactly
+  "operation" and "arguments", where "arguments" is an object.
+- Example no-tool plan:
+  {"type":"plan","intent":"derive","needs_wolfram":false,"wolfram":null,"answer_tokens":180}
+- Example tool plan:
+  {"type":"plan","intent":"differentiate","needs_wolfram":true,"wolfram":[{"operation":"differentiate","arguments":{"expression":"x^2+3x","variable":"x"}}],"answer_tokens":60}
 - "answer_tokens" is the planner's estimate of the completion tokens actually
   required for the final answer. It is an advisory generation budget, not a
   global preset.
