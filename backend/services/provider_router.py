@@ -26,10 +26,16 @@ class ProviderRouter:
 
         return provider
 
-    def plan(self, prompt: str, system_prompt: str):
+    def plan(
+        self,
+        prompt: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+    ):
         return self.get_provider("planner_llm").plan(
             prompt=prompt,
             system_prompt=system_prompt,
+            max_tokens=max_tokens,
         )
 
     def calculate(
