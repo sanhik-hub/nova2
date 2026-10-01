@@ -51,7 +51,17 @@ Create exactly {step_count} progressive multiple-choice steps.
 {hint_instruction}
 """.strip()
 
-        response = self.router.plan(prompt=prompt, system_prompt=system_prompt)
+        # A guided attempt is a substantially larger JSON document than the
+        # normal semantic routing plan. Reserve enough completion space for
+        # all steps, options, hints, and explanations so the JSON is not
+        # truncated before it can be parsed.
+        planner_max_tokens = max(1200, step_count * 450)
+
+        response = self.router.plan(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=planner_max_tokens,
+        )
         if not response.get("success"):
             return {"success": False, "error": response.get("error") or "Guided attempt generation failed."}
 
