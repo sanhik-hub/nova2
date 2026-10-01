@@ -88,7 +88,6 @@ export type GuidedStep = {
   options: GuidedOption[];
   correct_index: number;
   hint?: string | null;
-  explanation: string;
 };
 
 export type GuidedAttemptResponse = {
@@ -96,13 +95,14 @@ export type GuidedAttemptResponse = {
   query: string;
   steps?: GuidedStep[];
   include_hints?: boolean;
+  include_full_solution?: boolean;
   error?: string | null;
 };
 
 export async function startGuidedAttempt(
   query: string,
-  includeHints: boolean,
-  stepCount = 4,
+  includeHints = false,
+  includeFullSolution = false,
 ): Promise<GuidedAttemptResponse> {
   const response = await fetch("/api/guided/start", {
     method: "POST",
@@ -112,8 +112,7 @@ export async function startGuidedAttempt(
     body: JSON.stringify({
       query,
       include_hints: includeHints,
-      include_full_solution: false,
-      step_count: stepCount,
+      include_full_solution: includeFullSolution,
     }),
   });
 
