@@ -204,7 +204,9 @@ def start_server(
     config: Config,
 ) -> tuple[subprocess.Popen[Any], str, Path]:
     port = free_port()
-    log_file = Path(tempfile.mkstemp(prefix="nova_llama_", suffix=".log")[1])
+    log_fd, log_name = tempfile.mkstemp(prefix="nova_llama_", suffix=".log")
+    os.close(log_fd)
+    log_file = Path(log_name)
     log_handle = open(log_file, "w", encoding="utf-8")
 
     command = [
@@ -474,10 +476,16 @@ def parse_args() -> argparse.Namespace:
         help="Measured runs per benchmark prompt (default: 2).",
     )
     parser.add_argument(
-        "--max-tokens",
+        "--search-tokens",
         type=int,
         default=256,
-        help="Benchmark-only completion ceiling (default: 256).",
+        help="Completion ceiling for the fast configuration search (default: 256).",
+    )
+    parser.add_argument(
+        "--verify-tokens",
+        type=int,
+        default=768,
+        help="Completion ceiling for final workload verification (default: 768).",
     )
     parser.add_argument(
         "--startup-timeout",
@@ -498,8 +506,10 @@ def main() -> int:
 
     if args.runs < 1:
         raise SystemExit("--runs must be at least 1")
-    if args.max_tokens < 32:
-        raise SystemExit("--max-tokens must be at least 32")
+    if args.search_tokens < 32:
+        raise SystemExit("--search-tokens must be at least 32")
+    if args.verify_tokens < 64:
+        raise SystemExit("--verify-tokens must be at least 64")
     if not args.model.is_absolute():
         args.model = (ROOT / args.model).resolve()
     if not args.server.is_absolute():
@@ -530,7 +540,8 @@ def main() -> int:
         for device in gpu_info["nvidia_smi"]:
             print(f"  {device}")
     print(f"Measured runs   : {args.runs}")
-    print(f"Benchmark tokens: {args.max_tokens}")
+    print(f"Search tokens   : {args.search_tokens}")
+    print(f"Verify tokens   : {args.verify_tokens}")
     print()
 
     # Stage 1: CPU thread sweep.
@@ -544,7 +555,7 @@ def main() -> int:
             args.model,
             config,
             args.runs,
-            args.max_tokens,
+            args.search_tokens,
             args.startup_timeout,
             TESTS[:1],
         )
@@ -619,7 +630,8 @@ def main() -> int:
             args.model,
             config,
             args.runs,
-            args.max_tokens,
+            1,
+            args.verify_tokens,
             args.startup_timeout,
             TESTS,
         )
