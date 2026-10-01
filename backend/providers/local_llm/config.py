@@ -26,7 +26,7 @@ class LocalLLMConfig:
     threads: int = 6
 
     # Keep generation short by default.
-    max_tokens: int = 4096
+    max_tokens: int | None = None
 
     # Deterministic reasoning.
     temperature: float = 0.0
