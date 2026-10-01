@@ -130,6 +130,98 @@ class ReasoningService:
         return value if value in {"off", "concise", "detailed"} else "detailed"
 
     # =========================================================
+    # FAST PROBLEM CLASSIFICATION
+    # =========================================================
+
+    def _is_simple_expression(self, problem: str) -> bool:
+        """
+        Return True only for inputs that are already mathematical
+        expressions suitable for the direct Wolfram calculate() path.
+
+        Explicit natural-language operations such as "Differentiate x^2"
+        are intentionally excluded. Those requests must go through the
+        planner so the planner can emit a structured Wolfram operation
+        instead of sending natural language to Wolfram.
+        """
+
+        text = problem.strip()
+
+        if len(text) > 120:
+            return False
+
+        lowered = text.lower()
+
+        computational_markers = (
+            "integrate ",
+            "integral ",
+            "differentiate ",
+            "derivative ",
+            "derive ",
+            "solve ",
+            "factor ",
+            "factorize ",
+            "expand ",
+            "simplify ",
+            "limit ",
+            "find the derivative",
+            "find derivative",
+            "find the integral",
+            "find integral",
+            "find the roots",
+            "find roots",
+            "find the solutions",
+            "find solutions",
+            "evaluate the limit",
+            "evaluate limit",
+        )
+
+        if any(marker in lowered for marker in computational_markers):
+            return False
+
+        semantic_phrases = (
+            "prove",
+            "show that",
+            "show",
+            "explain",
+            "determine whether",
+            "determine if",
+            "why",
+            "suppose",
+            "given",
+            "continuous",
+            "function",
+            "sequence",
+            "probability",
+            "geometry",
+            "physics",
+            "chemistry",
+            "maximum",
+            "minimum",
+            "area",
+            "volume",
+            "find the",
+            "let ",
+            "such that",
+            "if ",
+        )
+
+        if any(phrase in lowered for phrase in semantic_phrases):
+            return False
+
+        words = re.findall(r"[A-Za-z]+", text)
+
+        if len(words) > 8:
+            return False
+
+        if not re.search(
+            r"[0-9xXyYzZπ√+\-*/^=<>()[\]{}]",
+            text,
+        ):
+            return False
+
+        return True
+
+    # =========================================================
     # COMPLEX COMPUTATIONAL PIPELINE
     # =========================================================
 
