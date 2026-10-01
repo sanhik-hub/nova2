@@ -74,6 +74,12 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.25)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
 def http_json(
     url: str,
     payload: dict[str, Any] | None = None,
@@ -494,6 +500,18 @@ def parse_args() -> argparse.Namespace:
         help="Maximum seconds allowed for each server startup.",
     )
     parser.add_argument(
+        "--production-port",
+        type=int,
+        default=8080,
+        help="Nova final-model port that must be free during benchmarking (default: 8080).",
+    )
+    parser.add_argument(
+        "--planner-port",
+        type=int,
+        default=8081,
+        help="Nova planner port that must be free during benchmarking (default: 8081).",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="Write the winning device-local profile to .nova/.",
@@ -519,6 +537,19 @@ def main() -> int:
         raise SystemExit(f"Model not found: {args.model}")
     if not args.server.exists():
         raise SystemExit(f"llama-server not found: {args.server}")
+
+    for port, name in (
+        (args.production_port, "final model"),
+        (args.planner_port, "planner"),
+    ):
+        if port_in_use(port):
+            raise SystemExit(
+                f"Port {port} is in use by the Nova {name}. "
+                "Stop the active llama-server before benchmarking so the "
+                "benchmark does not suffer memory/contention overhead."
+            )
+
+    gpu_info = discover_gpu(args.server)
 
     gpu_info = discover_gpu(args.server)
     candidates = build_candidates(gpu_info)
