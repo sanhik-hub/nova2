@@ -350,7 +350,16 @@ missing, leave Wolfram unused rather than guessing it.
                     f"Planner returned an invalid plan field: {field}."
                 )
 
-        if type(plan["answer_tokens"]) is not int or plan["answer_tokens"] <= 0:
+        # Small local planners sometimes serialize an integer as a JSON
+        # string even when the semantic value is unambiguous. Normalize that
+        # representation at the planner boundary; the final model still uses
+        # the planner's value and there is no hardcoded answer-size policy.
+        answer_tokens = plan["answer_tokens"]
+        if isinstance(answer_tokens, str) and re.fullmatch(r"\d+", answer_tokens.strip()):
+            answer_tokens = int(answer_tokens.strip())
+            plan["answer_tokens"] = answer_tokens
+
+        if type(answer_tokens) is not int or answer_tokens <= 0:
             return self._error(
                 "Planner returned an invalid answer token estimate."
             )
