@@ -604,3 +604,141 @@ button:disabled {
     gap: 5px;
   }
 }
+
+
+.guided-option-heading {
+  margin-top: 18px;
+  margin-bottom: 0;
+}
+
+.guided-step-card {
+  margin-top: 18px;
+  padding: 24px;
+}
+
+.guided-step-card h2 {
+  margin: 8px 0 20px;
+  color: #172033;
+  font-size: 21px;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.guided-options {
+  display: grid;
+  gap: 10px;
+}
+
+.guided-option {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid #dce1ea;
+  border-radius: 11px;
+  background: #fbfcfe;
+  color: #263148;
+  text-align: left;
+  line-height: 1.5;
+  transition: 140ms ease;
+}
+
+.guided-option:hover:not(:disabled) {
+  border-color: #9aa8ff;
+  background: white;
+}
+
+.guided-option.selected {
+  border-color: #8294ff;
+  background: #f5f6ff;
+}
+
+.guided-option.correct {
+  border-color: #8bc9a4;
+  background: #f0faf4;
+}
+
+.guided-option-letter {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #eef1f6;
+  color: #536078;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.guided-feedback {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #fff6f1;
+  color: #765447;
+}
+
+.guided-feedback.correct {
+  background: #edf8f1;
+  color: #356a4a;
+}
+
+.guided-feedback strong {
+  font-size: 13px;
+}
+
+.guided-feedback p,
+.hint-box p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.hint-box {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #e2e6ee;
+  border-radius: 10px;
+  background: #fafbfc;
+  color: #59647a;
+  font-size: 12px;
+}
+
+.hint-box summary {
+  cursor: pointer;
+  font-weight: 720;
+  color: #46526a;
+}
+
+.guided-score-card {
+  margin-top: 18px;
+  padding: 28px;
+  text-align: center;
+}
+
+.guided-score-card h2 {
+  margin: 8px 0 2px;
+  font-size: 20px;
+}
+
+.score-value {
+  margin: 8px 0;
+  color: #172033;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.guided-score-card p {
+  margin: 0 auto 18px;
+  max-width: 520px;
+  color: #6f798c;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.guided-score-card .secondary-button {
+  min-width: 150px;
+}
