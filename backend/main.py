@@ -50,6 +50,30 @@ def health():
     }
 
 
+@app.post("/api/wolfram/start")
+def start_wolfram():
+    engine = computation.router.providers["wolfram"].engine
+
+    # WolframLanguageSession starts its native kernel lazily on the
+    # first evaluation. Warm it explicitly so Control Center can report
+    # the persistent kernel as running immediately after startup.
+    result = engine.calculate("2 + 2")
+
+    if not result.success:
+        return {
+            "success": False,
+            "message": result.error or "Wolfram session could not be started.",
+            "wolfram_session": engine.status(),
+        }
+
+    return {
+        "success": True,
+        "message": "Wolfram session started and verified.",
+        "wolfram_session": engine.status(),
+        "test_result": result.result,
+    }
+
+
 @app.post("/api/wolfram/restart")
 def restart_wolfram():
     engine = computation.router.providers["wolfram"].engine
