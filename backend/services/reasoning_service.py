@@ -268,108 +268,38 @@ class ReasoningService:
         planner_system = r"""
 You are Nova's semantic mathematical request planner.
 
-Analyze the user's request semantically. Do not solve it and do not write the
-final response.
+Analyze the user's request. Do not solve it and do not write the final answer.
 
-Return ONLY one valid JSON object with EXACTLY these fields:
+Return ONLY one JSON object with EXACTLY these fields:
 {
   "type": "plan",
-  "intent": "short description of the mathematical intent",
-  "depth": "off|concise|detailed",
+  "intent": "short description of the user's mathematical task",
   "needs_wolfram": false,
   "wolfram": null,
-  "idea": "short approach",
-  "reasoning": ["short planning note"],
-  "final_result": ""
+  "idea": "short approach for the final solver",
+  "reasoning": ["short planning note"]
 }
 
-The "type" field must always be "plan".
-The "depth" field must be one of "off", "concise", or "detailed".
-The "needs_wolfram" field must be a boolean.
-The "wolfram" field must be null when no exact symbolic verification is needed;
-otherwise it must be an array of structured operations using only the supported
-operation names and machine-readable mathematical arguments.
-The "reasoning" field must always be an array of strings.
-The "final_result" field should normally be an empty string when explanation is
-requested, because the final solution will be written separately.
+Rules:
+- "type" is always "plan".
+- "needs_wolfram" is a boolean.
+- "wolfram" is null unless exact symbolic computation is genuinely needed.
+- If "wolfram" is used, it must be an array containing ONLY these operation
+  names: simplify, factor, expand, differentiate, integrate, solve, limit.
+- Wolfram arguments must be machine-readable mathematical expressions.
+- Never use natural-language instructions as Wolfram arguments.
+- Never invent a formula, value, variable, condition, or assumption.
+- For derivations, proofs, conceptual explanations, and reasoning, normally set
+  "needs_wolfram" to false and "wolfram" to null.
+- Use Wolfram only when a concrete expression/equation from the user's request
+  is available and exact symbolic verification is genuinely useful.
+- "idea" and "reasoning" are planning notes only. Do not write the final solution.
+- The requested explanation mode is already supplied separately by the caller;
+  do not return a depth field.
 
-The plan must identify the mathematical intent, requested explanation depth,
-whether exact symbolic computation is needed, and (only when needed) one or
-more structured Wolfram operations.
-
-Wolfram arguments must be machine-readable mathematical expressions, never
-natural-language instructions. Never invent missing values or assumptions.
-
-For derivations, proofs, conceptual explanations, and reasoning, do not call Wolfram unless an exact symbolic verification is genuinely useful.
-
-For derivation or conceptual reasoning requests, do not invent a symbolic
-formula merely to create a Wolfram call. If the user's request does not
-contain a concrete mathematical expression that can be safely verified,
-set "needs_wolfram" to false and "wolfram" to null.
-
-Only emit a Wolfram operation when the operation and every argument are
-directly grounded in the user's request or an explicit intermediate
-expression supplied by the user. Wolfram is a verifier, not a source of
-missing physical assumptions or formulas.
-
-"idea" summarizes the intended approach without inventing facts.
-"reasoning" contains concise planning notes, not a final answer.
-"final_result" is used only when a result can be stated without a final
-solution-writing generation; otherwise return an empty string.
+The planner is a router, not a solver. When information needed for a formula is
+missing, leave Wolfram unused rather than guessing it.
 """
-
-        schema = {
-            "type": "object",
-            "properties": {
-                "type": {"type": "string", "enum": ["plan"]},
-                "intent": {"type": "string"},
-                "depth": {
-                    "type": "string",
-                    "enum": ["off", "concise", "detailed"],
-                },
-                "needs_wolfram": {"type": "boolean"},
-                "wolfram": {
-                    "type": ["array", "null"],
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "operation": {
-                                "type": "string",
-                                "enum": [
-                                    "simplify",
-                                    "factor",
-                                    "expand",
-                                    "differentiate",
-                                    "integrate",
-                                    "solve",
-                                    "limit",
-                                ],
-                            },
-                            "arguments": {"type": "object"},
-                        },
-                        "required": ["operation", "arguments"],
-                        "additionalProperties": False,
-                    },
-                },
-                "idea": {"type": "string"},
-                "reasoning": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "final_result": {"type": "string"},
-            },
-            "required": [
-                "type",
-                "intent",
-                "depth",
-                "needs_wolfram",
-                "wolfram",
-                "idea",
-                "reasoning",
-                "final_result",
-            ],
-            "additionalProperties": False,
-        }
 
         planner_started = time.perf_counter()
 
@@ -382,7 +312,6 @@ solution-writing generation; otherwise return an empty string.
                 ensure_ascii=False,
             ),
             system_prompt=planner_system,
-            schema=schema,
         )
 
         planner_ms = round(
@@ -404,12 +333,29 @@ solution-writing generation; otherwise return an empty string.
         if not isinstance(plan, dict) or plan.get("type") != "plan":
             return self._error("Planner returned an invalid plan.")
 
+        required_fields = {
+            "intent": str,
+            "needs_wolfram": bool,
+            "wolfram": (list, type(None)),
+            "idea": str,
+            "reasoning": list,
+        }
+
+        for field, expected_type in required_fields.items():
+            if field not in plan or not isinstance(plan[field], expected_type):
+                return self._error(
+                    f"Planner returned an invalid plan field: {field}."
+                )
+
+        if not all(isinstance(item, str) for item in plan["reasoning"]):
+            return self._error(
+                "Planner returned invalid reasoning notes."
+            )
+
         calls = plan.get("wolfram") or []
-        if not isinstance(calls, list):
-            calls = []
         calls = calls[:self.MAX_TOOL_CALLS]
 
-        if not plan.get("needs_wolfram"):
+        if not plan["needs_wolfram"]:
             calls = []
 
         if self._contains_undefined_function_call(calls):
@@ -454,33 +400,20 @@ solution-writing generation; otherwise return an empty string.
         # -----------------------------------------------------
         # EXPLANATION OFF
         # -----------------------------------------------------
+        #
+        # If Wolfram produced an exact result, return it directly.
+        # Otherwise the final Qwen model still owns the answer. The planner
+        # never supplies final solution text.
+        # -----------------------------------------------------
 
-        if explanation == "off":
-            if tool_results:
-                response = self._cas_result_only(tool_results=tool_results)
-                response["timings_ms"] = {
-                    "planner": planner_ms,
-                    "wolfram": wolfram_ms_total,
-                    "final_llm": 0.0,
-                }
-                return response
-
-            final_result = plan.get("final_result")
-            if isinstance(final_result, str) and final_result.strip():
-                return {
-                    "success": True,
-                    "answer": final_result.strip(),
-                    "engine": "local_llm",
-                    "tool_calls": [],
-                    "cached": False,
-                    "timings_ms": {
-                        "planner": planner_ms,
-                        "wolfram": wolfram_ms_total,
-                        "final_llm": 0.0,
-                    },
-                }
-
-            return self._error("The planner could not determine a final result without explanation.")
+        if explanation == "off" and tool_results:
+            response = self._cas_result_only(tool_results=tool_results)
+            response["timings_ms"] = {
+                "planner": planner_ms,
+                "wolfram": wolfram_ms_total,
+                "final_llm": 0.0,
+            }
+            return response
 
         # -----------------------------------------------------
         # ONE FINAL LLM CALL
@@ -1080,7 +1013,14 @@ solution-writing generation; otherwise return an empty string.
         estimated_answer_tokens: int | None = None,
     ):
 
-        if explanation == "concise":
+        if explanation == "off":
+            final_system = r"""
+You are Nova's answer writer.
+Return ONLY the direct answer to the user's mathematical request.
+Do not add explanation, derivation, commentary, or internal processing details.
+Do not invent missing information or assumptions.
+"""
+        elif explanation == "concise":
             final_system = r"""
 You are Nova's concise mathematical solution writer.
 Write ONE self-contained solution. Use very little prose, but preserve all

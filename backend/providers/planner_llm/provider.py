@@ -11,12 +11,11 @@ class PlannerLLMProvider:
         self.config = config or PlannerLLMConfig()
         self.runtime = PlannerLLMRuntime(self.config)
 
-    def plan(self, prompt: str, system_prompt: str, schema: dict) -> dict[str, Any]:
+    def plan(self, prompt: str, system_prompt: str) -> dict[str, Any]:
         try:
             result = self.runtime.generate_json(
                 prompt=prompt,
                 system_prompt=system_prompt,
-                schema=schema,
             )
             return {
                 "success": True,

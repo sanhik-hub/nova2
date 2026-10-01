@@ -26,11 +26,10 @@ class ProviderRouter:
 
         return provider
 
-    def plan(self, prompt: str, system_prompt: str, schema: dict):
+    def plan(self, prompt: str, system_prompt: str):
         return self.get_provider("planner_llm").plan(
             prompt=prompt,
             system_prompt=system_prompt,
-            schema=schema,
         )
 
     def calculate(

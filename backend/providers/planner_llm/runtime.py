@@ -33,7 +33,7 @@ class PlannerLLMRuntime:
                 f"Planner LLM server is not running at {self._base_url()}."
             ) from exc
 
-    def generate_json(self, prompt: str, system_prompt: str, schema: dict) -> str:
+    def generate_json(self, prompt: str, system_prompt: str) -> str:
         if not self._available:
             self.load()
 
