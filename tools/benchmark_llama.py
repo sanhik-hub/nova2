@@ -550,8 +550,6 @@ def main() -> int:
             )
 
     gpu_info = discover_gpu(args.server)
-
-    gpu_info = discover_gpu(args.server)
     candidates = build_candidates(gpu_info)
 
     logical = os.cpu_count() or 1
