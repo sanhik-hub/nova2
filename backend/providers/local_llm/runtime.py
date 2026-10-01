@@ -91,11 +91,7 @@ class LocalLLMRuntime:
 
         payload = {
             "messages": messages,
-            "max_tokens": (
-                max_tokens
-                if max_tokens is not None
-                else self.config.max_tokens
-            ),
+            "max_tokens": max_tokens,
             "temperature": (
                 temperature
                 if temperature is not None
@@ -105,6 +101,9 @@ class LocalLLMRuntime:
                 "enable_thinking": enable_thinking
             },
         }
+
+        if max_tokens is None:
+            payload.pop("max_tokens", None)
 
         data = json.dumps(payload).encode("utf-8")
 
