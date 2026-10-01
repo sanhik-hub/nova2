@@ -2,9 +2,8 @@
 import "./App.css";
 import { StandardMode } from "./modes/StandardMode";
 import { WolframMode } from "./modes/WolframMode";
-import { GuidedAttemptMode } from "./modes/GuidedAttemptMode";
 
-type Mode = "standard" | "wolfram" | "guided";
+type Mode = "standard" | "wolfram";
 
 function App() {
   const [mode, setMode] = useState<Mode>("standard");
@@ -50,18 +49,6 @@ function App() {
             type="button"
           >
             Pure Wolfram
-          </button>
-
-          <button
-            className={
-              mode === "guided"
-                ? "mode-button active"
-                : "mode-button"
-            }
-            onClick={() => setMode("guided")}
-            type="button"
-          >
-            Guided Attempt
           </button>
         </div>
       </header>
