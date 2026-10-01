@@ -679,6 +679,33 @@ def start_backend():
     return {"ok": True, "message": "Backend start requested."}
 
 
+def start_wolfram():
+    backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
+
+    if not backend_http.get("ok"):
+        raise RuntimeError("Backend must be running before starting Wolfram.")
+
+    log("Starting and verifying persistent Wolfram session...")
+
+    result = http_json_post(
+        f"http://{HOST}:{BACKEND_PORT}/api/wolfram/start"
+    )
+
+    if not result.get("success"):
+        raise RuntimeError(
+            result.get("message", "Wolfram session failed to start.")
+        )
+
+    log("Wolfram persistent session is ready.")
+    return {
+        "ok": True,
+        "message": result.get(
+            "message",
+            "Wolfram session started and verified.",
+        ),
+    }
+
+
 def start_frontend():
     if port_listener(FRONTEND_PORT):
         return {"ok": True, "message": "Frontend is already running."}
@@ -784,6 +811,8 @@ def start_all():
         f"http://{HOST}:{BACKEND_PORT}/docs", 30, "Backend"
     ):
         raise RuntimeError("Backend did not become ready.")
+
+    start_wolfram()
 
     start_frontend()
     if not wait_for_http(
@@ -1184,6 +1213,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/start/frontend":
                 api_response(self, start_frontend())
+                return
+            if parsed.path == "/api/start/wolfram":
+                api_response(self, start_wolfram())
                 return
             if parsed.path == "/api/start/llm":
                 api_response(self, start_llm())
