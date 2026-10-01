@@ -879,10 +879,19 @@ Rules:
 
         for call in calls:
 
+            # The planner contract requires Wolfram entries to be structured
+            # objects. A malformed entry must be rejected here rather than
+            # crashing the FastAPI request with AttributeError.
+            if not isinstance(call, dict):
+                return True
+
             arguments = call.get(
                 "arguments",
                 {},
             )
+
+            if not isinstance(arguments, dict):
+                return True
 
             for value in arguments.values():
 
