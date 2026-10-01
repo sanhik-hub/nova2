@@ -68,7 +68,7 @@ def eprint(message: str) -> None:
 
 
 def free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    with socket.socket(socket.AF_INET, 0) as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
 
@@ -421,24 +421,39 @@ def replace_threads(config: Config, threads: int) -> Config:
     )
 
 
-def score(result: dict[str, Any]) -> float:
+def score(
+    result: dict[str, Any],
+    *,
+    allow_search_ceiling: bool = False,
+) -> float:
     if not result.get("success"):
         return -1.0
-    # A result that hit the benchmark's artificial max_tokens ceiling is not
-    # eligible to win: its speed is not a fair comparison of complete output.
-    if result.get("truncated"):
+    # During the short configuration search, reaching --search-tokens is
+    # expected: the search is measuring inference speed, not solution
+    # completeness.  During final verification, truncated output remains
+    # ineligible because the selected configuration must handle Nova's real
+    # workload without hitting the artificial verification ceiling.
+    if result.get("truncated") and not allow_search_ceiling:
         return -1.0
     return float(result.get("avg_generation_tps", 0.0))
 
 
-def choose_best(results: list[dict[str, Any]]) -> dict[str, Any] | None:
-    successful = [r for r in results if score(r) >= 0]
+def choose_best(
+    results: list[dict[str, Any]],
+    *,
+    allow_search_ceiling: bool = False,
+) -> dict[str, Any] | None:
+    successful = [
+        r
+        for r in results
+        if score(r, allow_search_ceiling=allow_search_ceiling) >= 0
+    ]
     if not successful:
         return None
     return max(
         successful,
         key=lambda r: (
-            score(r),
+            score(r, allow_search_ceiling=allow_search_ceiling),
             float(r.get("avg_prompt_tps", 0.0)),
         ),
     )
@@ -590,9 +605,15 @@ def main() -> int:
             TESTS[:1],
         )
         thread_results.append(result)
-        print_result(result)
+        print_result(result, search_phase=True)
 
-    best_thread_result = choose_best(thread_results)
+    # The search ceiling is deliberately not a completeness requirement.
+    # We need a fastest configuration even though the short search request may
+    # legitimately use all 256 tokens.
+    best_thread_result = choose_best(
+        thread_results,
+        allow_search_ceiling=True,
+    )
     best_threads = (
         int(best_thread_result["config"]["threads"])
         if best_thread_result
@@ -617,9 +638,12 @@ def main() -> int:
             TESTS[:1],
         )
         shape_results.append(result)
-        print_result(result)
+        print_result(result, search_phase=True)
 
-    best_cpu = choose_best(thread_results + shape_results)
+    best_cpu = choose_best(
+        thread_results + shape_results,
+        allow_search_ceiling=True,
+    )
 
     # GPU candidates get the full CPU thread count first; if they win, the
     # selected GPU configuration is then verified with the full test suite.
@@ -641,10 +665,15 @@ def main() -> int:
                 TESTS[:1],
             )
             gpu_results.append(result)
-            print_result(result)
+            print_result(result, search_phase=True)
 
     shortlist = [
-        r for r in [best_cpu, choose_best(gpu_results)] if r is not None
+        r
+        for r in [
+            best_cpu,
+            choose_best(gpu_results, allow_search_ceiling=True),
+        ]
+        if r is not None
     ]
 
     # Stage 3: full verification. This prevents a configuration that wins on
@@ -694,7 +723,11 @@ def main() -> int:
     return 0
 
 
-def print_result(result: dict[str, Any]) -> None:
+def print_result(
+    result: dict[str, Any],
+    *,
+    search_phase: bool = False,
+) -> None:
     cfg = result["config"]
     label = (
         f"{cfg['kind']} "
@@ -706,11 +739,20 @@ def print_result(result: dict[str, Any]) -> None:
     if not result.get("success"):
         print(f"  FAIL  {label} :: {result.get('error')}")
         return
+
+    suffix = ""
+    if result.get("truncated"):
+        suffix = (
+            " :: SEARCH CEILING REACHED"
+            if search_phase
+            else " :: TRUNCATED"
+        )
+
     print(
         f"  PASS  {label} :: "
         f"{result.get('avg_generation_tps', 0):.2f} tok/s generation, "
         f"{result.get('avg_prompt_tps', 0):.2f} tok/s prompt"
-        + (" :: TRUNCATED" if result.get("truncated") else "")
+        f"{suffix}"
     )
 
 
