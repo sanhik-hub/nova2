@@ -140,47 +140,76 @@ class ReasoningService:
     ):
 
         planner_system = r"""
-You are Nova's mathematical request planner.
+You are Nova's semantic mathematical request planner.
 
-Analyze the user's request semantically. Do not classify it by matching
-specific trigger words. Determine the actual mathematical intent.
+Analyze the user's request semantically. Do not solve it and do not write the
+final response. Return only the requested JSON object.
 
-Return ONLY JSON:
-{
-  "type": "plan",
-  "request_type": "symbolic_operation | derivation | proof | explanation | reasoning | computation | other",
-  "needs_computation": true,
-  "idea": "central mathematical idea",
-  "reasoning": ["essential mathematical reasoning"],
-  "calls": [{"tool": "simplify | factor | expand | differentiate | integrate | solve | limit", "arguments": {}}],
-  "generation_tokens": null,
-  "final_result": null
-}
+The plan must identify the mathematical intent, requested explanation depth,
+whether exact symbolic computation is needed, and (only when needed) one or
+more structured Wolfram operations.
 
-Rules:
-- Choose the request_type semantically, not from keywords.
-- Use exact computation only when genuinely useful or required.
-- Tool arguments must be valid mathematical expressions, never prose.
-- Never invent unspecified values, functions, geometry, conditions, or assumptions.
-- For derivations, proofs, explanations and reasoning, put the essential
-  mathematical chain in reasoning and leave calls empty unless computation
-  is genuinely needed.
-- generation_tokens is your estimate of the final solution's required output
-  based on mathematical content and requested depth, not a fixed keyword or
-  character-length rule.
-- For explanation mode "off", put the result in final_result when it can be
-  determined without a final explanatory generation.
-- Do not write the polished final solution here.
-- Maximum 2 tool calls.
-- Return valid JSON only.
+Wolfram arguments must be machine-readable mathematical expressions, never
+natural-language instructions. Never invent missing values or assumptions.
+
+For derivations, proofs, conceptual explanations, and reasoning, do not call
+Wolfram unless an exact symbolic verification is genuinely useful.
 """
 
-        planner = self.router.generate(
-            prompt=(f"Explanation preference: {explanation}\n\nUser request:\n{problem}"),
+        schema = {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["plan"]},
+                "intent": {"type": "string"},
+                "depth": {
+                    "type": "string",
+                    "enum": ["off", "concise", "detailed"],
+                },
+                "needs_wolfram": {"type": "boolean"},
+                "wolfram": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": [
+                                    "simplify",
+                                    "factor",
+                                    "expand",
+                                    "differentiate",
+                                    "integrate",
+                                    "solve",
+                                    "limit",
+                                ],
+                            },
+                            "arguments": {"type": "object"},
+                        },
+                        "required": ["operation", "arguments"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": [
+                "type",
+                "intent",
+                "depth",
+                "needs_wolfram",
+                "wolfram",
+            ],
+            "additionalProperties": False,
+        }
+
+        planner = self.router.plan(
+            prompt=json.dumps(
+                {
+                    "explanation_preference": explanation,
+                    "user_request": problem,
+                },
+                ensure_ascii=False,
+            ),
             system_prompt=planner_system,
-            max_tokens=None,
-            temperature=0,
-            enable_thinking=False,
+            schema=schema,
         )
 
         if not planner["success"]:
@@ -188,54 +217,37 @@ Rules:
 
         plan = self._parse_json(planner["result"])
 
-        if plan is None:
-            return self._error(
-                "Local reasoning model returned an invalid plan."
-            )
+        if not isinstance(plan, dict) or plan.get("type") != "plan":
+            return self._error("Planner returned an invalid plan.")
 
-        # -----------------------------------------------------
-        # PLANNED REASONING / COMPUTATION
-        # -----------------------------------------------------
-
-        if plan.get("type") != "plan":
-            return self._error("Invalid reasoning plan type.")
-
-        calls = plan.get("calls", [])
+        calls = plan.get("wolfram") or []
         if not isinstance(calls, list):
             calls = []
         calls = calls[:self.MAX_TOOL_CALLS]
 
-        # -----------------------------------------------------
-        # NEVER SEND UNKNOWN FUNCTIONS TO WOLFRAM
-        # -----------------------------------------------------
-
-        if self._contains_undefined_function_call(calls):
+        if not plan.get("needs_wolfram"):
             calls = []
 
-        # -----------------------------------------------------
-        # EXECUTE VERIFIED TOOL CALLS
-        # -----------------------------------------------------
+        if self._contains_undefined_function_call(calls):
+            return self._error("Planner produced an unsupported function call.")
 
         tool_results = []
 
         for call in calls:
-
-            validated = self._validate_tool_call(call)
+            validated = self._validate_tool_call({
+                "tool": call.get("operation"),
+                "arguments": call.get("arguments"),
+            })
 
             if not validated["valid"]:
-                return self._error(
-                    validated["error"]
-                )
+                return self._error(validated["error"])
 
             result = self._execute_tool(
                 validated["tool"],
                 validated["arguments"],
             )
 
-            # CRITICAL:
-            # Never give failed CAS output to Qwen.
             if not result.get("success"):
-
                 return self._error(
                     "Wolfram verification failed: "
                     + str(result.get("error"))
@@ -271,7 +283,7 @@ Rules:
             reasoning=plan.get("reasoning", []),
             tool_results=tool_results,
             explanation=explanation,
-            estimated_answer_tokens=plan.get("generation_tokens"),
+            estimated_answer_tokens=None,
         )
 
     # =========================================================
