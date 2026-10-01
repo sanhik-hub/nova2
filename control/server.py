@@ -23,6 +23,14 @@ CONFIG_SCRIPT = (
     / "config.py"
 )
 
+PLANNER_CONFIG_SCRIPT = (
+    NOVA_ROOT
+    / "backend"
+    / "providers"
+    / "planner_llm"
+    / "config.py"
+)
+
 LLAMA_SERVER = (
     NOVA_ROOT
     / "engines"
@@ -37,6 +45,7 @@ PORT = 8100
 
 BACKEND_PORT = 8000
 FRONTEND_PORT = 5173
+PLANNER_PORT = 8081
 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
@@ -113,6 +122,40 @@ def load_llm_config():
             "n_gpu_layers": int(data.get("n_gpu_layers", 0)),
         }
 
+    except Exception as exc:
+        return {
+            "model_path": "",
+            "server_url": "",
+            "model_name": "",
+            "error": str(exc),
+        }
+
+
+def load_planner_config():
+    try:
+        result = subprocess.run(
+            [str(PYTHON), str(PLANNER_CONFIG_SCRIPT), "--json"],
+            cwd=str(NOVA_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "planner config failed")
+
+        data = json.loads(result.stdout)
+        model_path = str(data.get("model_path", "")).strip()
+        server_url = str(data.get("server_url", "")).strip()
+
+        return {
+            "model_path": model_path,
+            "server_url": server_url,
+            "model_name": Path(model_path).stem if model_path else "",
+            "context_size": int(data.get("context_size", 4096)),
+            "threads": int(data.get("threads", 6)),
+            "batch_size": int(data.get("batch_size", 128)),
+            "n_gpu_layers": int(data.get("n_gpu_layers", 0)),
+        }
     except Exception as exc:
         return {
             "model_path": "",
@@ -428,6 +471,15 @@ def health_status():
             "error": "No server_url configured",
         }
 
+    planner_config = load_planner_config()
+    planner_url = planner_config.get("server_url", "").rstrip("/")
+    planner_health = (
+        http_check(f"{planner_url}/health")
+        if planner_url
+        else {"ok": False, "error": "No planner server_url configured"}
+    )
+    planner_listener = port_listener(PLANNER_PORT)
+
     # The backend itself is the authoritative source
     # for the persistent Wolfram session.
     wolfram_health = {
@@ -501,6 +553,19 @@ def health_status():
             "root": str(FRONTEND_ROOT),
         },
 
+        "planner": {
+            "process": bool(planner_health.get("ok")),
+            "pid": (
+                planner_listener.get("OwningProcess")
+                if isinstance(planner_listener, dict)
+                else None
+            ),
+            "server_url": planner_config.get("server_url", ""),
+            "model_name": planner_config.get("model_name", ""),
+            "model_path": planner_config.get("model_path", ""),
+            "health": planner_health,
+        },
+
         "llm": {
             "process": llm_running,
             "pid": (
@@ -554,6 +619,46 @@ def health_status():
 
         "timestamp": time.time(),
     }
+
+
+def start_planner():
+    listener = port_listener(PLANNER_PORT)
+    if listener:
+        return {"ok": True, "message": "Planner model server is already running."}
+
+    config = load_planner_config()
+    model_path = str(config.get("model_path", "")).strip()
+    server_url = str(config.get("server_url", "")).strip()
+
+    if not model_path or not server_url:
+        raise RuntimeError("Planner model configuration is incomplete.")
+
+    if not Path(model_path).is_absolute():
+        model_path = str(NOVA_ROOT / model_path)
+
+    if not Path(model_path).exists():
+        raise RuntimeError(
+            f"Planner model not found: {model_path}"
+        )
+
+    parsed = urlparse(server_url)
+    port = parsed.port or PLANNER_PORT
+
+    log(f"Starting small planner model server on port {port}...")
+    subprocess.Popen(
+        [
+            str(LLAMA_SERVER), "-m", model_path,
+            "--host", parsed.hostname or HOST,
+            "--port", str(port),
+            "--ctx-size", str(config.get("context_size", 4096)),
+            "--threads", str(config.get("threads", 6)),
+            "--batch-size", str(config.get("batch_size", 128)),
+            "--n-gpu-layers", str(config.get("n_gpu_layers", 0)),
+        ],
+        cwd=str(NOVA_ROOT),
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+    return {"ok": True, "message": "Planner model server start requested."}
 
 
 def start_backend():
@@ -658,6 +763,14 @@ def start_all():
     log("Starting Nova services natively...")
 
     start_llm()
+    planner = start_planner()
+    planner_config = load_planner_config()
+    planner_url = str(planner_config.get("server_url", "")).rstrip("/")
+    if not planner_url or not wait_for_http(
+        f"{planner_url}/health", 30, "Planner model server"
+    ):
+        raise RuntimeError("The planner model server did not become ready.")
+
     config = load_llm_config()
     llm_url = str(config.get("server_url", "")).rstrip("/")
 
@@ -759,6 +872,21 @@ def terminate_frontend():
     }
 
 
+def terminate_planner():
+    listener = port_listener(PLANNER_PORT)
+    if not listener:
+        return {"ok": True, "message": "Planner model server is not running."}
+
+    pid = int(listener["OwningProcess"])
+    log(f"Terminating planner model server PID {pid}...")
+    subprocess.run(
+        ["taskkill", "/PID", str(pid), "/T", "/F"],
+        capture_output=True,
+        text=True,
+    )
+    return {"ok": True, "message": "Planner model server terminated."}
+
+
 def terminate_llm():
     processes = process_snapshot()["llm"]
 
@@ -845,6 +973,7 @@ def terminate_wolfram():
 def terminate_all():
     terminate_frontend()
     terminate_llm()
+    terminate_planner()
     terminate_wolfram()
     terminate_backend()
 
@@ -1059,6 +1188,9 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/start/llm":
                 api_response(self, start_llm())
                 return
+            if parsed.path == "/api/start/planner":
+                api_response(self, start_planner())
+                return
 
             if parsed.path == "/api/restart/backend":
                 terminate_backend()
@@ -1074,6 +1206,11 @@ class Handler(BaseHTTPRequestHandler):
                 terminate_llm()
                 time.sleep(0.5)
                 api_response(self, start_llm())
+                return
+            if parsed.path == "/api/restart/planner":
+                terminate_planner()
+                time.sleep(0.5)
+                api_response(self, start_planner())
                 return
             if parsed.path == "/api/restart/wolfram":
                 result = http_json_post(
@@ -1110,6 +1247,13 @@ class Handler(BaseHTTPRequestHandler):
                 api_response(
                     self,
                     terminate_llm(),
+                )
+                return
+
+            if parsed.path == "/api/terminate/planner":
+                api_response(
+                    self,
+                    terminate_planner(),
                 )
                 return
 
