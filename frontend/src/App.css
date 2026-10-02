@@ -742,3 +742,39 @@ button:disabled {
 .guided-score-card .secondary-button {
   min-width: 150px;
 }
+
+
+/* Prism-inspired dark mathematical theme */
+:root{color:#e9e7ff;background:#0b0912}
+body{background:#0b0912;color:#e9e7ff}
+.app-shell{background:radial-gradient(circle at 85% 5%,rgba(124,58,237,.20),transparent 32rem),radial-gradient(circle at 10% 90%,rgba(79,70,229,.14),transparent 28rem),#0b0912}
+.topbar{border-bottom-color:rgba(139,92,246,.20);background:rgba(13,10,20,.90)}
+.brand-mark{background:linear-gradient(135deg,#6d28d9,#8b5cf6);box-shadow:0 0 22px rgba(139,92,246,.25)}
+.brand-name,.page-heading h1,.guided-step-card h2,.score-value,.field-label,.guided-option{color:#f4f1ff}
+.brand-subtitle,.page-heading p,.shortcut,.operation-description{color:#9b94ad}
+.mode-switcher{border-color:#302442;background:#15101f}
+.mode-button{color:#9b94ad}
+.mode-button:hover,.mode-button.active{color:#f4f1ff;background:#241735}
+.card{background:rgba(22,16,31,.94);border-color:#302442;box-shadow:0 12px 40px rgba(0,0,0,.30)}
+.question-input,.text-input,.select-input{border-color:#3a2c4e;background:#110d18;color:#eeeaff}
+.question-input:focus,.text-input:focus,.select-input:focus{border-color:#8b5cf6;background:#15101f;box-shadow:0 0 0 3px rgba(139,92,246,.14)}
+.primary-button{border-color:#7c3aed;background:linear-gradient(135deg,#6d28d9,#7c3aed);box-shadow:0 8px 22px rgba(124,58,237,.20)}
+.primary-button:hover:not(:disabled){background:linear-gradient(135deg,#7c3aed,#8b5cf6)}
+.secondary-button{border-color:#3a2c4e;background:#15101f;color:#d9d3e8}
+.secondary-button:hover:not(:disabled){background:#21172e;border-color:#6d4aa0}
+.choice-button{border-bottom-color:#2b2138;color:#eeeaff}
+.choice-radio{color:#a78bfa}
+.choice-button small,.result-meta{color:#8e879e}
+.info-box,.steps-content,.hint-box{background:#130f1b;border-color:#302442;color:#a69db7}
+.answer-content{background:#120d19;color:#eeeaff;border:1px solid #302442}
+.guided-option{border-color:#3a2c4e;background:#120d19}
+.guided-option:hover:not(:disabled),.guided-option.selected{border-color:#8b5cf6;background:#20152f}
+.guided-option.correct{border-color:#3fb950;background:rgba(63,185,80,.10)}
+.guided-option-letter{background:#2a1d3a;color:#c4b5fd}
+.guided-feedback{background:rgba(248,81,73,.10);color:#f0b0aa}
+.guided-feedback.correct{background:rgba(63,185,80,.10);color:#9fe0b1}
+.progress-dot{background:#241a31;color:#958ba6}
+.progress-dot.active{background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;box-shadow:0 0 16px rgba(139,92,246,.22)}
+.progress-connector{background:#392a4c}
+.spinner{border-color:#392a4c;border-top-color:#a78bfa}
+.footer{color:#655c73}
