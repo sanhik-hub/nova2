@@ -116,25 +116,39 @@ The final step must bring the student to the requested final result. Do not
 make the final step merely ask them to repeat an answer that was already given
 earlier.
 
-A correct answer to an earlier step must be something the student can actually
-use to construct the next step. Avoid generic recall questions such as "What is
-the formula for the induced emf?" when the problem asks for a derivation; ask
-for the differential/local expression or other first derivation quantity
-instead.
+A correct answer to an earlier step must be a usable intermediate result,
+not a fact that is merely related to the topic. Each step must create an input
+for a later step. Do not write independent concept questions that could be
+answered without using the previous step.
 
-The first step must NOT ask for the requested final answer or a formula that is
-algebraically equivalent to the requested final answer, unless the original
-problem is genuinely a one-step calculation. For a derivation, begin with the
-first necessary physical/mathematical relation or local quantity.
+Never ask for the requested final quantity, its final formula, or an algebraic
+equivalent of that final formula before the final step, unless the original
+problem is genuinely a one-step calculation. In particular, do not turn a
+derivation into a formula-recall quiz.
 
-For derivations and proofs, construct the path in dependency order. Use only
-the stages actually needed: identify the relevant law/definition, establish
-the local/intermediate quantity, substitute relationships, set up/evaluate
-the required sum or integral, and simplify to the requested result.
+For derivations and proofs, construct a dependency chain from the first needed
+quantity to the requested result. A useful generic pattern is:
+- identify the governing definition/law or the first local quantity;
+- derive the next intermediate expression from it;
+- substitute the relevant relationship or condition;
+- accumulate, solve, simplify, or evaluate as required;
+- state the requested result only at the final step.
+Use only the stages that are actually necessary; do not force every pattern
+stage into every problem.
+
+For differentiation, use a dependency chain such as selecting the applicable
+rule, differentiating the required terms or inner/outer functions, combining
+those results, and simplifying. For equations, use the given condition,
+substitution/isolation, solving, and checking only when those stages are needed.
+For proofs, establish the necessary identity/definition first, transform it in
+small dependent steps, and conclude only at the end. For physics derivations,
+start from the local law or differential quantity, express it in terms of the
+given variables, then integrate/sum/substitute and simplify as required.
+These are generic pedagogical patterns, not fixed question templates.
 
 Do NOT put the final expression, or an algebraically equivalent form of it, in
-an earlier step's options. The final expression must be reached by combining
-preceding results, not recognized from memory.
+an earlier step's options. The final expression must be constructed from
+preceding results rather than recognized from memory.
 
 Return ONLY one JSON object with exactly one top-level key: "steps".
 
