@@ -806,3 +806,57 @@ body{background:#0b0912;color:#e9e7ff}
 .graphical-point-label{fill:#d5cef0;font-size:10px;font-weight:700;paint-order:stroke;stroke:#0d0a12;stroke-width:3px;stroke-linejoin:round}
 @media(max-width:900px){.graphical-grid{grid-template-columns:1fr}.graphical-fields{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.graphical-fields{grid-template-columns:1fr}}
+
+
+.guided-review-card {
+  margin-top: 1.25rem;
+}
+
+.guided-review-card h2 {
+  margin: 0.25rem 0 1rem;
+}
+
+.guided-review-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.guided-review-item {
+  border: 1px solid #3a2c4e;
+  border-radius: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  background: #120d19;
+}
+
+.guided-review-item > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.guided-review-item.correct {
+  border-color: #3fb950;
+}
+
+.guided-review-item.incorrect {
+  border-color: #8f3d4a;
+}
+
+.guided-review-item span {
+  font-weight: 600;
+}
+
+.guided-review-item.correct span {
+  color: #9fe0b1;
+}
+
+.guided-review-item.incorrect span {
+  color: #f0b0aa;
+}
+
+.guided-review-item small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #aaa0b8;
+}
