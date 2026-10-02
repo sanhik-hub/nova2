@@ -233,7 +233,11 @@ Output only the JSON object.
 
             normalized_options = []
             for option in options:
-                if not isinstance(option, dict) or set(option) != {"text"}:
+                # The main LLM may occasionally attach harmless metadata such
+                # as an option-local index. The UI only needs the option text;
+                # normalize such extras instead of rejecting an otherwise valid
+                # four-option MCQ.
+                if not isinstance(option, dict) or "text" not in option:
                     return False, "Guided attempt contains an invalid option."
 
                 option_text = option["text"]
