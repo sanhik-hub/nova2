@@ -134,6 +134,11 @@ Prefer concrete mathematical decisions over meta-questions such as
 "What is the first step?" when the actual mathematical operation can be asked
 directly.
 
+Do NOT put "Step 1", "Step 2", "STEP 1", numbered headings, markdown headings,
+or any other step label in the question text. The UI supplies the step number.
+Do not repeat the same question across steps. Each question must ask for a
+different intermediate result that is necessary for the next step.
+
 Do not reveal the final answer in an earlier step.
 Do not invent information that the original problem does not provide.
 $HINT_INSTRUCTION
@@ -154,6 +159,8 @@ Original problem:
 {problem}
 
 Generate exactly {step_count} progressive MCQs forming a complete solution path.
+For every step, write only the actual mathematical question in the "question"
+field. Do not prefix it with a step number or heading.
 {hint_instruction}
 Output only the JSON object.
 """.strip()
@@ -255,6 +262,11 @@ the answer shorter.
 
 Do not mention the Guided Attempt, MCQs, choices, AI, tools, token limits, or
 internal processing.
+Use standard Markdown prose and standard LaTeX for mathematics. When using
+inline math, use $...$; when using a displayed equation, use $...$.
+Never put Markdown backticks inside $...$ or $...$. Do not write malformed
+hybrid expressions such as L2, x2, or "wer" when the intended mathematical
+notation is L^2, x^2, etc. Keep mathematical symbols inside LaTeX delimiters.
 Do not preview or repeat the final result. State the requested final result
 exactly once, as the final mathematical statement.
 Return ONLY the solution text.
@@ -343,6 +355,17 @@ Using those verified intermediate choices, write the complete final solution.
             if not isinstance(question, str) or not question.strip():
                 return False, "Guided attempt contains an empty question."
 
+            # The UI owns step numbering. Remove model-generated labels so a
+            # valid question cannot render every item as "STEP 1".
+            question = re.sub(
+                r"^\s*(?:#{1,6}\s*)?(?:step\s*)?\d+\s*[:.)-]?\s*",
+                "",
+                question,
+                flags=re.IGNORECASE,
+            ).strip()
+            if not question:
+                return False, "Guided attempt contains an empty question."
+
             options = step["options"]
             if not isinstance(options, list) or len(options) != 4:
                 return False, "Each guided step must have exactly four options."
@@ -377,7 +400,7 @@ Using those verified intermediate choices, write the complete final solution.
                 return False, "Guided attempt contains an invalid correct answer."
 
             normalized_step = {
-                "question": question.strip(),
+                "question": question,
                 "options": normalized_options,
                 "correct_index": index,
             }
