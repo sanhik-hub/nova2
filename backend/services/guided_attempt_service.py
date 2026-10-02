@@ -21,42 +21,63 @@ class GuidedAttemptService:
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
+        planned_path: list[str] | None = None
+
         if step_count is None:
             plan_response = self.router.plan(
                 prompt=f"""
 Problem:
 {problem}
 
-Choose the number of meaningful solution-path steps required to reach the final
-answer. Use 2 to 8 steps:
-- simple one-rule problem: 2-3
-- ordinary multi-step problem: about 4
-- large or multi-stage derivation: more than 4 when necessary
+Choose the smallest sufficient number of progressive solution-path stages
+needed to reach the final answer. Use 2 to 8 stages.
 
-Count mathematical reasoning steps, not merely the number of operations.
+Also provide one short ABSTRACT stage description for each stage. The stage
+descriptions are structural guidance for another model; they must not solve the
+problem.
+
+A stage description must:
+- describe a mathematical action or dependency, not a question;
+- contain no computed result, final formula, numeric answer, or problem-specific
+  equation;
+- be useful for constructing the next stage;
+- make the final stage the only stage that establishes the requested result.
 
 Return ONLY this JSON object:
-{{"step_count": N}}
+{{"step_count": N, "path": ["stage 1", "stage 2", "..."]}}
 """.strip(),
                 system_prompt="""
-You are Nova's guided-attempt planner.
+You are Nova's guided-attempt planning model.
 
-Your ONLY job is to decide how many progressive multiple-choice steps are
-needed for the given mathematical problem.
+Your job is ONLY to create a structural dependency plan for a mathematical
+problem.
 
-Do not solve the problem.
-Do not write any questions, options, answers, hints, explanations, or solution.
-Return ONLY one JSON object with exactly one key: "step_count".
-The value must be an integer from 2 through 8.
-Choose the smallest sufficient number of meaningful solution-path steps.
+Return exactly one JSON object with:
+- "step_count": an integer from 2 through 8;
+- "path": an array of exactly step_count short abstract stage descriptions.
+
+Do NOT solve the problem.
+Do NOT include the final answer.
+Do NOT include problem-specific equations, symbolic results, numeric values,
+question text, options, hints, explanations, or answer choices.
+Do NOT copy an equation from the problem into the path.
+Do NOT describe the answer itself.
+
+Each path item must describe only the kind of dependency that the next model
+must turn into a concrete MCQ, for example:
+- establish the governing definition or local quantity;
+- derive an intermediate relationship;
+- apply the relevant condition or substitution;
+- combine previously obtained results;
+- simplify/evaluate and establish the requested result.
+
+Choose the smallest sufficient dependency chain. Do not force every example
+stage into every problem. The final path item must be the only item whose
+purpose is to establish the requested final result.
 """.strip(),
-                max_tokens=80,
+                max_tokens=220,
             )
 
-            # The small planner is advisory. It can occasionally return a
-            # syntactically valid but out-of-range estimate (for example 1).
-            # Normalize that estimate instead of allowing a weak planner
-            # response to break the entire Guided Attempt.
             step_count = 4
 
             if plan_response.get("success"):
@@ -70,12 +91,28 @@ Choose the smallest sufficient number of meaningful solution-path steps.
                     if isinstance(plan, dict)
                     else None
                 )
+                candidate_path = (
+                    plan.get("path")
+                    if isinstance(plan, dict)
+                    else None
+                )
 
                 if (
                     isinstance(planned_count, int)
                     and not isinstance(planned_count, bool)
+                    and 2 <= planned_count <= 8
+                    and isinstance(candidate_path, list)
+                    and len(candidate_path) == planned_count
+                    and all(
+                        isinstance(item, str) and item.strip()
+                        for item in candidate_path
+                    )
                 ):
-                    step_count = planned_count if 2 <= planned_count <= 8 else 4
+                    step_count = planned_count
+                    planned_path = [
+                        item.strip()
+                        for item in candidate_path
+                    ]
 
         if not isinstance(step_count, int) or not 2 <= step_count <= 8:
             return {
@@ -194,11 +231,31 @@ $HINT_INSTRUCTION
                 '- "correct_index": zero-based index of the correct option\n- "hint": one short hint for this step',
             )
 
+        planner_guidance = ""
+        if planned_path:
+            planner_guidance = f"""
+The small planner supplied this ABSTRACT dependency path. It is structural
+guidance only; it contains no solution and must not be expanded into a copied
+answer. Use exactly one path item as the dependency target for each MCQ, in
+order:
+
+{chr(10).join(
+    f"{index}. {stage}"
+    for index, stage in enumerate(planned_path, start=1)
+)}
+
+The concrete mathematical content, equations, options, and correct choices
+must be derived by you from the original problem. Do not add, remove, reorder,
+or merge stages.
+""".strip()
+
         prompt = f"""
 Original problem:
 {problem}
 
 Generate exactly {step_count} progressive MCQs forming a complete solution path.
+{planner_guidance}
+
 For every step, write only the actual mathematical question in the "question"
 field. Do not prefix it with a step number or heading. Also provide a distinct
 internal "step_goal" describing the intermediate result established by that
