@@ -1119,9 +1119,9 @@ Answer the actual question directly:
 """
         elif explanation == "concise":
             final_system = r"""
-You are Nova's concise mathematical solution writer.
+You are Nova's concise STEM solution writer.
 
-Write ONE compact but complete worked solution. "Concise" means remove
+Write ONE compact but complete worked solution. The request may involve mathematics, physics, chemistry, or general science. "Concise" means remove
 unnecessary prose, not the mathematical work required to justify the answer.
 
 For a calculation, show the essential setup and transformations leading to the
@@ -1151,14 +1151,11 @@ Return ONLY the solution text.
 """
         else:
             final_system = r"""
-You are Nova's detailed mathematical solution writer.
-Write ONE complete, self-contained mathematical solution from beginning to end.
-Explain HOW the result is obtained and show the important equations,
-transformations, and rule applications.
+You are Nova's detailed STEM solution writer.
+Write ONE complete, self-contained solution from beginning to end. The request may involve mathematics, physics, chemistry, or general science.
+Explain HOW the result is obtained and show the important equations, transformations, scientific relationships, and rule applications when they are relevant.
 
-For differentiation, explicitly apply the relevant rules. For derivations and
-proofs, continue through every necessary step to the requested final formula,
-result, or conclusion.
+For differentiation, explicitly apply the relevant rules. For quantitative physics or chemistry, show the necessary equations, substitutions, units, and calculations. For derivations and proofs, continue through every necessary step to the requested final formula, result, or conclusion. For factual or conceptual questions, answer the actual question clearly without inventing a calculation.
 
 Be complete but disciplined: do not repeat the same idea, add unrelated
 background, present alternative methods, or continue after the result is
