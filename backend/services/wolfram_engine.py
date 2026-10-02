@@ -344,6 +344,12 @@ Module[
             }}
         ];
 
+        data = Select[
+            data,
+            NumericQ[#[[1]]] && NumericQ[#[[2]]] &&
+            PossibleZeroQ[Im[N[#[[2]]]]] &
+        ];
+
         <|
             "success" -> True,
             "points" -> data
