@@ -14,6 +14,11 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
+    # Keep planner/final generation bounded. The planner's answer_tokens
+    # remains advisory metadata; these service-level caps protect latency.
+    PLANNER_TOKENS = 220
+    FINAL_TOKENS = 260
+
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
 
@@ -237,10 +242,16 @@ Rules:
 - If computation is needed, return one structured operation and its arguments;
   do not return a tool name, provider name, array wrapper, or natural-language
   instruction in either field.
-- Example no-tool plan:
-  {"type":"plan","intent":"definition","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":80}
-- Example tool plan:
-  {"type":"plan","intent":"differentiate","needs_wolfram":true,"operation":"differentiate","arguments":{"expression":"x^2+3x","variable":"x"},"answer_tokens":60}
+- Explicit concrete computation examples:
+  - "Differentiate x^3 + 5x" requires exact symbolic computation:
+    {"type":"plan","intent":"differentiate","needs_wolfram":true,"operation":"differentiate","arguments":{"expression":"x^3 + 5x","variable":"x"},"answer_tokens":60}
+  - "Solve x^2 - 5x + 6 = 0" requires exact equation solving:
+    {"type":"plan","intent":"solve","needs_wolfram":true,"operation":"solve","arguments":{"equation":"x^2 - 5x + 6 = 0","variable":"x"},"answer_tokens":60}
+  - "What is Newton's second law?" is conceptual:
+    {"type":"plan","intent":"law","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":80}
+  - "Formula of nitrobenzene" is factual chemistry:
+    {"type":"plan","intent":"formula","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":40}
+- Do not classify an explicit request to differentiate, integrate, factor, expand, simplify, solve, or take a limit as pure reasoning when the user supplied the concrete expression/equation needed for that exact operation.
 - "answer_tokens" is the planner's estimate of the completion tokens actually
   required for the final answer. It is an advisory generation budget, not a
   global preset.
@@ -279,6 +290,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 ensure_ascii=False,
             ),
             system_prompt=planner_system,
+            max_tokens=self.PLANNER_TOKENS,
         )
 
         planner_ms = round(
@@ -333,6 +345,21 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             recovered = self._detect_explicit_operation(problem)
             if recovered is not None:
                 operation, arguments = recovered
+
+        # Semantic planning remains primary, but validate the planner against
+        # an unambiguous explicit exact-computation request. Small local models
+        # can occasionally under-classify these requests as pure reasoning.
+        # This is a recovery guard, not the routing architecture: it only
+        # upgrades a false negative when the existing structured detector can
+        # identify a concrete supported operation and arguments.
+        if not plan["needs_wolfram"] and operation is None:
+            recovered = self._detect_explicit_operation(problem)
+            if recovered is not None:
+                recovered_operation, recovered_arguments = recovered
+                if isinstance(recovered_operation, str) and isinstance(recovered_arguments, dict):
+                    plan["needs_wolfram"] = True
+                    operation = recovered_operation
+                    arguments = recovered_arguments
 
         if plan["needs_wolfram"]:
             if not isinstance(operation, str) or not operation.strip():
@@ -1221,10 +1248,8 @@ Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the complete solution text.
 """
 
-        # The planner's estimate is guidance, not a hard generation cutoff.
-        # Passing it as an internal target lets Qwen stay concise without
-        # allowing a bad estimate to truncate a mathematically incomplete
-        # answer. llama.cpp is allowed to terminate naturally at EOS.
+        # The planner's estimate remains useful routing metadata, but the
+        # service-level FINAL_TOKENS cap is the authoritative generation budget.
         if type(estimated_answer_tokens) is int and estimated_answer_tokens > 0:
             final_system += (
                 "\n\nInternal answer-size guidance: aim for approximately "
@@ -1250,7 +1275,7 @@ Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=None,
+            max_tokens=self.FINAL_TOKENS,
             temperature=0,
             enable_thinking=False,
         )
@@ -1287,9 +1312,7 @@ Return ONLY the complete solution text.
     # FINAL GENERATION BUDGET
     # =========================================================
 
-    # The planner estimate is intentionally advisory. Final generation uses
-    # natural EOS termination rather than converting the estimate into a hard
-    # max_tokens cutoff.
+    # Final generation is bounded by FINAL_TOKENS in _final_explanation().
 
     # =========================================================
     # JSON PARSER
