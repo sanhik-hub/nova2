@@ -123,15 +123,12 @@ $HINT_INSTRUCTION
 
         if include_hints:
             system_prompt = system_prompt.replace(
-                'Do not include explanations, summaries, introductions, conclusions, or any
-other fields.',
-                'Do not include explanations, summaries, introductions, conclusions, or any
-other fields except the requested "hint" field.',
+                "Do not include explanations, summaries, introductions, conclusions, or any\nother fields.",
+                'Do not include explanations, summaries, introductions, conclusions, or any\nother fields except the requested "hint" field.',
             )
             system_prompt = system_prompt.replace(
                 '- "correct_index": zero-based index of the correct option',
-                '- "correct_index": zero-based index of the correct option
-- "hint": one short hint for this step',
+                '- "correct_index": zero-based index of the correct option\n- "hint": one short hint for this step',
             )
 
         prompt = f"""
