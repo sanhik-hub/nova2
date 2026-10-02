@@ -334,7 +334,7 @@ Module[
         data = Table[
             {{
                 N[x, MachinePrecision],
-                N[expr /. var -> x, MachinePrecision]
+                Quiet[Check[N[expr /. var -> x, MachinePrecision], Indeterminate]]
             }},
             {{
                 x,
