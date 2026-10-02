@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   reasonQuestion,
   startGuidedAttempt,
+  generateGuidedSolution,
   type ExplanationPreference,
   type GuidedStep,
   type ReasonResponse,
@@ -19,6 +20,7 @@ type GuidedState = {
   score: number;
   finished: boolean;
   fullSolution: ReasonResponse | null;
+  fullSolutionLoading: boolean;
 };
 
 export function StandardMode() {
@@ -86,7 +88,43 @@ export function StandardMode() {
         score: 0,
         finished: false,
         fullSolution: null,
+        fullSolutionLoading: includeFullSolution,
       });
+
+      // Start the optional complete solution immediately after the MCQs are
+      // ready. It runs in the background while the student works through the
+      // attempt, using the MCQ path as verified intermediate reasoning.
+      if (includeFullSolution) {
+        void generateGuidedSolution(trimmed, result.steps)
+          .then((solution) => {
+            setGuided((current) =>
+              current
+                ? {
+                    ...current,
+                    fullSolution: solution,
+                    fullSolutionLoading: false,
+                  }
+                : current,
+            );
+          })
+          .catch((error) => {
+            setGuided((current) =>
+              current
+                ? {
+                    ...current,
+                    fullSolution: {
+                      success: false,
+                      error:
+                        error instanceof Error
+                          ? error.message
+                          : "Unable to generate the full solution.",
+                    },
+                    fullSolutionLoading: false,
+                  }
+                : current,
+            );
+          });
+      }
     } catch (error) {
       setResponse({
         success: false,
@@ -100,63 +138,33 @@ export function StandardMode() {
     }
   }
 
-  async function finishGuided() {
+  function finishGuided() {
     if (!guided) return;
 
-    if (!includeFullSolution) {
-      setGuided({ ...guided, finished: true });
-      return;
-    }
+    const score = guided.answers.reduce((total, answer, index) => {
+      if (answer === null) return total;
+      return total + (answer === guided.steps[index].correct_index ? 1 : 0);
+    }, 0);
 
-    setGuided({ ...guided, finished: true, fullSolution: null });
-    setLoading(true);
-
-    try {
-      const result = await reasonQuestion(guided.query, "detailed");
-      setGuided((current) =>
-        current ? { ...current, fullSolution: result } : current,
-      );
-    } catch (error) {
-      setGuided((current) =>
-        current
-          ? {
-              ...current,
-              fullSolution: {
-                success: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Unable to generate the full solution.",
-              },
-            }
-          : current,
-      );
-    } finally {
-      setLoading(false);
-    }
+    setGuided({
+      ...guided,
+      finished: true,
+      score,
+    });
   }
 
   function chooseOption(index: number) {
     if (!guided || selectedOption !== null) return;
     setSelectedOption(index);
 
-    const currentStep = guided.steps[guided.current];
-    if (index === currentStep.correct_index) {
-      setGuided({
-        ...guided,
-        answers: guided.answers.map((answer, i) =>
-          i === guided.current ? index : answer,
-        ),
-        score: guided.score + 1,
-      });
-    } else {
-      setGuided({
-        ...guided,
-        answers: guided.answers.map((answer, i) =>
-          i === guided.current ? index : answer,
-        ),
-      });
-    }
+    // Record the choice only. Correct/incorrect feedback is intentionally
+    // withheld until the entire attempt is submitted.
+    setGuided({
+      ...guided,
+      answers: guided.answers.map((answer, i) =>
+        i === guided.current ? index : answer,
+      ),
+    });
   }
 
   function nextGuidedStep() {
@@ -420,8 +428,6 @@ export function StandardMode() {
             <div className="guided-options">
               {currentStep.options.map((option, index) => {
                 const selected = selectedOption === index;
-                const correct = selectedOption !== null &&
-                  index === currentStep.correct_index;
 
                 return (
                   <button
@@ -429,7 +435,6 @@ export function StandardMode() {
                     className={[
                       "guided-option",
                       selected ? "selected" : "",
-                      correct ? "correct" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -445,22 +450,6 @@ export function StandardMode() {
                 );
               })}
             </div>
-
-            {selectedOption !== null && (
-              <div
-                className={
-                  selectedOption === currentStep.correct_index
-                    ? "guided-feedback correct"
-                    : "guided-feedback"
-                }
-              >
-                <strong>
-                  {selectedOption === currentStep.correct_index
-                    ? "Correct"
-                    : "Not quite"}
-                </strong>
-              </div>
-            )}
 
             {includeHints && selectedOption === null && currentStep.hint && (
               <details className="hint-box">
@@ -514,12 +503,45 @@ export function StandardMode() {
             </button>
           </section>
 
+          <section className="card guided-review-card">
+            <div className="eyebrow">RESULTS</div>
+            <h2>Step Results</h2>
+
+            <div className="guided-review-list">
+              {guided.steps.map((step, index) => {
+                const answer = guided.answers[index];
+                const correct = answer === step.correct_index;
+
+                return (
+                  <div
+                    key={index}
+                    className={
+                      correct
+                        ? "guided-review-item correct"
+                        : "guided-review-item incorrect"
+                    }
+                  >
+                    <div>
+                      <strong>Step {index + 1}</strong>
+                      <span>{correct ? "Correct" : "Incorrect"}</span>
+                    </div>
+                    {!correct && answer !== null && (
+                      <small>
+                        Correct answer: {step.options[step.correct_index].text}
+                      </small>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {includeFullSolution && guided.fullSolution && (
             <ReasonResult response={guided.fullSolution} />
           )}
 
-          {includeFullSolution && !guided.fullSolution && loading && (
-            <LoadingState text="Generating the complete solution..." />
+          {includeFullSolution && guided.fullSolutionLoading && (
+            <LoadingState text="Finishing the complete solution..." />
           )}
         </>
       )}
