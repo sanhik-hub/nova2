@@ -778,3 +778,31 @@ body{background:#0b0912;color:#e9e7ff}
 .progress-connector{background:#392a4c}
 .spinner{border-color:#392a4c;border-top-color:#a78bfa}
 .footer{color:#655c73}
+
+
+/* Graphical mode */
+.graphical-grid{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:18px;align-items:start}
+.graphical-controls,.graphical-plot-card{padding:22px}
+.graphical-expression-input{min-height:48px;height:48px;resize:none}
+.graphical-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
+.graph-editor-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding-bottom:10px;border-bottom:1px solid #2b2138}
+.graph-editor-header>div:first-child{display:flex;flex-direction:column;gap:3px}
+.graph-editor-header strong{font-size:13px;color:#f4f1ff}
+.graph-editor-header span{font-size:10px;color:#8e879e}
+.graph-editor-actions{display:flex;gap:7px}
+.graph-control{border:1px solid #3a2c4e;border-radius:8px;background:#15101f;color:#cfc7df;padding:7px 9px;font-size:10px}
+.graph-control:hover:not(:disabled){background:#241735;border-color:#8b5cf6}
+.graph-help{margin:10px 2px 14px;color:#8e879e;font-size:11px;line-height:1.5}
+.graphical-plot-card{min-width:0}
+.graphical-canvas{display:block;width:min(100%,540px);height:auto;margin:0 auto;border:1px solid #302442;border-radius:10px;touch-action:none}
+.graphical-background{fill:#0d0a12}
+.graphical-grid-line{stroke:#21182c;stroke-width:1}
+.graphical-axis{stroke:#51445e;stroke-width:1.5}
+.graphical-axis-label{fill:#a78bfa;font-size:13px;font-weight:700}
+.graphical-coordinate-label{fill:#655c73;font-size:9px}
+.graphical-curve{fill:none;stroke:#a78bfa;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.graphical-point{fill:#8b5cf6;stroke:#0d0a12;stroke-width:3;cursor:grab;filter:drop-shadow(0 2px 6px rgba(139,92,246,.55))}
+.graphical-point:active{cursor:grabbing}
+.graphical-point-label{fill:#d5cef0;font-size:10px;font-weight:700;paint-order:stroke;stroke:#0d0a12;stroke-width:3px;stroke-linejoin:round}
+@media(max-width:900px){.graphical-grid{grid-template-columns:1fr}.graphical-fields{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.graphical-fields{grid-template-columns:1fr}}
