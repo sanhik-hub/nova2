@@ -56,7 +56,6 @@ function App() {
       <main className="main-content">
         {mode === "standard" && <StandardMode />}
         {mode === "wolfram" && <WolframMode />}
-        {mode === "guided" && <GuidedAttemptMode />}
       </main>
 
       <footer className="footer">
