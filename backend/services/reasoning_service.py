@@ -352,11 +352,24 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         # This is a recovery guard, not the routing architecture: it only
         # upgrades a false negative when the existing structured detector can
         # identify a concrete supported operation and arguments.
-        if not plan["needs_wolfram"] and operation is None:
+        #
+        # Some local planner responses violate the contract by returning a
+        # valid operation + arguments while incorrectly setting needs_wolfram
+        # to false. If the user's request independently matches the same
+        # explicit supported operation, promote the request back to exact
+        # computation instead of discarding the planner's operation below.
+        if not plan["needs_wolfram"]:
             recovered = self._detect_explicit_operation(problem)
             if recovered is not None:
                 recovered_operation, recovered_arguments = recovered
-                if isinstance(recovered_operation, str) and isinstance(recovered_arguments, dict):
+                if (
+                    isinstance(recovered_operation, str)
+                    and isinstance(recovered_arguments, dict)
+                    and (
+                        operation is None
+                        or operation == recovered_operation
+                    )
+                ):
                     plan["needs_wolfram"] = True
                     operation = recovered_operation
                     arguments = recovered_arguments
