@@ -27,11 +27,13 @@ class GuidedAttemptService:
 Problem:
 {problem}
 
-Choose the smallest useful number of progressive MCQ steps for this problem.
-Use 2 to 8 steps:
-- simple problem: 2-3
-- ordinary problem: about 4
-- large or multi-stage problem: more than 4 when necessary
+Choose the number of meaningful solution-path steps required to reach the final
+answer. Use 2 to 8 steps:
+- simple one-rule problem: 2-3
+- ordinary multi-step problem: about 4
+- large or multi-stage derivation: more than 4 when necessary
+
+Count mathematical reasoning steps, not merely the number of operations.
 
 Return ONLY this JSON object:
 {{"step_count": N}}
@@ -46,7 +48,7 @@ Do not solve the problem.
 Do not write any questions, options, answers, hints, explanations, or solution.
 Return ONLY one JSON object with exactly one key: "step_count".
 The value must be an integer from 2 through 8.
-Choose the smallest sufficient number.
+Choose the smallest sufficient number of meaningful solution-path steps.
 """.strip(),
                 max_tokens=80,
             )
@@ -73,7 +75,7 @@ Choose the smallest sufficient number.
                     isinstance(planned_count, int)
                     and not isinstance(planned_count, bool)
                 ):
-                    step_count = max(2, min(8, planned_count))
+                    step_count = planned_count if 2 <= planned_count <= 8 else 4
 
         if not isinstance(step_count, int) or not 2 <= step_count <= 8:
             return {
@@ -98,9 +100,21 @@ You are Nova's guided-attempt question writer.
 Generate ONLY the multiple-choice steps for the mathematical problem.
 The small planning model has already selected the number of steps.
 
-Create exactly the requested number of progressive MCQs. Each step must
-move the student toward solving the original problem without revealing
-later steps prematurely.
+Create exactly the requested number of progressive MCQs that collectively
+construct the solution to the original problem.
+
+The MCQs are not independent concept questions. They are the solution path
+broken into answerable decisions. Each step must establish a mathematical
+result, rule, transformation, substitution, or conclusion that is useful for
+the next step.
+
+Every later step must build on the result of the previous step. Do not skip
+from the setup directly to the final answer when intermediate mathematics is
+needed.
+
+The final step must bring the student to the requested final result. Do not
+make the final step merely ask them to repeat an answer that was already given
+earlier.
 
 Return ONLY one JSON object with exactly one top-level key: "steps".
 
@@ -114,6 +128,13 @@ other fields. Do not put correct_index inside an option.
 
 Keep the questions and options concise but mathematically correct.
 All four options in each question must be distinct.
+Exactly one option must be correct.
+
+Prefer concrete mathematical decisions over meta-questions such as
+"What is the first step?" when the actual mathematical operation can be asked
+directly.
+
+Do not reveal the final answer in an earlier step.
 Do not invent information that the original problem does not provide.
 $HINT_INSTRUCTION
 """.strip().replace("$HINT_INSTRUCTION", hint_instruction)
@@ -132,7 +153,7 @@ $HINT_INSTRUCTION
 Original problem:
 {problem}
 
-Generate exactly {step_count} progressive MCQs.
+Generate exactly {step_count} progressive MCQs forming a complete solution path.
 {hint_instruction}
 Output only the JSON object.
 """.strip()
