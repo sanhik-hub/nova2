@@ -189,6 +189,14 @@ class ComputationService:
                 operation="plot",
                 error=str(exc),
             )
+        except Exception as exc:
+            # Plotting is an API boundary: unexpected provider/serialization
+            # failures must become a structured response instead of a 500.
+            return self._error(
+                query=expression,
+                operation="plot",
+                error=f"Plotting failed: {exc}",
+            )
     @staticmethod
     def _error(query: str, operation: str, error: str):
         return {
