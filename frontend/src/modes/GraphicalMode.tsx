@@ -1,3 +1,4 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMemo, useState } from "react";
 import { plotExpression, type PlotPoint } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
@@ -25,7 +26,7 @@ function GraphCanvas({
     origin - y * unit,
   ];
 
-  function movePoint(index: number, event: React.PointerEvent<SVGCircleElement>) {
+  function movePoint(index: number, event: ReactPointerEvent<SVGCircleElement>) {
     const svg = event.currentTarget.ownerSVGElement;
     if (!svg) return;
 
