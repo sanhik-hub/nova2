@@ -116,12 +116,36 @@ The final step must bring the student to the requested final result. Do not
 make the final step merely ask them to repeat an answer that was already given
 earlier.
 
+A correct answer to an earlier step must be something the student can actually
+use to construct the next step. Avoid generic recall questions such as "What is
+the formula for the induced emf?" when the problem asks for a derivation; ask
+for the differential/local expression or other first derivation quantity
+instead.
+
+The first step must NOT ask for the requested final answer or a formula that is
+algebraically equivalent to the requested final answer, unless the original
+problem is genuinely a one-step calculation. For a derivation, begin with the
+first necessary physical/mathematical relation or local quantity.
+
+For derivations and proofs, construct the path in dependency order. Use only
+the stages actually needed: identify the relevant law/definition, establish
+the local/intermediate quantity, substitute relationships, set up/evaluate
+the required sum or integral, and simplify to the requested result.
+
+Do NOT put the final expression, or an algebraically equivalent form of it, in
+an earlier step's options. The final expression must be reached by combining
+preceding results, not recognized from memory.
+
 Return ONLY one JSON object with exactly one top-level key: "steps".
 
 Every step must contain exactly:
 - "question": a concise question
 - "options": exactly four objects, each containing only "text"
 - "correct_index": zero-based index of the correct option
+- "step_goal": a short internal description of the intermediate result this step establishes
+
+"step_goal" is internal generation metadata and will be removed before the
+response is returned to the UI.
 
 Do not include explanations, summaries, introductions, conclusions, or any
 other fields. Do not put correct_index inside an option.
@@ -138,6 +162,8 @@ Do NOT put "Step 1", "Step 2", "STEP 1", numbered headings, markdown headings,
 or any other step label in the question text. The UI supplies the step number.
 Do not repeat the same question across steps. Each question must ask for a
 different intermediate result that is necessary for the next step.
+Each "step_goal" must be distinct. The first step_goal must be an intermediate
+setup/derivation result; only the final step_goal may be the requested result.
 
 Do not reveal the final answer in an earlier step.
 Do not invent information that the original problem does not provide.
@@ -160,7 +186,9 @@ Original problem:
 
 Generate exactly {step_count} progressive MCQs forming a complete solution path.
 For every step, write only the actual mathematical question in the "question"
-field. Do not prefix it with a step number or heading.
+field. Do not prefix it with a step number or heading. Also provide a distinct
+internal "step_goal" describing the intermediate result established by that
+question. The first step_goal must not be the final answer.
 {hint_instruction}
 Output only the JSON object.
 """.strip()
@@ -346,7 +374,7 @@ Using those verified intermediate choices, write the complete final solution.
             if not isinstance(step, dict):
                 return False, "Guided attempt generator returned an invalid step."
 
-            required = {"question", "options", "correct_index"}
+            required = {"question", "options", "correct_index", "step_goal"}
             allowed = required | ({"hint"} if include_hints else set())
             if set(step) != allowed:
                 return False, "Guided attempt generator returned an invalid step contract."
@@ -365,6 +393,10 @@ Using those verified intermediate choices, write the complete final solution.
             ).strip()
             if not question:
                 return False, "Guided attempt contains an empty question."
+
+            step_goal = step["step_goal"]
+            if not isinstance(step_goal, str) or not step_goal.strip():
+                return False, "Guided attempt contains an empty step goal."
 
             options = step["options"]
             if not isinstance(options, list) or len(options) != 4:
@@ -412,5 +444,24 @@ Using those verified intermediate choices, write the complete final solution.
                 normalized_step["hint"] = hint.strip()
 
             normalized.append(normalized_step)
+
+        # The final result must not have been leaked as an option in an earlier
+        # step. Compare a compact form so harmless spacing/notation differences
+        # do not bypass the guard.
+        if len(normalized) >= 2:
+            def option_key(value: str) -> str:
+                return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+            final_correct = normalized[-1]["options"][
+                normalized[-1]["correct_index"]
+            ]["text"]
+            final_key = option_key(final_correct)
+
+            for earlier_step in normalized[:-1]:
+                for option in earlier_step["options"]:
+                    if option_key(option["text"]) == final_key:
+                        return False, (
+                            "Guided attempt revealed the final result before the final step."
+                        )
 
         return True, normalized
