@@ -217,7 +217,7 @@ function RenderedMath({
 }) {
   const source = convert
     ? convertToLatex(value)
-    : value.trim().replace(/\`/g, "").replace(/\`/g, "");
+    : value.trim().replace(/`/g, "");
 
   return (
     <MathErrorBoundary original={value}>
