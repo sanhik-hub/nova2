@@ -118,3 +118,42 @@ export async function startGuidedAttempt(
 
   return parseResponse<GuidedAttemptResponse>(response);
 }
+
+
+export type PlotPoint = [number, number];
+
+export type PlotResponse = {
+  success: boolean;
+  operation: "plot" | string;
+  input: string;
+  result?: string | null;
+  error?: string | null;
+  engine?: string | null;
+  plots?: Array<{
+    type?: string;
+    variable?: string;
+    points?: PlotPoint[];
+  }>;
+};
+
+export async function plotExpression(
+  expression: string,
+  variable = "x",
+  xmin = -10,
+  xmax = 10,
+): Promise<PlotResponse> {
+  const response = await fetch("/api/plot", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      expression,
+      variable,
+      xmin,
+      xmax,
+    }),
+  });
+
+  return parseResponse<PlotResponse>(response);
+}
