@@ -459,9 +459,9 @@ Using those verified intermediate choices, write the complete final solution.
 
             normalized.append(normalized_step)
 
-        # The final result must not have been leaked as an option in an earlier
-        # step. Compare a compact form so harmless spacing/notation differences
-        # do not bypass the guard.
+        # The model may return a syntactically valid path that is still
+        # pedagogically broken. Reject the most important forms of leakage or
+        # disconnected steps rather than silently presenting them as a guided path.
         if len(normalized) >= 2:
             def option_key(value: str) -> str:
                 return re.sub(r"[^a-z0-9]+", "", value.lower())
@@ -477,5 +477,13 @@ Using those verified intermediate choices, write the complete final solution.
                         return False, (
                             "Guided attempt revealed the final result before the final step."
                         )
+
+            # Do not allow a later question to simply ask for the same
+            # mathematical target as an earlier question. This catches common
+            # "formula -> substitution -> formula" failures without encoding a
+            # subject-specific solution.
+            question_keys = [option_key(step["question"]) for step in normalized]
+            if len(question_keys) != len(set(question_keys)):
+                return False, "Guided attempt contains repeated questions."
 
         return True, normalized
