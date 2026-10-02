@@ -286,7 +286,7 @@ function splitDelimitedMath(value: string): TextSegment[] {
 // -----------------------------------------------------------------------------
 
 const MATH_FRAGMENT =
-  /(?:sqrt\([^()]+\)|[A-Za-z0-9]+(?:\s*(?:\^|_)\s*(?:\{[^}]+\}|[A-Za-z0-9]+))|(?:[A-Za-z0-9]+(?:\s*(?:\/|<=|>=|>\s*=|!=|=|\+|-|\*|×|÷)\s*[A-Za-z0-9]+)+)|\+\/−|\+\/-|<=|>=|>\s*=|!=|\bpi\b)/gi;
+  /(?:sqrt\([^()]+\)|[A-Za-z0-9]+(?:\s*(?:\^|_)\s*(?:\{[^}]+\}|[A-Za-z0-9]+))|(?:[A-Za-z0-9]+(?:\s*(?:\/|<=|>=|>\s*=|!=|=|\+|-|\*|×|÷)\s*[A-Za-z0-9]+)+)|\+\/−|\+\/-|<=|>=|>\s*=|!=|\b(?:pi|∞)\b)/gi;
 
 function splitLegacyMath(value: string): TextSegment[] {
   const segments: TextSegment[] = [];
