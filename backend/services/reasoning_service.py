@@ -202,7 +202,7 @@ Nova Standard Solver handles mathematics, physics, chemistry, and general scient
 Do not solve the request and do not write the final answer.
 
 Return ONLY one JSON object with EXACTLY these fields:
-type, intent, needs_wolfram, wolfram, answer_tokens.
+type, intent, needs_wolfram, operation, arguments, answer_tokens.
 
 The value of answer_tokens must be a positive integer chosen for this request.
 
@@ -217,27 +217,30 @@ Rules:
 - Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
 - Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
 - Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
-- "wolfram" is null unless exact symbolic computation is genuinely needed.
-- If "wolfram" is used, it must be an array containing ONLY these operation
-  names: simplify, factor, expand, differentiate, integrate, solve, limit.
-- Wolfram arguments must be machine-readable mathematical expressions.
-- Never use natural-language instructions as Wolfram arguments.
+- "operation" is null when exact symbolic/numeric computation is not genuinely needed.
+- "arguments" is null when "operation" is null.
+- If exact computation is needed, "operation" must be exactly one of:
+  simplify, factor, expand, differentiate, integrate, solve, limit.
+- "arguments" must be a machine-readable object appropriate to that operation.
+- Wolfram arguments must contain only mathematical expressions/values from the user's request.
+- Never use natural-language instructions as computation arguments.
 - Never invent a formula, value, variable, condition, or assumption.
 - For derivations, proofs, conceptual explanations, and reasoning, set
-  "needs_wolfram" to false and "wolfram" to null unless the user explicitly
-  supplies a concrete expression/equation that needs exact symbolic computation.
+  "needs_wolfram" to false and use "operation":null and "arguments":null unless
+  the user explicitly supplies a concrete expression/equation that needs exact
+  symbolic computation.
 - A request to "derive", "prove", or "show that" a formula is normally a
-  reasoning task, not a Wolfram task. Do not invent a Wolfram call for it.
+  reasoning task, not a Wolfram task. Do not invent a computation for it.
 - Use Wolfram only when a concrete expression/equation from the user's request
-  is available and exact symbolic computation or verification is genuinely useful.
-- If no Wolfram call is needed, the value MUST be null, not an empty string,
-  natural-language instruction, or placeholder.
-- If Wolfram is needed, every array entry MUST be an object with exactly
-  "operation" and "arguments", where "arguments" is an object.
+  is available and exact symbolic/numeric computation or verification is genuinely useful.
+- If no computation is needed, "operation" MUST be null and "arguments" MUST be null.
+- If computation is needed, return one structured operation and its arguments;
+  do not return a tool name, provider name, array wrapper, or natural-language
+  instruction in either field.
 - Example no-tool plan:
-  {"type":"plan","intent":"derive","needs_wolfram":false,"wolfram":null,"answer_tokens":180}
+  {"type":"plan","intent":"definition","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":80}
 - Example tool plan:
-  {"type":"plan","intent":"differentiate","needs_wolfram":true,"wolfram":[{"operation":"differentiate","arguments":{"expression":"x^2+3x","variable":"x"}}],"answer_tokens":60}
+  {"type":"plan","intent":"differentiate","needs_wolfram":true,"operation":"differentiate","arguments":{"expression":"x^2+3x","variable":"x"},"answer_tokens":60}
 - "answer_tokens" is the planner's estimate of the completion tokens actually
   required for the final answer. It is an advisory generation budget, not a
   global preset.
@@ -300,7 +303,8 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         required_fields = {
             "intent": str,
             "needs_wolfram": bool,
-            "wolfram": (list, type(None)),
+            "operation": (str, type(None)),
+            "arguments": (dict, type(None)),
         }
 
         for field, expected_type in required_fields.items():
@@ -308,6 +312,49 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 return self._error(
                     f"Planner returned an invalid plan field: {field}."
                 )
+
+        # A previous planner prompt used a nested "wolfram" field. Accept that
+        # legacy shape only as a narrow recovery path so a stale/partially
+        # updated local model cannot turn a valid request into a hard failure.
+        # The new contract remains operation + arguments.
+        operation = plan.get("operation")
+        arguments = plan.get("arguments")
+
+        legacy_calls = plan.get("wolfram")
+        if operation is None and plan["needs_wolfram"] and isinstance(legacy_calls, list):
+            if len(legacy_calls) == 1 and isinstance(legacy_calls[0], dict):
+                operation = legacy_calls[0].get("operation")
+                arguments = legacy_calls[0].get("arguments")
+
+        # If a legacy planner emitted a provider/tool-name string such as
+        # "wolfram", recover only from an unambiguous explicit operation in the
+        # user's request. Do not use this as the primary routing mechanism.
+        if operation is None and plan["needs_wolfram"]:
+            recovered = self._detect_explicit_operation(problem)
+            if recovered is not None:
+                operation, arguments = recovered
+
+        if plan["needs_wolfram"]:
+            if not isinstance(operation, str) or not operation.strip():
+                return self._error(
+                    "Planner requested exact computation but did not provide "
+                    "a valid operation."
+                )
+            if not isinstance(arguments, dict):
+                return self._error(
+                    "Planner requested exact computation but did not provide "
+                    "structured arguments."
+                )
+        else:
+            operation = None
+            arguments = None
+
+        calls = []
+        if operation is not None:
+            calls.append({
+                "operation": operation,
+                "arguments": arguments,
+            })
 
         # The answer-size estimate is advisory. Normalize the small planner's
         # occasional JSON-string integer, but never let an unusable estimate
@@ -323,7 +370,6 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             answer_tokens = None
             plan["answer_tokens"] = None
 
-        calls = plan.get("wolfram") or []
         calls = calls[:self.MAX_TOOL_CALLS]
 
         if not plan["needs_wolfram"]:
@@ -1231,7 +1277,7 @@ Return ONLY the complete solution text.
         return {
             "success": True,
             "answer": answer,
-            "engine": "local_llm+wolfram",
+            "engine": "local_llm+wolfram" if tool_results else "local_llm",
             "tool_calls": tool_results,
             "cached": False,
             "_final_llm_ms": final_llm_ms,
