@@ -6,9 +6,6 @@ from threading import Lock
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
-from backend.services.expression_normalizer import normalize_expression
-
-
 class ReasoningService:
 
     # =========================================================
@@ -66,81 +63,13 @@ class ReasoningService:
             return cached
 
         # -----------------------------------------------------
-        # 2. VERY FAST DIRECT CAS PATH
-        # -----------------------------------------------------
-
-        if explanation == "off" and self._is_simple_expression(problem):
-
-            result = self.router.calculate(
-                query=normalize_expression(problem),
-                provider="wolfram",
-            )
-
-            if explanation == "off" and result["success"]:
-                response = {
-                    "success": True,
-                    "answer": result.get("result"),
-                }
-            else:
-                response = {
-                    "success": result["success"],
-                    "answer": result.get("result"),
-                    "error": result.get("error"),
-                    "engine": "wolfram",
-                    "tool_calls": [],
-                    "cached": False,
-                }
-
-            if result["success"]:
-                self._cache_set(
-                    problem,
-                    response,
-                    explanation,
-                )
-
-            response["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-
-            return response
-
-        # -----------------------------------------------------
-        # 3. EXPLICIT SYMBOLIC OPERATION PATH
+        # 2. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
         #
-        # Natural-language requests such as "Differentiate x^2 + 3x"
-        # are not simple expressions, but their requested operation is
-        # already unambiguous. Route them directly to the structured
-        # Wolfram path. This avoids wasting a planner generation and,
-        # with explanation="off", returns the exact CAS result directly.
-        # -----------------------------------------------------
-
-        explicit_operation = self._detect_explicit_operation(problem)
-
-        if explicit_operation is not None:
-            response = self._solve_direct_operation(
-                problem,
-                explicit_operation,
-                explanation=explanation,
-            )
-
-            response["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-
-            if response.get("success"):
-                self._cache_set(
-                    problem,
-                    response,
-                    explanation,
-                )
-
-            return response
-
-        # -----------------------------------------------------
-        # 4. MODEL-DRIVEN REQUEST PLANNING
+        # Every non-cached request goes through the small planner. This is
+        # deliberate: Standard Solver is a general STEM solver, so routing
+        # must be based on the meaning of the request rather than a growing
+        # collection of operation/domain keywords.
         # -----------------------------------------------------
 
         response = self._solve_complex(
@@ -266,9 +195,11 @@ class ReasoningService:
     ):
 
         planner_system = r"""
-You are Nova's semantic mathematical request planner.
+You are Nova's semantic STEM request planner.
 
-Analyze the user's request. Do not solve it and do not write the final answer.
+Nova Standard Solver handles mathematics, physics, chemistry, and general scientific/conceptual questions. Classify the user's request by meaning, then decide whether exact symbolic/numeric computation is genuinely required.
+
+Do not solve the request and do not write the final answer.
 
 Return ONLY one JSON object with EXACTLY these fields:
 type, intent, needs_wolfram, wolfram, answer_tokens.
@@ -278,6 +209,14 @@ The value of answer_tokens must be a positive integer chosen for this request.
 Rules:
 - "type" is always "plan".
 - "needs_wolfram" is a boolean.
+- Route by semantic intent, not by matching isolated subject words or operation keywords.
+- "needs_wolfram" means that the final answer genuinely benefits from exact symbolic/numeric computation or exact mathematical transformation that can be represented by one of the allowed structured operations.
+- Set "needs_wolfram" to false for factual recall, definitions, laws, units, formulas, nomenclature, identification, qualitative chemistry, conceptual physics, conceptual science, and ordinary explanations.
+- A chemistry question is NOT a Wolfram request merely because it mentions a chemical compound, reaction, element, or formula. For example, a request for the formula of nitrobenzene should use needs_wolfram=false.
+- A physics question is NOT a Wolfram request merely because it is physics. Conceptual questions such as Newton's laws, SI units, or qualitative explanations should use needs_wolfram=false.
+- Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
+- Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
+- Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
 - "wolfram" is null unless exact symbolic computation is genuinely needed.
 - If "wolfram" is used, it must be an array containing ONLY these operation
   names: simplify, factor, expand, differentiate, integrate, solve, limit.
@@ -321,8 +260,9 @@ Rules:
 - The requested explanation mode is supplied separately by the caller; use it
   when estimating answer_tokens.
 
-The planner is a router, not a solver. When information needed for a formula is
-missing, leave Wolfram unused rather than guessing it.
+The planner is a router, not a solver. When information needed for a formula or calculation is missing, leave Wolfram unused rather than guessing it.
+
+Important: do not infer that every math/physics/chemistry request needs Wolfram. The deciding question is whether exact computation is genuinely required for this particular request.
 """
 
         planner_started = time.perf_counter()
