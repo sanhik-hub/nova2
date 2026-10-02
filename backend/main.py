@@ -39,6 +39,14 @@ def start_guided_attempt(request: GuidedAttemptRequest):
     )
 
 
+@app.post("/api/guided/solution")
+def generate_guided_solution(payload: dict):
+    return guided_attempts.generate_solution(
+        query=str(payload.get("query") or ""),
+        steps=payload.get("steps") or [],
+    )
+
+
 @app.get("/")
 def root():
     return {
