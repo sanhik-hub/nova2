@@ -120,6 +120,25 @@ export async function startGuidedAttempt(
 }
 
 
+export async function generateGuidedSolution(
+  query: string,
+  steps: GuidedStep[],
+): Promise<ReasonResponse> {
+  const response = await fetch("/api/guided/solution", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      steps,
+    }),
+  });
+
+  return parseResponse<ReasonResponse>(response);
+}
+
+
 export type PlotPoint = [number, number];
 
 export type PlotResponse = {
