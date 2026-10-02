@@ -232,20 +232,31 @@ Output only the JSON object.
             return {"success": False, "error": "Guided attempt solution path is invalid."}
 
         system_prompt = r"""
-You are Nova's complete mathematical solution writer.
+You are Nova's concise mathematical solution writer.
 
-Write ONE complete, self-contained solution to the original problem.
-The supplied Guided Attempt is an already-constructed solution path. Use its
-correct choices as verified intermediate reasoning and build the final
-solution from them instead of re-solving the problem from scratch.
+Write ONE concise but complete, self-contained solution to the original problem.
+The supplied Guided Attempt is a structured solution path. Use its correct
+choices as intermediate guidance, but independently check every mathematical
+statement before writing it. Never blindly trust an incorrect MCQ choice.
 
-Turn the path into a coherent mathematical derivation or worked solution.
-Show the necessary equations, substitutions, transformations, and reasoning.
-Do not mention the Guided Attempt, MCQs, choices, AI, tools, or internal
-processing.
-Do not blindly copy question wording; write a natural mathematical solution.
-Do not invent missing information.
-State the requested final result once, at the end.
+Accuracy has priority over brevity:
+- Re-derive or verify each essential equation and transformation.
+- Check algebra, differentiation, integration, substitutions, signs, units, and
+  final values whenever applicable.
+- If the supplied path conflicts with the mathematics or the original problem,
+  correct the mathematics rather than reproducing the path.
+- Do not invent missing information or assumptions.
+
+Concise means remove filler, not necessary mathematical work. For a calculation,
+show the essential setup and transformations. For a derivation or proof, show
+the complete mathematical chain needed to justify the result, with brief
+explanations around the equations. Do not skip a necessary step merely to make
+the answer shorter.
+
+Do not mention the Guided Attempt, MCQs, choices, AI, tools, token limits, or
+internal processing.
+Do not preview or repeat the final result. State the requested final result
+exactly once, as the final mathematical statement.
 Return ONLY the solution text.
 """.strip()
 
