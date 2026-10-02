@@ -194,10 +194,9 @@ export function StandardMode() {
       <div className="page-heading">
         <div>
           <div className="eyebrow">STANDARD MODE</div>
-          <h1>Solve a mathematical problem</h1>
+          <h1>Ask a question or solve a problem</h1>
           <p>
-            Enter a question, then choose whether you want a complete solution
-            or a guided step-by-step attempt.
+            Ask a question or solve a problem in mathematics, physics, chemistry, or science. Choose a complete solution or a guided step-by-step attempt.
           </p>
         </div>
       </div>
@@ -224,7 +223,7 @@ export function StandardMode() {
                     else void beginGuidedAttempt();
                   }
                 }}
-                placeholder="For example: Derive the formula for induced emf of a rotating rod"
+                placeholder="For example: What is Newton's second law?"
                 rows={7}
               />
 
