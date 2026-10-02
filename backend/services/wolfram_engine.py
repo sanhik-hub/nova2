@@ -1,5 +1,6 @@
 ﻿import atexit
 import json
+import math
 import os
 import shutil
 import threading
@@ -293,6 +294,7 @@ Module[
         xmax: float = 10,
         points: int = 200,
     ) -> WolframResult:
+        """Sample a one-variable expression into JSON-safe numeric points."""
 
         if not expression or not expression.strip():
             return WolframResult(
@@ -300,39 +302,45 @@ Module[
                 error="Expression is empty.",
             )
 
-        escaped_expression = (
-            expression
-            .replace("\\", "\\\\")
-            .replace('"', '\\"')
-            .replace("\r", "\\r")
-            .replace("\n", "\\n")
-        )
+        if not variable or not variable.strip():
+            return WolframResult(
+                success=False,
+                error="Variable is empty.",
+            )
 
-        escaped_variable = (
-            variable
-            .replace("\\", "\\\\")
-            .replace('"', '\\"')
-        )
+        if xmin >= xmax:
+            return WolframResult(
+                success=False,
+                error="Plot minimum must be smaller than plot maximum.",
+            )
 
-        wrapper = f'''
+        if points < 2:
+            return WolframResult(
+                success=False,
+                error="Plot requires at least two sample intervals.",
+            )
+
+        escaped_expression = json.dumps(expression)
+        escaped_variable = json.dumps(variable)
+
+        wrapper = f"""
 Module[
     {{expr, var, data}},
 
     Check[
-
-        expr = ToExpression["{escaped_expression}"];
-        var = ToExpression["{escaped_variable}"];
+        expr = ToExpression[{escaped_expression}];
+        var = ToExpression[{escaped_variable}];
 
         data = Table[
             {{
-                Round[N[x, 12], 10^-10],
-                Round[N[expr /. var -> x, 12], 10^-10]
+                N[x, MachinePrecision],
+                N[expr /. var -> x, MachinePrecision]
             }},
             {{
                 x,
-                {xmin},
-                {xmax},
-                ({xmax} - ({xmin})) / {points}
+                {float(xmin)},
+                {float(xmax)},
+                ({float(xmax)} - ({float(xmin)})) / {int(points)}
             }}
         ];
 
@@ -345,10 +353,9 @@ Module[
             "success" -> False,
             "error" -> ToString[$MessageList, InputForm]
         |>
-
     ]
 ]
-'''
+"""
 
         try:
             data = self._evaluate(wrapper)
@@ -376,8 +383,39 @@ Module[
                 raw_output=str(data),
             )
 
+        raw_points = data.get("points", [])
+        safe_points = []
+
+        try:
+            for point in raw_points:
+                if not isinstance(point, (list, tuple)) or len(point) != 2:
+                    continue
+
+                x_value = float(point[0])
+                y_value = float(point[1])
+
+                # Keep the API JSON-safe even if Wolfram returns a
+                # non-finite numeric sample for a discontinuity.
+                if not (math.isfinite(x_value) and math.isfinite(y_value)):
+                    continue
+
+                safe_points.append([x_value, y_value])
+        except (TypeError, ValueError, OverflowError) as exc:
+            return WolframResult(
+                success=False,
+                error=f"Wolfram returned invalid plotting points: {exc}",
+                raw_output=str(data),
+            )
+
+        if not safe_points:
+            return WolframResult(
+                success=False,
+                error="Wolfram returned no finite plotting points.",
+                raw_output=str(data),
+            )
+
         return WolframResult(
             success=True,
-            result=data.get("points", []),
+            result=safe_points,
             raw_output=str(data),
         )
