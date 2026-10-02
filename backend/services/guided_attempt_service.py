@@ -51,33 +51,29 @@ Choose the smallest sufficient number.
                 max_tokens=80,
             )
 
-            if not plan_response.get("success"):
-                return {
-                    "success": False,
-                    "error": plan_response.get("error")
-                    or "Guided attempt planning failed.",
-                }
+            # The small planner is advisory. It can occasionally return a
+            # syntactically valid but out-of-range estimate (for example 1).
+            # Normalize that estimate instead of allowing a weak planner
+            # response to break the entire Guided Attempt.
+            step_count = 4
 
-            try:
-                plan = self._parse_json(plan_response.get("result"))
-            except (TypeError, ValueError, json.JSONDecodeError):
-                return {
-                    "success": False,
-                    "error": "Guided attempt planner returned invalid JSON.",
-                }
+            if plan_response.get("success"):
+                try:
+                    plan = self._parse_json(plan_response.get("result"))
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    plan = None
 
-            planned_count = plan.get("step_count") if isinstance(plan, dict) else None
-            if (
-                not isinstance(planned_count, int)
-                or isinstance(planned_count, bool)
-                or not 2 <= planned_count <= 8
-            ):
-                return {
-                    "success": False,
-                    "error": "Guided attempt planner returned an invalid step count.",
-                }
+                planned_count = (
+                    plan.get("step_count")
+                    if isinstance(plan, dict)
+                    else None
+                )
 
-            step_count = planned_count
+                if (
+                    isinstance(planned_count, int)
+                    and not isinstance(planned_count, bool)
+                ):
+                    step_count = max(2, min(8, planned_count))
 
         if not isinstance(step_count, int) or not 2 <= step_count <= 8:
             return {
@@ -117,6 +113,7 @@ Do not include explanations, summaries, introductions, conclusions, or any
 other fields. Do not put correct_index inside an option.
 
 Keep the questions and options concise but mathematically correct.
+All four options in each question must be distinct.
 Do not invent information that the original problem does not provide.
 $HINT_INSTRUCTION
 """.strip().replace("$HINT_INSTRUCTION", hint_instruction)
@@ -237,10 +234,16 @@ Output only the JSON object.
                 # as an option-local index. The UI only needs the option text;
                 # normalize such extras instead of rejecting an otherwise valid
                 # four-option MCQ.
-                if not isinstance(option, dict) or "text" not in option:
+                # The main LLM may emit either the requested object form
+                # {"text": "..."} or the simpler JSON string form "...".
+                # Both represent the same UI option, so normalize both.
+                if isinstance(option, str):
+                    option_text = option
+                elif isinstance(option, dict) and "text" in option:
+                    option_text = option["text"]
+                else:
                     return False, "Guided attempt contains an invalid option."
 
-                option_text = option["text"]
                 if not isinstance(option_text, str) or not option_text.strip():
                     return False, "Guided attempt contains an empty option."
 
