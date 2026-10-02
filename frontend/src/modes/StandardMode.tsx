@@ -141,7 +141,7 @@ export function StandardMode() {
   function finishGuided() {
     if (!guided) return;
 
-    const score = guided.answers.reduce((total, answer, index) => {
+    const score = guided.answers.reduce<number>((total, answer, index) => {
       if (answer === null) return total;
       return total + (answer === guided.steps[index].correct_index ? 1 : 0);
     }, 0);
