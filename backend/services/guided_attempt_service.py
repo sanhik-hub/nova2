@@ -197,6 +197,93 @@ Output only the JSON object.
             "include_full_solution": False,
         }
 
+    def generate_solution(
+        self,
+        query: str,
+        steps: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Generate the optional complete solution using the guided MCQ path as context."""
+        problem = query.strip()
+        if not problem:
+            return {"success": False, "error": "Question is empty."}
+
+        if not isinstance(steps, list) or not steps:
+            return {"success": False, "error": "Guided attempt has no solution path."}
+
+        path_lines = []
+        for index, step in enumerate(steps, start=1):
+            if not isinstance(step, dict):
+                continue
+            question = str(step.get("question", "")).strip()
+            options = step.get("options", [])
+            correct_index = step.get("correct_index")
+            if not question or not isinstance(options, list):
+                continue
+            if not isinstance(correct_index, int) or not 0 <= correct_index < len(options):
+                continue
+            correct_text = options[correct_index]
+            if isinstance(correct_text, dict):
+                correct_text = correct_text.get("text", "")
+            path_lines.append(
+                f"Step {index}: {question}\\nCorrect choice: {str(correct_text).strip()}"
+            )
+
+        if not path_lines:
+            return {"success": False, "error": "Guided attempt solution path is invalid."}
+
+        system_prompt = r"""
+You are Nova's complete mathematical solution writer.
+
+Write ONE complete, self-contained solution to the original problem.
+The supplied Guided Attempt is an already-constructed solution path. Use its
+correct choices as verified intermediate reasoning and build the final
+solution from them instead of re-solving the problem from scratch.
+
+Turn the path into a coherent mathematical derivation or worked solution.
+Show the necessary equations, substitutions, transformations, and reasoning.
+Do not mention the Guided Attempt, MCQs, choices, AI, tools, or internal
+processing.
+Do not blindly copy question wording; write a natural mathematical solution.
+Do not invent missing information.
+State the requested final result once, at the end.
+Return ONLY the solution text.
+""".strip()
+
+        prompt = f"""Original problem:
+{problem}
+
+Verified solution path:
+{chr(10).join(path_lines)}
+
+Using those verified intermediate choices, write the complete final solution.
+""".strip()
+
+        response = self.router.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=None,
+            temperature=0,
+            enable_thinking=False,
+        )
+
+        if not response.get("success"):
+            return {
+                "success": False,
+                "error": response.get("error") or "Unable to generate the full solution.",
+            }
+
+        answer = str(response.get("result") or "").strip()
+        if not answer:
+            return {"success": False, "error": "The solution model returned no solution."}
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm",
+            "tool_calls": [],
+            "cached": False,
+        }
+
     @staticmethod
     def _parse_json(raw: Any) -> Any:
         if not isinstance(raw, str):
