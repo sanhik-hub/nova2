@@ -1,10 +1,12 @@
 ﻿import { useState } from "react";
 import "./App.css";
 import { StandardMode } from "./modes/StandardMode";
+import { GraphicalMode } from "./modes/GraphicalMode";
 
-type Mode = "standard";
+type Mode = "standard" | "graphical";
 
 function App() {
+  const [mode, setMode] = useState<Mode>("standard");
 
   return (
     <div className="app-shell">
@@ -21,13 +23,24 @@ function App() {
         </div>
 
         <div className="mode-switcher" role="tablist" aria-label="Problem solving mode">
-          <button className="mode-button active" type="button">
+          <button
+            className={mode === "standard" ? "mode-button active" : "mode-button"}
+            onClick={() => setMode("standard")}
+            type="button"
+          >
             Standard
+          </button>
+          <button
+            className={mode === "graphical" ? "mode-button active" : "mode-button"}
+            onClick={() => setMode("graphical")}
+            type="button"
+          >
+            Graphical
           </button>
         </div>     </header>
 
       <main className="main-content">
-        <StandardMode />
+        {mode === "standard" ? <StandardMode /> : <GraphicalMode />}
       </main>
 
       <footer className="footer">
