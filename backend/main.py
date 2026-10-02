@@ -5,8 +5,6 @@ from backend.services.guided_attempt_service import GuidedAttemptService
 from backend.schemas.computation import (
     ComputationRequest,
     ComputationResponse,
-    ExpressionRequest,
-    LimitRequest,
     PlotRequest,
 )
 
