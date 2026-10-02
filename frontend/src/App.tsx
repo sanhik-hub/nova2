@@ -1,12 +1,10 @@
 ﻿import { useState } from "react";
 import "./App.css";
 import { StandardMode } from "./modes/StandardMode";
-import { WolframMode } from "./modes/WolframMode";
 
-type Mode = "standard" | "wolfram";
+type Mode = "standard";
 
 function App() {
-  const [mode, setMode] = useState<Mode>("standard");
 
   return (
     <div className="app-shell">
@@ -22,45 +20,19 @@ function App() {
           </div>
         </div>
 
-        <div
-          className="mode-switcher"
-          role="tablist"
-          aria-label="Problem solving mode"
-        >
-          <button
-            className={
-              mode === "standard"
-                ? "mode-button active"
-                : "mode-button"
-            }
-            onClick={() => setMode("standard")}
-            type="button"
-          >
+        <div className="mode-switcher" role="tablist" aria-label="Problem solving mode">
+          <button className="mode-button active" type="button">
             Standard
           </button>
-
-          <button
-            className={
-              mode === "wolfram"
-                ? "mode-button active"
-                : "mode-button"
-            }
-            onClick={() => setMode("wolfram")}
-            type="button"
-          >
-            Pure Wolfram
-          </button>
-        </div>
-      </header>
+        </div>     </header>
 
       <main className="main-content">
-        {mode === "standard" && <StandardMode />}
-        {mode === "wolfram" && <WolframMode />}
+        <StandardMode />
       </main>
 
       <footer className="footer">
         <span>PrismOffline</span>
-        <span>Local mathematical workspace</span>
+        <span>Offline mathematical workspace</span>
       </footer>
     </div>
   );
