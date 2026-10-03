@@ -21,6 +21,9 @@ type GuidedState = {
   finished: boolean;
   fullSolution: ReasonResponse | null;
   fullSolutionLoading: boolean;
+  mcqElapsedMs: number;
+  hintElapsedMs: number;
+  finalSolutionElapsedMs: number | null;
 };
 
 export function StandardMode() {
@@ -89,6 +92,9 @@ export function StandardMode() {
         finished: false,
         fullSolution: null,
         fullSolutionLoading: includeFullSolution,
+        mcqElapsedMs: result.mcq_elapsed_ms ?? result.elapsed_ms ?? 0,
+        hintElapsedMs: result.hint_elapsed_ms ?? 0,
+        finalSolutionElapsedMs: null,
       });
 
       // Start the optional complete solution immediately after the MCQs are
@@ -103,6 +109,10 @@ export function StandardMode() {
                     ...current,
                     fullSolution: solution,
                     fullSolutionLoading: false,
+                    finalSolutionElapsedMs:
+                      solution.final_solution_elapsed_ms ??
+                      solution.elapsed_ms ??
+                      null,
                   }
                 : current,
             );
@@ -482,6 +492,33 @@ export function StandardMode() {
 
       {!guidedLoading && guided?.finished && (
         <>
+          <section className="card guided-timing-card">
+            <div className="eyebrow">TIME ELAPSED</div>
+            <div className="guided-timing-grid">
+              <div>
+                <strong>MCQs</strong>
+                <span>{(guided.mcqElapsedMs / 1000).toFixed(2)} s</span>
+              </div>
+              {includeHints && (
+                <div>
+                  <strong>Hints</strong>
+                  <span>{(guided.hintElapsedMs / 1000).toFixed(2)} s</span>
+                  <small>Generated with the MCQ request</small>
+                </div>
+              )}
+              {includeFullSolution && (
+                <div>
+                  <strong>Final solution</strong>
+                  <span>
+                    {guided.finalSolutionElapsedMs === null
+                      ? "Still generating..."
+                      : (guided.finalSolutionElapsedMs / 1000).toFixed(2) + " s"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="card guided-score-card">
             <div className="eyebrow">ATTEMPT COMPLETE</div>
             <h2>Score</h2>
