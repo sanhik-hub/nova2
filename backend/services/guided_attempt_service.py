@@ -23,16 +23,41 @@ class GuidedAttemptService:
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
-        # Guided attempts intentionally use one LLM generation call. The old
-        # LLM complexity-planning call was only producing step-count metadata,
-        # but it still incurred full local-model inference latency (~10 seconds).
-        # Estimate the same metadata locally so planning is effectively free.
+        # Guided attempts use a genuinely small planner call for metadata only.
+        # It runs against the dedicated lightweight planner model, uses plain text
+        # instead of constrained JSON decoding, and is capped at a tiny completion.
+        # If the planner is unavailable or slow, the local estimator is an immediate
+        # fallback so guided generation never depends on a second full reasoning pass.
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
 
         if step_count is None:
-            step_count, guided_answer_tokens = self._estimate_guided_complexity(problem)
+            fallback_step_count, fallback_tokens = self._estimate_guided_complexity(problem)
+            planner_started = perf_counter()
+            planner_response = self.router.plan(
+                prompt=(
+                    "Estimate a guided STEM solution path. Return ONLY two integers "
+                    "in this exact format: STEP_COUNT|ANSWER_TOKENS. "
+                    "STEP_COUNT must be 3-15. ANSWER_TOKENS is only an advisory "
+                    "estimate for the complete guided response and does not cap generation.\\n\\n"
+                    f"Problem: {problem}"
+                ),
+                system_prompt=(
+                    "You are a fast planning model. Do not solve the problem. "
+                    "Estimate only the number of useful guided MCQ stages and a "
+                    "reasonable completion-size advisory. Return only N|T."
+                ),
+                max_tokens=48,
+                compact=True,
+            )
+            planner_elapsed_ms = (perf_counter() - planner_started) * 1000
+
+            planned = self._parse_compact_plan(planner_response.get("result"))
+            if planned is not None:
+                step_count, guided_answer_tokens = planned
+            else:
+                step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 15:
             return {
@@ -253,6 +278,22 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
         # max_tokens to the main generator.
         advisory_tokens = max(420, min(1400, 90 * steps))
         return steps, advisory_tokens
+
+    @staticmethod
+    def _parse_compact_plan(raw: Any) -> tuple[int, int] | None:
+        """Parse the tiny planner's N|T response without another model call."""
+        if not isinstance(raw, str):
+            return None
+        match = re.search(r"\\b(\\d{1,2})\\s*[|,;:]\\s*(\\d{2,4})\\b", raw.strip())
+        if not match:
+            return None
+        step_count = int(match.group(1))
+        answer_tokens = int(match.group(2))
+        if not 3 <= step_count <= 15:
+            return None
+        if not 120 <= answer_tokens <= 2000:
+            return None
+        return step_count, answer_tokens
 
     @staticmethod
     def _validate_single_step(
