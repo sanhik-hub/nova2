@@ -31,11 +31,13 @@ class ProviderRouter:
         prompt: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        compact: bool = False,
     ):
         return self.get_provider("planner_llm").plan(
             prompt=prompt,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
+            compact=compact,
         )
 
     def calculate(
