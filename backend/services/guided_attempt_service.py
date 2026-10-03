@@ -27,7 +27,10 @@ class GuidedAttemptService:
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
+        planner_step_advisory: int | None = None
 
+        # The small planner is advisory only. It estimates complexity and an
+        # approximate number of guided steps; it never defines the solution path.
         if step_count is None:
             planner_started = perf_counter()
             plan_response = self.router.plan(
@@ -35,80 +38,159 @@ class GuidedAttemptService:
 Problem:
 {problem}
 
-Choose the smallest sufficient number of progressive solution-path stages
-needed to reach the final answer. Use 3 to 5 stages.
+Estimate the complexity of this STEM problem and the approximate number of
+guided MCQ steps a stronger reasoning model may need.
 
-Also estimate an advisory completion-token target for the complete guided
-attempt. Base it on the actual problem complexity and number of stages. This
-is guidance only, not a generation limit.
-
-Also provide one short ABSTRACT stage description for each stage. The stage
-descriptions are structural guidance for another model; they must not solve
-the problem.
-
-Return ONLY this JSON object:
-{{"step_count": N, "answer_tokens": T, "path": ["stage 1", "stage 2", "..."]}}
+Return ONLY:
+{{"complexity":"simple|moderate|complex|very_complex","step_count_advisory":N}}
 """.strip(),
                 system_prompt="""
-You are Nova's guided-attempt planning model.
+You are Nova's lightweight guided-attempt complexity estimator.
 
-Return exactly one JSON object with:
-- "step_count": an integer from 3 through 5;
-- "path": an array of exactly step_count short abstract stage descriptions;
-- "answer_tokens": an advisory integer estimate for the complete guided attempt.
+Your output is advisory metadata only. You do NOT solve the problem and you
+do NOT determine its solution steps.
 
-The answer_tokens estimate must be specific to this problem and planned
-stages, not a fixed value or fixed multiplier.
+Return exactly one JSON object:
+{"complexity":"simple|moderate|complex|very_complex","step_count_advisory":N}
 
-Do NOT solve the problem.
-Do NOT include the final answer.
-Do NOT include problem-specific equations, symbolic results, numeric values,
-question text, options, hints, explanations, or answer choices.
-
-Each path item must describe only a mathematical dependency or action.
-The final path item must be the only item whose purpose is to establish the
-requested final result.
+Use your best estimate of how much reasoning a stronger model will need.
+The advisory step count may be greater than 5 for complex problems.
+It is not a hard limit and must not contain a solution path, equations,
+formulas, results, options, hints, or explanations.
 """.strip(),
-                max_tokens=320,
+                max_tokens=160,
             )
             planner_elapsed_ms = round((perf_counter() - planner_started) * 1000, 2)
 
-            step_count = 3
             if plan_response.get("success"):
                 try:
                     plan = self._parse_json(plan_response.get("result"))
                 except (TypeError, ValueError, json.JSONDecodeError):
                     plan = None
 
-                planned_count = plan.get("step_count") if isinstance(plan, dict) else None
-                candidate_path = plan.get("path") if isinstance(plan, dict) else None
-                advisory = plan.get("answer_tokens") if isinstance(plan, dict) else None
-
+                advisory_count = (
+                    plan.get("step_count_advisory")
+                    if isinstance(plan, dict)
+                    else None
+                )
                 if (
-                    isinstance(planned_count, int)
-                    and not isinstance(planned_count, bool)
-                    and 3 <= planned_count <= 5
-                    and isinstance(candidate_path, list)
-                    and len(candidate_path) == planned_count
-                    and all(isinstance(item, str) and item.strip() for item in candidate_path)
+                    isinstance(advisory_count, int)
+                    and not isinstance(advisory_count, bool)
+                    and 3 <= advisory_count <= 15
                 ):
-                    step_count = planned_count
-                    planned_path = [item.strip() for item in candidate_path]
-                    if (
-                        isinstance(advisory, int)
-                        and not isinstance(advisory, bool)
-                        and 300 <= advisory <= 1200
-                    ):
-                        guided_answer_tokens = advisory
+                    planner_step_advisory = advisory_count
 
-        if not isinstance(step_count, int) or not 3 <= step_count <= 5:
+        # The stronger local LLM determines the actual guided progression.
+        # The small planner's estimate is supplied only as a soft hint.
+        if step_count is None:
+            planning_hint = (
+                str(planner_step_advisory)
+                if planner_step_advisory is not None
+                else "not available"
+            )
+            main_plan_started = perf_counter()
+            main_plan_response = self.router.generate(
+                prompt=f"""
+Original problem:
+{problem}
+
+A lightweight model estimated approximately {planning_hint} guided steps.
+This estimate is advisory only. Use your own reasoning and choose the actual
+number of progressive guided steps needed for this problem.
+
+Create the internal solution progression for the stronger guided-attempt
+generator. The progression may contain more than five steps for complex
+problems. Each stage must represent a genuinely necessary intermediate
+reasoning goal, and the final stage must establish the requested result.
+
+Also estimate an advisory completion-token target for the complete guided
+attempt. This is metadata only, not a generation limit.
+
+Return ONLY:
+{{"step_count":N,"answer_tokens_advisory":T,"stage_goals":["goal 1","goal 2","..."]}}
+""".strip(),
+                system_prompt="""
+You are Nova's primary guided-attempt planning model.
+
+Unlike the lightweight complexity estimator, you are responsible for deciding
+the actual progressive structure used to generate the guided MCQs.
+
+Analyze the original problem and choose the number of necessary stages based
+on the mathematics, physics, chemistry, or other STEM reasoning required.
+Simple problems may need only a few stages; complex problems may need more
+than five.
+
+Return exactly one JSON object with:
+- step_count: integer from 3 through 15;
+- answer_tokens_advisory: an approximate completion-token target for the whole
+  guided attempt, based on the actual problem and planned stages;
+- stage_goals: exactly step_count concise goals.
+
+The token estimate is advisory only. It must never be treated as a generation
+limit.
+
+Do not write the actual MCQ questions, options, hints, or final solution.
+Stage goals may describe the actual mathematical dependency because this
+planning model is the stronger reasoning model used by the guided generator.
+""".strip(),
+                max_tokens=None,
+                temperature=0,
+                enable_thinking=False,
+            )
+            mcq_generation_elapsed_ms += (
+                perf_counter() - main_plan_started
+            ) * 1000
+
+            main_plan = None
+            if main_plan_response.get("success"):
+                try:
+                    main_plan = self._parse_json(main_plan_response.get("result"))
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    main_plan = None
+
+            planned_count = (
+                main_plan.get("step_count")
+                if isinstance(main_plan, dict)
+                else None
+            )
+            stage_goals = (
+                main_plan.get("stage_goals")
+                if isinstance(main_plan, dict)
+                else None
+            )
+            advisory_tokens = (
+                main_plan.get("answer_tokens_advisory")
+                if isinstance(main_plan, dict)
+                else None
+            )
+
+            if (
+                isinstance(planned_count, int)
+                and not isinstance(planned_count, bool)
+                and 3 <= planned_count <= 15
+                and isinstance(stage_goals, list)
+                and len(stage_goals) == planned_count
+                and all(isinstance(item, str) and item.strip() for item in stage_goals)
+            ):
+                step_count = planned_count
+                planned_path = [item.strip() for item in stage_goals]
+                if (
+                    isinstance(advisory_tokens, int)
+                    and not isinstance(advisory_tokens, bool)
+                    and advisory_tokens > 0
+                ):
+                    guided_answer_tokens = advisory_tokens
+
+            # Emergency fallback only if the stronger planning call fails.
+            # The lightweight planner still never supplies solution steps.
+            if step_count is None:
+                step_count = planner_step_advisory or 5
+
+        if not isinstance(step_count, int) or not 3 <= step_count <= 15:
             return {
                 "success": False,
-                "error": "Guided attempt step count must be between 3 and 5.",
+                "error": "Guided attempt step count must be between 3 and 15.",
             }
-
-        if guided_answer_tokens is None:
-            guided_answer_tokens = 700
 
         generated_steps: list[dict[str, Any]] = []
 
@@ -180,7 +262,7 @@ concluding. Do not turn a supplied quantity into a question asking the student
 to identify it.
 
 Return ONLY:
-{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},],"correct_index":0,"step_goal":"..."}}.
+{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],"correct_index":0,"step_goal":"..."}}.
 
 Every response must contain exactly the keys question, options, correct_index,
 and step_goal{', plus hint' if include_hints else ''}.
@@ -300,7 +382,7 @@ steps depend on it. Replace leaking distractors with genuinely incorrect but
 plausible alternatives.
 
 Return ONLY:
-{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},],"correct_index":0,"step_goal":"..."}}.
+{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],"correct_index":0,"step_goal":"..."}}.
 """.strip()
 
                 repair_system = f"""
@@ -431,6 +513,7 @@ result when it is not the final result.
             "question": question,
             "options": normalized_options,
             "correct_index": correct_index,
+            "step_goal": step_goal.strip(),
         }
 
         if include_hints:
@@ -570,7 +653,7 @@ Using those verified intermediate choices, write the complete final solution.
         steps = payload.get("steps")
         if (
             not isinstance(steps, list)
-            or not 3 <= len(steps) <= 5
+            or not 3 <= len(steps) <= 15
             or (
                 requested_step_count is not None
                 and len(steps) != requested_step_count
