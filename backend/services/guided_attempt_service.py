@@ -165,17 +165,22 @@ Do not output JSON, Markdown, explanations, numbering, or blank lines.
 
         raw_generation = generation_response.get("result")
         try:
-            generated_payload = self._parse_generated_records(
-                raw_generation,
-                include_hints=include_hints,
-            )
+            try:
+                generated_payload = self._parse_generated_records(
+                    raw_generation,
+                    include_hints=include_hints,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                # Keep compatibility with local models that still emit the
+                # older JSON shape despite the compact-record instruction.
+                generated_payload = self._parse_json(raw_generation)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             # Keep this failure diagnostic and deterministic. Do not spend
             # another 40-60 seconds on an LLM repair attempt.
-            detail = str(exc).strip() or "unknown guided-record parsing error"
+            detail = str(exc).strip() or "unknown guided generation format"
             return {
                 "success": False,
-                "error": f"Guided attempt generator returned invalid records: {detail}",
+                "error": f"Guided attempt generator returned an unreadable format: {detail}",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
@@ -650,8 +655,15 @@ Using those verified intermediate choices, write the complete final solution.
             line = raw_line.strip()
             if not line:
                 continue
-            if not line.upper().startswith("STEP|||"):
-                raise ValueError(f"Line {line_number} is not a STEP record.")
+            # Small local instruction models may prefix a valid record with
+            # numbering, bullets, or a short label. Strip only that harmless
+            # wrapper; the actual field structure remains strict.
+            record_match = re.search(r"(?:^|\\s)(STEP\\|\\|\\|.*)$", line, flags=re.IGNORECASE)
+            if record_match:
+                line = record_match.group(1).strip()
+            else:
+                continue
+
             fields = line.split("|||")
             expected_fields = 8 if include_hints else 7
             if len(fields) != expected_fields:
