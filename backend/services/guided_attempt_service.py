@@ -299,6 +299,7 @@ Output only the JSON object.
             payload,
             include_hints,
             step_count,
+            problem,
         )
 
         # The guided writer is deterministic, but structured MCQs can still
@@ -338,6 +339,7 @@ Return ONLY the same JSON object with exactly the requested number of steps.
                         retry_payload,
                         include_hints,
                         step_count,
+                        problem,
                     )
                 except (TypeError, ValueError, json.JSONDecodeError):
                     retry_valid = False
@@ -481,6 +483,7 @@ Using those verified intermediate choices, write the complete final solution.
         payload: Any,
         include_hints: bool,
         requested_step_count: int | None = None,
+        problem: str = "",
     ):
         if not isinstance(payload, dict) or set(payload) != {"steps"}:
             return False, "Guided attempt generator returned an invalid structure."
