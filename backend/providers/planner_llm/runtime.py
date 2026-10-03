@@ -39,6 +39,7 @@ class PlannerLLMRuntime:
         system_prompt: str,
         max_tokens: int | None = None,
         structured_json: bool = True,
+        request_timeout: int | None = None,
     ) -> str:
         if not self._available:
             self.load()
@@ -76,7 +77,7 @@ class PlannerLLMRuntime:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=self.config.request_timeout,
+                timeout=(request_timeout or self.config.request_timeout),
             ) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
