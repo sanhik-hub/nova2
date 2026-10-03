@@ -23,7 +23,6 @@ class GuidedAttemptService:
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
-        planned_path: list[str] | None = None
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
@@ -36,48 +35,38 @@ class GuidedAttemptService:
 Original problem:
 {problem}
 
-No lightweight planning estimate is available. Use your own reasoning and
-choose the actual number of progressive guided steps needed for this problem.
+Choose the number of progressive guided steps actually needed for this problem.
+Simple problems may need a few steps; multi-stage derivations may need more
+than five. Also estimate an advisory completion-token target for the complete
+guided attempt.
 
-Create the internal solution progression for the stronger guided-attempt
-generator. The progression may contain more than five steps for complex
-problems. Each stage must represent a genuinely necessary intermediate
-reasoning goal, and the final stage must establish the requested result.
+Return ONLY this JSON object:
+{{"step_count":N,"answer_tokens_advisory":T}}
 
-Also estimate an advisory completion-token target for the complete guided
-attempt. This is metadata only, not a generation limit.
-
-Return ONLY:
-{{"step_count":N,"answer_tokens_advisory":T,"stage_goals":["goal 1","goal 2","..."]}}
+Rules:
+- step_count must be an integer from 3 through 15;
+- answer_tokens_advisory is metadata only and is NOT a generation limit;
+- do not return stage goals, questions, options, hints, or a solution.
 """.strip(),
                 system_prompt="""
-You are Nova's primary guided-attempt planning model.
+You are Nova's primary guided-attempt complexity planner.
 
-Unlike the lightweight complexity estimator, you are responsible for deciding
-the actual progressive structure used to generate the guided MCQs.
+Your ONLY job is to estimate the number of useful progressive MCQ steps needed
+for the original STEM problem and an advisory completion-token target.
 
-Analyze the original problem and choose the number of necessary stages based
-on the mathematics, physics, chemistry, or other STEM reasoning required.
-Simple problems may need only a few stages; complex problems may need more
-than five.
+Return exactly one compact JSON object:
+{"step_count":N,"answer_tokens_advisory":T}
 
-Return exactly one JSON object with:
-- step_count: integer from 3 through 15;
-- answer_tokens_advisory: an approximate completion-token target for the whole
-  guided attempt, based on the actual problem and planned stages;
-- stage_goals: exactly step_count concise goals.
-
-The token estimate is advisory only. It must never be treated as a generation
-limit.
-
-Do not write the actual MCQ questions, options, hints, or final solution.
-Stage goals may describe the actual mathematical dependency because this
-planning model is the stronger reasoning model used by the guided generator.
+Choose 3 through 15 steps based on the actual mathematical/scientific
+complexity. Do not solve the problem, write questions, or provide stage goals.
+The token estimate is advisory metadata only; it must never be used as a
+generation limit.
 """.strip(),
-                max_tokens=None,
+                max_tokens=192,
                 temperature=0,
                 enable_thinking=False,
             )
+
             planner_elapsed_ms += (
                 perf_counter() - main_plan_started
             ) * 1000
@@ -94,11 +83,6 @@ planning model is the stronger reasoning model used by the guided generator.
                 if isinstance(main_plan, dict)
                 else None
             )
-            stage_goals = (
-                main_plan.get("stage_goals")
-                if isinstance(main_plan, dict)
-                else None
-            )
             advisory_tokens = (
                 main_plan.get("answer_tokens_advisory")
                 if isinstance(main_plan, dict)
@@ -109,18 +93,15 @@ planning model is the stronger reasoning model used by the guided generator.
                 isinstance(planned_count, int)
                 and not isinstance(planned_count, bool)
                 and 3 <= planned_count <= 15
-                and isinstance(stage_goals, list)
-                and len(stage_goals) == planned_count
-                and all(isinstance(item, str) and item.strip() for item in stage_goals)
             ):
                 step_count = planned_count
-                planned_path = [item.strip() for item in stage_goals]
-                if (
-                    isinstance(advisory_tokens, int)
-                    and not isinstance(advisory_tokens, bool)
-                    and advisory_tokens > 0
-                ):
-                    guided_answer_tokens = advisory_tokens
+
+            if (
+                isinstance(advisory_tokens, int)
+                and not isinstance(advisory_tokens, bool)
+                and advisory_tokens > 0
+            ):
+                guided_answer_tokens = advisory_tokens
 
             # Emergency fallback only if the stronger planning call fails.
             # The lightweight planner never determines the actual step count.
@@ -376,16 +357,28 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
         problem: str,
         steps: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """Move the step that asks for the requested final result to the end.
+        """Move the question that most directly establishes the requested result to the end.
 
-        The LLM generates the complete solution pool first. This pass is
-        deliberately deterministic and does not call the LLM again.
+        The LLM generates one complete pool. This pass is deterministic and never
+        calls the LLM again. It deliberately prefers the specific target from the
+        original problem over generic prerequisite/formula questions.
         """
         if len(steps) < 2:
             return steps
 
-        def key(value: str) -> str:
-            return re.sub(r"[^a-z0-9]+", "", value.lower())
+        def normalized(value: str) -> str:
+            return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+        def terms(value: str) -> set[str]:
+            return {
+                word
+                for word in re.findall(r"[a-zA-Z]+", value.lower())
+                if word not in {
+                    "the", "a", "an", "of", "for", "to", "from", "in",
+                    "on", "about", "using", "with", "given", "its",
+                    "is", "are", "and", "by", "as",
+                }
+            }
 
         target_match = re.search(
             r"\b(?:determine|find|calculate|derive|evaluate|obtain)\s+"
@@ -393,56 +386,98 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
             problem,
             flags=re.IGNORECASE,
         )
+        target_text = target_match.group(1).strip() if target_match else ""
+        target_norm = normalized(target_text)
+        target_terms = terms(target_text)
 
-        target_text = target_match.group(1) if target_match else ""
-        target_terms = {
-            word
-            for word in re.findall(r"[a-zA-Z]+", target_text.lower())
-            if word not in {
-                "the", "a", "an", "of", "for", "to", "from", "in",
-                "on", "about", "using", "with", "given", "its",
-            }
-        }
+        # Also keep the action verb because a final question often repeats it.
+        action_match = re.search(
+            r"\b(determine|find|calculate|derive|evaluate|obtain)\b",
+            problem,
+            flags=re.IGNORECASE,
+        )
+        action = action_match.group(1).lower() if action_match else ""
 
         def final_score(step: dict[str, Any]) -> int:
-            question = step.get("question", "").lower()
-            goal = step.get("step_goal", "").lower()
-            combined = f"{question} {goal}"
+            question = str(step.get("question", ""))
+            goal = str(step.get("step_goal", ""))
+            question_norm = normalized(question)
+            goal_norm = normalized(goal)
+            combined = f"{question_norm} {goal_norm}"
+            question_terms = terms(question)
             score = 0
 
-            # Explicit final-result language is the strongest signal.
+            # Exact/near-exact target wording is the strongest signal. This
+            # prevents a generic "formula for angular momentum" question from
+            # beating "angular momentum of the rod about the axis of rotation".
+            if target_norm:
+                if target_norm in question_norm:
+                    score += 40
+                else:
+                    target_sequence = target_norm.split()
+                    if len(target_sequence) >= 3:
+                        matched = sum(
+                            1 for token in target_sequence
+                            if token in question_norm.split()
+                        )
+                        score += min(24, matched * 5)
+
+            # Requested target vocabulary is useful, but cap it so generic
+            # formula questions cannot dominate the exact target match.
+            overlap = len(target_terms & question_terms)
+            score += min(12, overlap * 2)
+
+            # Explicit final-result language is helpful but secondary.
             if any(
-                phrase in question
+                phrase in question_norm
                 for phrase in (
                     "final answer", "final result", "requested quantity",
                     "determine the", "calculate the", "find the",
+                    "derive the", "evaluate the", "obtain the",
                 )
             ):
-                score += 6
+                score += 5
 
-            # Match terms from the original requested target.
-            if target_terms:
-                words = set(re.findall(r"[a-zA-Z]+", combined))
-                score += min(6, 2 * len(target_terms & words))
-
-            # A final step normally has a concluding goal.
             if any(
-                phrase in goal
+                phrase in goal_norm
                 for phrase in (
                     "final", "requested result", "requested quantity",
                     "conclude", "obtain the result", "determine the result",
+                    "calculate the result",
                 )
             ):
                 score += 4
+
+            # Penalize generic prerequisite/formula questions when they are not
+            # themselves the requested target.
+            if any(
+                phrase in question_norm
+                for phrase in (
+                    "formula for", "relationship between", "dimensional analysis",
+                    "what is the formula", "formula of",
+                )
+            ):
+                if target_norm and target_norm not in question_norm:
+                    score -= 10
+
+            # A question that asks for a generic law/formula but only shares a
+            # broad target noun should not outrank a specific requested result.
+            if target_terms and overlap <= 1 and target_norm not in question_norm:
+                score -= 4
+
+            # Avoid choosing an earlier step merely because its goal says "final".
+            # The actual question must carry meaningful target evidence.
+            if target_terms and overlap == 0 and target_norm not in question_norm:
+                score -= 12
 
             return score
 
         scores = [final_score(step) for step in steps]
         candidate_index = max(range(len(steps)), key=lambda index: scores[index])
 
-        # If no step has a meaningful final-result signal, preserve the model's
-        # natural order rather than making a speculative rearrangement.
-        if scores[candidate_index] <= 0:
+        # If the original problem does not expose a recognizable requested
+        # target, preserve the model's natural order instead of guessing.
+        if not target_text or scores[candidate_index] <= 0:
             return steps
 
         candidate = steps[candidate_index]
