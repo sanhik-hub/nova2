@@ -183,12 +183,12 @@ Return ONLY:
 {{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},],"correct_index":0,"step_goal":"..."}}.
 
 Every response must contain exactly the keys question, options, correct_index,
-and step_goal${include_hints ? ', plus hint' : ''}.
+and step_goal{', plus hint' if include_hints else ''}.
 The options must contain only text.
 
 Do not include step labels, markdown headings, explanations, or extra JSON keys.
 The UI supplies the step number.
-${include_hints ? 'The hint must be short and must not reveal the correct option.' : ''}
+{'The hint must be short and must not reveal the correct option.' if include_hints else ''}
 """.strip()
 
             prompt = f"""
