@@ -206,7 +206,7 @@ function normalizeWolframFunctions(value: string): string {
 
   for (const [wolframName, latexName] of Object.entries(functionMap)) {
     const pattern = new RegExp(
-      `\\\\b${wolframName}\\\\s*\\\\[([^\\\\[\\\\]]*)\\\\]`,
+      `\\b${wolframName}\\s*\\[([^\\[\\]]*)\\]`,
       "gi",
     );
 
