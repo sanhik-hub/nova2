@@ -98,19 +98,43 @@ allowed: the backend will reorder the generated pool before returning it.
 The pool must:
 - cover the necessary mathematical/scientific reasoning from the original
   problem;
+- form a dependency-first solution spine: each non-final question should
+  establish a result, relation, or decision that is actually useful for a
+  later question;
 - contain genuinely useful intermediate decisions/results, not filler;
 - contain one question that establishes the requested final result;
 - avoid simply asking for quantities already supplied in the problem;
-- avoid duplicate questions;
+- avoid duplicate questions or asking for the same governing idea in different
+  wording;
+- avoid generic formula-recall questions when the problem can instead test the
+  specific derivation, substitution, consequence, or intermediate result needed
+  for this problem;
+- avoid introducing a law, relation, variable, or physical/chemical quantity
+  that is never used later in the solution path;
 - use exactly four distinct options per question with exactly one correct;
 - keep each question self-contained enough for a student to understand it;
 - work across mathematics, physics, chemistry, and other STEM problems.
 
+Build the path around the actual structure of the problem, not a generic
+textbook checklist. Before writing each question, identify what the student
+must know or calculate next in order to reach the requested result.
+
 For derivations, continuous systems, calculus, mechanics, chemistry
 calculations, and similar multi-stage problems, prefer meaningful intermediate
-results such as a differential contribution, governing relation, substitution,
-integration, simplification, or physical/chemical consequence rather than
-memorized final formulas.
+results such as a differential contribution, governing relation applied to the
+given system, substitution of the problem's quantities, integration,
+simplification, conservation consequence, stoichiometric consequence, or other
+problem-specific intermediate result rather than memorized final formulas.
+
+For continuous-body or distributed-quantity problems, prefer setting up the
+local/differential contribution and combining it over the system when that is
+the natural derivation. Do not insert an unrelated kinematic or textbook
+formula merely because it is associated with the topic.
+
+For multi-step algebra or chemistry calculations, make the intermediate MCQs
+progress toward the requested quantity: setup -> necessary transformation or
+substitution -> intermediate result -> final result, adapting the sequence to
+the actual problem rather than forcing this exact template.
 
 The requested final result may occur anywhere in the generated pool. Do NOT
 discard a useful question merely because it currently appears to reveal the
@@ -145,6 +169,12 @@ answer. The correct answer must be mathematically/scientifically correct.
 Use concise but meaningful questions. Complex problems may require more than
 five stages; do not collapse a multi-stage derivation into a single formula
 recall question.
+
+Quality rule: a student who answers the MCQs in order should be able to use
+the correct result from one stage to understand or solve a later stage. The
+path should therefore read like an actual solution, not a collection of facts
+about the topic. A prerequisite formula is appropriate only when it is the
+next necessary tool for this specific problem.
 
 Return only the requested JSON object. No markdown, commentary, or extra keys.
 """.strip()
