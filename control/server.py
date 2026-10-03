@@ -621,6 +621,34 @@ def health_status():
     }
 
 
+def start_process(args: list[str], cwd: Path):
+    """Start a Windows child process with a safe fallback.
+
+    Some Windows/Python launch contexts reject CREATE_NEW_PROCESS_GROUP
+    with OSError 22. The Control Center must still be able to start Nova,
+    so retry without that optional process-group flag.
+    """
+    try:
+        return subprocess.Popen(
+            args,
+            cwd=str(cwd),
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+    except OSError as exc:
+        if getattr(exc, "winerror", None) != 87 and getattr(exc, "errno", None) != 22:
+            raise
+
+        log(
+            "Process-group launch was rejected by Windows; "
+            "retrying without CREATE_NEW_PROCESS_GROUP."
+        )
+
+        return subprocess.Popen(
+            args,
+            cwd=str(cwd),
+        )
+
+
 def start_planner():
     listener = port_listener(PLANNER_PORT)
     if listener:
@@ -645,7 +673,7 @@ def start_planner():
     port = parsed.port or PLANNER_PORT
 
     log(f"Starting small planner model server on port {port}...")
-    subprocess.Popen(
+    start_process(
         [
             str(LLAMA_SERVER), "-m", model_path,
             "--host", parsed.hostname or HOST,
@@ -656,7 +684,8 @@ def start_planner():
             "--n-gpu-layers", str(config.get("n_gpu_layers", 0)),
         ],
         cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
+        NOVA_ROOT,
     )
     return {"ok": True, "message": "Planner model server start requested."}
 
@@ -666,7 +695,7 @@ def start_backend():
         return {"ok": True, "message": "Backend is already running."}
 
     log("Starting FastAPI backend...")
-    subprocess.Popen(
+    start_process(
         [
             str(PYTHON),
             "-m", "uvicorn", "backend.main:app",
@@ -674,7 +703,8 @@ def start_backend():
             "--port", str(BACKEND_PORT),
         ],
         cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
+        NOVA_ROOT,
     )
     return {"ok": True, "message": "Backend start requested."}
 
@@ -718,7 +748,7 @@ def start_frontend():
         raise RuntimeError("npm.exe was not found in PATH.")
 
     log("Starting Vite frontend...")
-    subprocess.Popen(
+    start_process(
         [
             npm.stdout.strip().splitlines()[0],
             "run", "dev", "--",
@@ -726,7 +756,8 @@ def start_frontend():
             "--port", str(FRONTEND_PORT),
         ],
         cwd=str(FRONTEND_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
+        FRONTEND_ROOT,
     )
     return {"ok": True, "message": "Frontend start requested."}
 
@@ -748,7 +779,7 @@ def start_llm():
     port = parsed.port or 8080
 
     log(f"Starting local model server on port {port}...")
-    subprocess.Popen(
+    start_process(
         [
             str(LLAMA_SERVER), "-m", model_path,
             "--host", parsed.hostname or HOST,
@@ -767,7 +798,8 @@ def start_llm():
             ),
         ],
         cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
+        NOVA_ROOT,
     )
     return {"ok": True, "message": "Local model server start requested."}
 
