@@ -134,11 +134,100 @@ export function normalizeMathText(value: string): string {
 }
 
 // -----------------------------------------------------------------------------
+// Whole-expression detection
+// -----------------------------------------------------------------------------
+
+const KNOWN_MATH_WORDS = new Set([
+  "sqrt", "sin", "cos", "tan", "cot", "sec", "csc",
+  "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
+  "log", "ln", "exp", "abs", "floor", "ceil", "sign",
+  "sqrt", "pi", "infinity",
+]);
+
+function looksLikeWholeMathExpression(value: string): boolean {
+  const text = value.trim();
+
+  if (!text) {
+    return false;
+  }
+
+  // Do not treat ordinary prose as a single mathematical expression.
+  if (/[,:;!?]/.test(text)) {
+    return false;
+  }
+
+  const words = text.match(/[A-Za-z]+/g) ?? [];
+
+  if (
+    words.some((word) => {
+      const lower = word.toLowerCase();
+      return (
+        lower.length > 1 &&
+        !KNOWN_MATH_WORDS.has(lower)
+      );
+    })
+  ) {
+    return false;
+  }
+
+  // A Wolfram-style function call or an algebraic operator is enough to
+  // justify rendering the entire value as one mathematical expression.
+  return (
+    /(?:[A-Za-z]+\s*\[)/.test(text) ||
+    /[\/^_=<>+\-*]/.test(text)
+  );
+}
+
+function normalizeWolframFunctions(value: string): string {
+  let result = value;
+
+  // Wolfram uses square brackets for function arguments, e.g.
+  // Sqrt[1 - x^2] and Sin[x]. Convert these to the function syntax
+  // understood by the existing LaTeX converter. Repeat so nested
+  // function calls are normalized from the inside out.
+  const functionMap: Record<string, string> = {
+    Sqrt: "sqrt",
+    Sin: "sin",
+    Cos: "cos",
+    Tan: "tan",
+    Cot: "cot",
+    Sec: "sec",
+    Csc: "csc",
+    ArcSin: "arcsin",
+    ArcCos: "arccos",
+    ArcTan: "arctan",
+    Sinh: "sinh",
+    Cosh: "cosh",
+    Tanh: "tanh",
+    Log: "log",
+    Exp: "exp",
+    Abs: "abs",
+  };
+
+  for (const [wolframName, latexName] of Object.entries(functionMap)) {
+    const pattern = new RegExp(
+      `\\\\b${wolframName}\\\\s*\\\\[([^\\\\[\\\\]]*)\\\\]`,
+      "gi",
+    );
+
+    result = result.replace(
+      pattern,
+      (_match, argument: string) =>
+        `${latexName}(${argument})`,
+    );
+  }
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
 // Plain mathematical-expression conversion
 // -----------------------------------------------------------------------------
 
 function convertToLatex(value: string): string {
-  let latex = normalizeMathText(value.trim())
+  let latex = normalizeWolframFunctions(
+    normalizeMathText(value.trim()),
+  )
     .replace(/>\s*=/g, "\\geq")
     .replace(/<=/g, "\\leq")
     .replace(/>=/g, "\\geq")
@@ -149,6 +238,8 @@ function convertToLatex(value: string): string {
     .replace(/÷/g, "\\div")
     .replace(/\bpi\b/gi, "\\pi");
 
+  // Convert square-root function calls before fractions so the root becomes
+  // a single LaTeX atom rather than being split by the legacy math tokenizer.
   latex = latex.replace(
     /sqrt\(([^()]+)\)/gi,
     "\\sqrt{$1}",
@@ -164,6 +255,13 @@ function convertToLatex(value: string): string {
     /([A-Za-z0-9])_\s*(?:\{([^}]+)\}|([A-Za-z0-9]+))/g,
     (_match, base: string, braced?: string, plain?: string) =>
       `${base}_{${braced ?? plain}}`,
+  );
+
+  // Handle grouped denominators such as:
+  // 1/(a*sqrt(...)) -> \\frac{1}{a\\cdot\\sqrt{...}}
+  latex = latex.replace(
+    /([A-Za-z0-9]+)\s*\/\s*\(([^()]+)\)/g,
+    "\\frac{$1}{$2}",
   );
 
   latex = latex.replace(
@@ -344,7 +442,13 @@ export default function MathText({
 
   const segments = hasDelimitedMath
     ? delimited
-    : splitLegacyMath(normalized);
+    : looksLikeWholeMathExpression(normalized)
+      ? [{
+          value: normalized,
+          math: true,
+          display: false,
+        }]
+      : splitLegacyMath(normalized);
 
   return (
     <span className={className ?? "math-text"}>
