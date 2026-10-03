@@ -118,7 +118,7 @@ purpose is to establish the requested final result.
         if not isinstance(step_count, int) or not 2 <= step_count <= 5:
             return {
                 "success": False,
-                "error": "Guided attempt step count must be between 2 and 8.",
+                "error": "Guided attempt step count must be between 2 and 5.",
             }
 
         hint_instruction = (
@@ -138,11 +138,11 @@ purpose is to establish the requested final result.
         system_prompt = """
 You are Nova's guided-attempt question writer.
 
-Generate ONLY the multiple-choice steps for the mathematical problem.
+Generate ONLY the multiple-choice steps for the STEM problem.
 The small planning model has already selected the number of steps.
 
 Create exactly the requested number of progressive MCQs that collectively
-construct the solution to the original problem.
+construct the solution to the original STEM problem.
 
 The MCQs are not independent concept questions. They are the solution path
 broken into answerable decisions. Each step must establish a mathematical
