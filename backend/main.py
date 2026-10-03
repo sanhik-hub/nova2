@@ -1,4 +1,7 @@
-﻿from fastapi import FastAPI
+﻿from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
 from backend.services.reasoning_service import ReasoningService
 from backend.services.guided_attempt_service import GuidedAttemptService
 
@@ -12,16 +15,40 @@ from backend.services.computation_service import ComputationService
 from backend.schemas.guided_attempt import GuidedAttemptRequest
 
 
+computation = ComputationService()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """
+    Start one persistent Wolfram kernel after application import has
+    completed, and terminate it cleanly when FastAPI shuts down.
+    """
+
+    engine = computation.router.providers["wolfram"].engine
+
+    # WolframLanguageSession is lazy. start() performs the harmless
+    # warm-up evaluation needed to launch the native kernel.
+    engine.start()
+
+    try:
+        yield
+    finally:
+        engine.close()
+
+
 app = FastAPI(
     title="Offline Computational Engine",
     description="Computational backend powered by multiple providers",
     version="0.3.0",
+    lifespan=lifespan,
 )
 
-computation = ComputationService()
+
 # Reuse the same provider router so Wolfram has one persistent session.
 reasoning = ReasoningService(router=computation.router)
 guided_attempts = GuidedAttemptService(router=computation.router)
+
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
@@ -29,6 +56,7 @@ def reason(request: ComputationRequest):
         request.query,
         explanation=request.explanation,
     )
+
 
 @app.post("/api/guided/start")
 def start_guided_attempt(request: GuidedAttemptRequest):
@@ -72,15 +100,24 @@ def health():
 def start_wolfram():
     engine = computation.router.providers["wolfram"].engine
 
-    # WolframLanguageSession starts its native kernel lazily on the
-    # first evaluation. Warm it explicitly so Control Center can report
-    # the persistent kernel as running immediately after startup.
-    result = engine.calculate("2 + 2")
+    result = engine.start()
 
-    if not result.success:
+    if not result:
         return {
             "success": False,
-            "message": result.error or "Wolfram session could not be started.",
+            "message": (
+                engine.status().get("startup_error")
+                or "Wolfram session could not be started."
+            ),
+            "wolfram_session": engine.status(),
+        }
+
+    verification = engine.calculate("2 + 2")
+
+    if not verification.success:
+        return {
+            "success": False,
+            "message": verification.error or "Wolfram session verification failed.",
             "wolfram_session": engine.status(),
         }
 
@@ -88,27 +125,31 @@ def start_wolfram():
         "success": True,
         "message": "Wolfram session started and verified.",
         "wolfram_session": engine.status(),
-        "test_result": result.result,
+        "test_result": verification.result,
     }
 
 
 @app.post("/api/wolfram/restart")
 def restart_wolfram():
     engine = computation.router.providers["wolfram"].engine
-    engine.restart()
+    success = engine.restart()
 
     return {
-        "success": True,
-        "message": "Wolfram session reset. The kernel will start on the next evaluation.",
+        "success": success,
+        "message": (
+            "Wolfram persistent session restarted."
+            if success
+            else "Wolfram persistent session could not be restarted."
+        ),
         "wolfram_session": engine.status(),
     }
+
 
 @app.post(
     "/api/plot",
     response_model=ComputationResponse,
 )
 def plot(request: PlotRequest):
-
     return computation.plot(
         expression=request.expression,
         variable=request.variable,
