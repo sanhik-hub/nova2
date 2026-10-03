@@ -31,7 +31,7 @@ Problem:
 {problem}
 
 Choose the smallest sufficient number of progressive solution-path stages
-needed to reach the final answer. Use 2 to 5 stages.
+needed to reach the final answer. Use 2 to 4 stages.
 
 Also provide one short ABSTRACT stage description for each stage. The stage
 descriptions are structural guidance for another model; they must not solve the
@@ -54,7 +54,7 @@ Your job is ONLY to create a structural dependency plan for a mathematical
 problem.
 
 Return exactly one JSON object with:
-- "step_count": an integer from 2 through 5;
+- "step_count": an integer from 2 through 4;
 - "path": an array of exactly step_count short abstract stage descriptions.
 
 Do NOT solve the problem.
@@ -79,7 +79,7 @@ purpose is to establish the requested final result.
                 max_tokens=220,
             )
 
-            step_count = 3
+            step_count = 2
 
             if plan_response.get("success"):
                 try:
@@ -101,7 +101,7 @@ purpose is to establish the requested final result.
                 if (
                     isinstance(planned_count, int)
                     and not isinstance(planned_count, bool)
-                    and 2 <= planned_count <= 5
+                    and 2 <= planned_count <= 4
                     and isinstance(candidate_path, list)
                     and len(candidate_path) == planned_count
                     and all(
@@ -115,10 +115,10 @@ purpose is to establish the requested final result.
                         for item in candidate_path
                     ]
 
-        if not isinstance(step_count, int) or not 2 <= step_count <= 5:
+        if not isinstance(step_count, int) or not 2 <= step_count <= 4:
             return {
                 "success": False,
-                "error": "Guided attempt step count must be between 2 and 5.",
+                "error": "Guided attempt step count must be between 2 and 4.",
             }
 
         hint_instruction = (
@@ -131,8 +131,8 @@ purpose is to establish the requested final result.
         # stages; this budget scales with that structure rather than imposing
         # a fixed response size on every problem.
         generation_budget = min(
-            900,
-            max(600, step_count * (220 if include_hints else 190)),
+            650,
+            max(450, step_count * (160 if include_hints else 145)),
         )
 
         system_prompt = """
@@ -192,8 +192,12 @@ attempt into a formula-recall quiz. These are generic pedagogical patterns,
 not fixed question templates.
 
 Do NOT put the final expression, or an algebraically equivalent form of it, in
-an earlier step's options. The final expression must be constructed from
-preceding results rather than recognized from memory.
+an earlier step's options, even as a distractor. The final expression must be constructed from
+preceding results rather than recognized from memory. Do not place the final
+answer, its exact text, or an algebraically equivalent expression in ANY
+earlier option, even as a distractor. Before returning JSON, mentally compare
+the final correct option against every earlier option and replace any duplicate
+or equivalent leakage with a genuinely different incorrect option.
 
 Return ONLY one JSON object with exactly one top-level key: "steps".
 
