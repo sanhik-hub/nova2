@@ -16,12 +16,14 @@ class PlannerLLMProvider:
         prompt: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        compact: bool = False,
     ) -> dict[str, Any]:
         try:
             result = self.runtime.generate_json(
                 prompt=prompt,
                 system_prompt=system_prompt,
                 max_tokens=max_tokens,
+                structured_json=not compact,
             )
             return {
                 "success": True,
