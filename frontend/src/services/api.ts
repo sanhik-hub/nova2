@@ -6,6 +6,7 @@
    tool_calls?: unknown[];
   cached?: boolean;
   elapsed_ms?: number;
+  final_solution_elapsed_ms?: number;
 };
 
 export type ComputationResponse = {
@@ -96,6 +97,9 @@ export type GuidedAttemptResponse = {
   steps?: GuidedStep[];
   include_hints?: boolean;
   include_full_solution?: boolean;
+  elapsed_ms?: number;
+  mcq_elapsed_ms?: number;
+  hint_elapsed_ms?: number;
   error?: string | null;
 };
 
