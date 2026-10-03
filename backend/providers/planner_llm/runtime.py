@@ -38,6 +38,7 @@ class PlannerLLMRuntime:
         prompt: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        structured_json: bool = True,
     ) -> str:
         if not self._available:
             self.load()
@@ -52,13 +53,16 @@ class PlannerLLMRuntime:
                 {"role": "user", "content": prompt},
             ],
             "temperature": self.config.temperature,
-            "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
         }
 
-        # Some planner tasks, such as Guided Attempt, intentionally return a
-        # larger structured JSON document. Let the caller reserve enough
-        # completion space for that document without imposing a global budget.
+        # JSON constrained decoding is useful for larger structured planner
+        # tasks, but it adds unnecessary decoding overhead for tiny metadata
+        # plans. Guided Attempt can request compact text mode and parse its two
+        # scalar values locally.
+        if structured_json:
+            payload["response_format"] = {"type": "json_object"}
+
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
 
