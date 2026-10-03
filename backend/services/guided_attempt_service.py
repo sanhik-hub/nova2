@@ -91,34 +91,31 @@ Original problem:
 Generate exactly {step_count} multiple-choice questions that form one complete
 guided solution path for the original problem.
 
-Before writing the JSON, solve the original problem yourself step by step, as if
-you were working it out on paper. Identify the givens, the requested quantity,
-the governing relations, the substitutions or transformations, and each
-intermediate result needed to reach the final result. Then turn that actual
-solution path into MCQs. Do not output your private solution or reasoning chain;
-output only the MCQs.
+Before writing the JSON, solve the original problem yourself step by step.
+First identify the givens and target only for your own internal reasoning.
+Then work through the actual mathematical/scientific derivation and use its
+intermediate results to build the MCQs. Do not output that internal solution.
 
 HARD RULES:
-- Think through the complete solution sequentially before generating any MCQ.
-- Each non-final MCQ must test one concrete step from that solved path and its
-  correct answer must be an intermediate result, transformation, decision, or
-  relation that is actually needed by a later step.
-- Prefer problem-specific calculation/derivation over generic definitions or
-  formula recall. If a formula can be derived from the stated setup, test the
-  relevant derivation step rather than asking for the memorized formula.
-- Never use the same equation, relation, formula, or mathematical result as the
-  correct answer of two different questions.
-- Never ask for a quantity already given in the problem.
-- Use the original symbols, data, and context.
-- For continuous/distributed systems, derive the local/differential contribution
-  and required sum/integral before using the resulting closed form.
-- For multi-step math, physics, or chemistry, test the actual setup, substitution,
-  transformation, intermediate calculation, and consequence required by this
-  problem.
-- Do not introduce a law, variable, or quantity unless it is needed later.
+- Every non-final question must perform or test a real operation in the solution:
+  setup, definition applied to the given system, algebraic transformation,
+  substitution, differentiation/integration, reaction/stoichiometric step,
+  physical relation applied to the stated quantities, or a necessary
+  intermediate result.
+- Never make an MCQ whose only purpose is to ask what is given, what is required,
+  what topic this is, or which generic formula/law applies.
+- Do not ask for a value that is explicitly given in the original problem.
+- If a standard closed-form formula is derivable from the stated setup, do not
+  use memorization of that closed form as an intermediate MCQ. Test the
+  problem-specific setup/derivation that produces it.
+- Each correct answer must be new information that is used by a later step;
+  do not repeat a formula, equation, or result.
+- For continuous/distributed systems, use the local/differential contribution
+  and required sum/integral before the closed form whenever the problem permits.
+- For multi-step math, physics, or chemistry, use the actual data, symbols,
+  conditions, and transformations from the original problem.
 - Exactly four distinct options and exactly one correct answer per question.
-- The questions must reconstruct the actual solution when answered in order, not
-  merely quiz the student about the topic.
+- The questions must reconstruct the actual solution when answered in order.
 - The final-result question may appear anywhere; the backend will move it last.
 
 Return ONLY this compact JSON object:
@@ -132,15 +129,20 @@ Every step must contain exactly question, options, and correct_index
         generation_system = f"""
 You are Nova's guided STEM solution-path MCQ generator.
 
-Solve the original problem internally, step by step, before generating
-anything. Treat that solved sequence as the source for the MCQs. Output only
-the requested JSON; never output the internal solution or reasoning chain.
-Each question must advance the same actual solution. Do not substitute generic
-topic knowledge for a problem-specific intermediate step. Do not repeat a
-governing equation, relation, formula, or result as the correct answer of
-another step. For derivations and continuous/distributed systems, test the
-necessary local setup, transformation, integration, or intermediate result
-rather than merely recalling a memorized closed-form formula.
+Solve the original problem internally before generating anything. Treat
+the resulting solution sequence as the source for the MCQs. Output only the
+requested JSON; never output the internal solution.
+
+Every non-final MCQ must test a real solution operation or intermediate result:
+setup, application of a definition to the stated quantities, transformation,
+substitution, differentiation/integration, stoichiometric or reaction step,
+physical relation applied to the actual system, or another necessary
+calculation. Never generate meta-questions about what is given, what is asked,
+what topic is involved, or which generic formula/law applies. Do not ask for a
+quantity already supplied. Do not use a memorized closed-form result as an
+intermediate step when the problem's setup permits deriving it. Each correct
+answer must be new and needed later, with no repeated governing equation or
+result.
 
 The original problem is authoritative. Do not invent data or assumptions.
 Exactly four distinct options and one correct answer per question.
