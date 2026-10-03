@@ -88,66 +88,55 @@ class GuidedAttemptService:
 Original problem:
 {problem}
 
-Generate exactly {step_count} multiple-choice questions that form one complete
-guided solution path for the original problem.
+Generate exactly {step_count} multiple-choice questions that reconstruct one
+complete guided solution path for the original problem.
 
-Before writing the JSON, solve the original problem yourself step by step.
-First identify the givens and target only for your own internal reasoning.
-Then work through the actual mathematical/scientific derivation and use its
-intermediate results to build the MCQs. Do not output that internal solution.
+First solve the original problem internally. Use the real derivation to choose
+the intermediate quantities and transformations. Do not output that solution.
 
 HARD RULES:
-- Every non-final question must perform or test one real computational step:
-  setup, a definition applied to the stated system, transformation, substitution,
-  differentiation/integration, stoichiometric/reaction step, physical relation
-  applied to the actual quantities, or a necessary intermediate result.
+- Every non-final question must test one real computational step or new
+  intermediate result from the actual problem.
 - Never ask what is given, what is required, what topic this is, or which generic
   formula/law applies.
 - Never ask for a quantity explicitly supplied in the original problem.
-- The FIRST MCQ must establish the first useful derived quantity or relation from
-  the givens. Do not jump directly to a known closed-form result.
-- The FINAL MCQ is the only place where the requested final quantity may be the
-  correct answer.
-- If a closed-form formula is derivable from the setup, derive it through the
-  necessary local/differential expression and algebra/integration before using
-  that closed form.
-- Each correct answer must be new and used by a later step; never repeat a
-  formula, equation, or result as a correct answer.
-- For continuous/distributed systems, explicitly form the local contribution and
-  required sum/integral before the closed form whenever applicable.
-- For multi-step math, physics, or chemistry, use the actual data, symbols,
-  conditions, and transformations from the original problem.
+- The first question must derive the first useful quantity/relation from the
+  givens, not jump to the final closed form.
+- For continuous/distributed systems, form the local/differential contribution
+  and required sum/integral before the closed form whenever applicable.
+- Use the actual data, symbols, conditions, and transformations from the problem.
+- Each correct answer must be new and needed by a later step.
+- The final question is the only place where the requested final quantity should
+  be established.
 - Exactly four distinct options and exactly one correct answer per question.
-- The questions must reconstruct the actual solution when answered in order.
-- The backend will move the strongest final-result question to the end.
+- The questions must reconstruct the actual solution in order.
 
-Return ONLY this compact JSON object:
-{{"steps":[{{"question":"...","options":["...","...","...","..."],"correct_index":0}}]}}
+OUTPUT FORMAT — DO NOT OUTPUT JSON, MARKDOWN, OR EXPLANATIONS.
+Return exactly one record per line, for exactly {step_count} lines:
+STEP|||question|||option1|||option2|||option3|||option4|||correct_index{'|||hint' if include_hints else ''}
 
-Every step must contain exactly question, options, and correct_index
-{', plus hint' if include_hints else ''}. Do not include other JSON keys.
-{'Each step must also contain a short hint that does not reveal the correct option.' if include_hints else ''}
+Rules for the record format:
+- Use exactly the literal delimiter ||| between fields.
+- Never use ||| inside a question, option, or hint.
+- correct_index is a single integer from 0 to 3.
+- Do not number the lines and do not add blank lines.
+- {'The final field is a short hint that helps the student without revealing the correct option.' if include_hints else ''}
 """.strip()
 
-        generation_system = f"""
+        generation_system = """
 You are Nova's guided STEM solution-path MCQ generator.
 
-Solve the original problem internally before generating anything. Treat
-the resulting solution sequence as the source for the MCQs. Output only the
-requested JSON; never output the internal solution.
+Solve the original problem internally and use the actual solution sequence to
+build the MCQs. Never output the internal solution.
 
-Every non-final MCQ must test one real computational step or new
-intermediate result. Never generate meta-questions about what is given, what is
-asked, what topic is involved, or which generic formula/law applies. Never ask
-for a quantity already supplied. The first question must derive the first useful
-quantity or relation from the givens, not a memorized closed-form result. The
-final question alone may establish the requested final quantity. For continuous
-systems, form the local/differential contribution and required integral before
-the closed form. Each correct answer must be new and needed later, with no
-repeated equation or result.
-
-The original problem is authoritative. Do not invent data or assumptions.
+Every question must be a real computational step or new intermediate result.
+Never ask meta-questions, never ask for supplied quantities, and never jump
+straight to the final result. For continuous systems, form the local/differential
+contribution and required integral before the closed form when applicable.
 Exactly four distinct options and one correct answer per question.
+
+Output ONLY one STEP record per line using exactly ||| as the field delimiter.
+Do not output JSON, Markdown, explanations, numbering, or blank lines.
 """.strip()
 
         generation_started = perf_counter()
@@ -176,14 +165,17 @@ Exactly four distinct options and one correct answer per question.
 
         raw_generation = generation_response.get("result")
         try:
-            generated_payload = self._parse_json(raw_generation)
+            generated_payload = self._parse_generated_records(
+                raw_generation,
+                include_hints=include_hints,
+            )
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             # Keep this failure diagnostic and deterministic. Do not spend
             # another 40-60 seconds on an LLM repair attempt.
-            detail = str(exc).strip() or "unknown JSON parsing error"
+            detail = str(exc).strip() or "unknown guided-record parsing error"
             return {
                 "success": False,
-                "error": f"Guided attempt generator returned invalid JSON: {detail}",
+                "error": f"Guided attempt generator returned invalid records: {detail}",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
@@ -637,6 +629,65 @@ Using those verified intermediate choices, write the complete final solution.
             "tool_calls": [],
             "cached": False,
         }
+
+    @staticmethod
+    def _parse_generated_records(raw: Any, include_hints: bool) -> dict[str, Any]:
+        """Parse compact STEP records emitted by the guided generator.
+
+        This deliberately avoids JSON syntax because the small local model is
+        much more reliable with fixed delimiter-separated records.
+        """
+        if not isinstance(raw, str):
+            raise ValueError("Expected guided STEP records.")
+
+        text = raw.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:text|txt)?\s*", "", text, count=1, flags=re.IGNORECASE)
+            text = re.sub(r"\s*```\s*$", "", text, count=1)
+
+        steps: list[dict[str, Any]] = []
+        for line_number, raw_line in enumerate(text.splitlines(), start=1):
+            line = raw_line.strip()
+            if not line:
+                continue
+            if not line.upper().startswith("STEP|||"):
+                raise ValueError(f"Line {line_number} is not a STEP record.")
+            fields = line.split("|||")
+            expected_fields = 8 if include_hints else 7
+            if len(fields) != expected_fields:
+                raise ValueError(
+                    f"Line {line_number} has {len(fields)} fields; expected {expected_fields}."
+                )
+            if fields[0].strip().upper() != "STEP":
+                raise ValueError(f"Line {line_number} has an invalid record prefix.")
+            question = fields[1].strip()
+            options = [field.strip() for field in fields[2:6]]
+            index_text = fields[6].strip()
+            if not question:
+                raise ValueError(f"Line {line_number} has an empty question.")
+            if any(not option for option in options):
+                raise ValueError(f"Line {line_number} has an empty option.")
+            try:
+                correct_index = int(index_text)
+            except ValueError as exc:
+                raise ValueError(f"Line {line_number} has a non-integer correct_index.") from exc
+            if not 0 <= correct_index < 4:
+                raise ValueError(f"Line {line_number} has correct_index outside 0-3.")
+            step: dict[str, Any] = {
+                "question": question,
+                "options": options,
+                "correct_index": correct_index,
+            }
+            if include_hints:
+                hint = fields[7].strip()
+                if not hint:
+                    raise ValueError(f"Line {line_number} has an empty hint.")
+                step["hint"] = hint
+            steps.append(step)
+
+        if not steps:
+            raise ValueError("No STEP records found.")
+        return {"steps": steps}
 
     @staticmethod
     def _parse_json(raw: Any) -> Any:
