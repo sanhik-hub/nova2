@@ -87,8 +87,14 @@ class GuidedAttemptService:
 Original problem:
 {problem}
 
-Generate exactly {step_count} multiple-choice questions that together form a
-complete guided solution path for the original problem.
+Generate exactly {step_count} multiple-choice questions that form a complete
+guided solution path for the original problem.
+
+BEFORE writing any JSON, silently construct the dependency chain:
+1. Identify the requested final result.
+2. Work backward to the necessary intermediate results.
+3. Ensure each stage produces something needed by a later stage.
+4. Then write the MCQs. Do not output this plan.
 
 Generate the questions as a COMPLETE POOL first. Do not worry about the order
 in which they will be presented. If a question that asks for the requested
