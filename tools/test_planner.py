@@ -140,9 +140,7 @@ def inspect_result(test: dict[str, Any], call: dict[str, Any]) -> dict[str, Any]
         "raw_content": "",
         "valid_json": False,
         "complexity": "",
-        "step_count_advisory": "",
         "schema_valid": False,
-        "advisory_range_valid": False,
         "contains_path": False,
         "contains_solution_like_text": False,
         "error": call.get("error", ""),
@@ -175,7 +173,6 @@ def inspect_result(test: dict[str, Any], call: dict[str, Any]) -> dict[str, Any]
         return row
 
     row["complexity"] = parsed.get("complexity", "")
-    row["step_count_advisory"] = parsed.get("step_count_advisory", "")
     row["contains_path"] = "path" in parsed
 
     solution_terms = (
@@ -187,14 +184,8 @@ def inspect_result(test: dict[str, Any], call: dict[str, Any]) -> dict[str, Any]
     )
 
     row["schema_valid"] = (
-        set(parsed.keys()) == {"complexity", "step_count_advisory"}
+        set(parsed.keys()) == {"complexity"}
         and parsed.get("complexity") in {"simple", "moderate", "complex", "very_complex"}
-        and isinstance(parsed.get("step_count_advisory"), int)
-        and not isinstance(parsed.get("step_count_advisory"), bool)
-    )
-    row["advisory_range_valid"] = (
-        isinstance(parsed.get("step_count_advisory"), int)
-        and 3 <= parsed["step_count_advisory"] <= 15
     )
     return row
 
@@ -214,7 +205,6 @@ def main() -> int:
         print(
             f"    {status} | {row['elapsed_ms']} ms | "
             f"complexity={row['complexity'] or '-'} | "
-            f"steps={row['step_count_advisory'] or '-'} | "
             f"finish={row['finish_reason'] or '-'}"
         )
 
@@ -226,7 +216,6 @@ def main() -> int:
             "http_success": sum(bool(r["http_success"]) for r in rows),
             "valid_json": sum(bool(r["valid_json"]) for r in rows),
             "schema_valid": sum(bool(r["schema_valid"]) for r in rows),
-            "advisory_range_valid": sum(bool(r["advisory_range_valid"]) for r in rows),
         },
         "tests": rows,
     }
