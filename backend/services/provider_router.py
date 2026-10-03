@@ -59,6 +59,7 @@ class ProviderRouter:
         temperature=None,
         system_prompt=None,
         enable_thinking=False,
+        response_format=None,
     ):
 
         provider = self.get_provider("local_llm")
@@ -69,4 +70,5 @@ class ProviderRouter:
             temperature=temperature,
             system_prompt=system_prompt,
             enable_thinking=enable_thinking,
+            response_format=response_format,
         )
