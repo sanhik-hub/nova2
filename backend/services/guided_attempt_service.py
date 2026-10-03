@@ -84,8 +84,7 @@ class GuidedAttemptService:
         # responsible for the actual STEM reasoning. The tiny planner is used
         # only for coarse complexity metadata; its semantic reasoning is not
         # trusted enough to dictate individual solution stages.
-        generation_prompt = f"""
-Original problem:
+        generation_prompt = f"""Original problem:
 {problem}
 
 Generate exactly {step_count} multiple-choice questions that reconstruct one
@@ -109,18 +108,9 @@ HARD RULES:
 - The final question is the only place where the requested final quantity should
   be established.
 - Exactly four distinct options and exactly one correct answer per question.
-- The questions must reconstruct the actual solution in order.
+- Return exactly {step_count} steps.
 
-OUTPUT FORMAT — DO NOT OUTPUT JSON, MARKDOWN, OR EXPLANATIONS.
-Return exactly one record per line, for exactly {step_count} lines:
-STEP|||question|||option1|||option2|||option3|||option4|||correct_index{'|||hint' if include_hints else ''}
-
-Rules for the record format:
-- Use exactly the literal delimiter ||| between fields.
-- Never use ||| inside a question, option, or hint.
-- correct_index is a single integer from 0 to 3.
-- Do not number the lines and do not add blank lines.
-- {'The final field is a short hint that helps the student without revealing the correct option.' if include_hints else ''}
+The response is constrained by a JSON schema. Output only the JSON object.
 """.strip()
 
         generation_system = """
@@ -135,8 +125,7 @@ straight to the final result. For continuous systems, form the local/differentia
 contribution and required integral before the closed form when applicable.
 Exactly four distinct options and one correct answer per question.
 
-Output ONLY one STEP record per line using exactly ||| as the field delimiter.
-Do not output JSON, Markdown, explanations, numbering, or blank lines.
+The response is constrained by a JSON schema. Return only the schema object.
 """.strip()
 
         generation_started = perf_counter()
@@ -146,6 +135,10 @@ Do not output JSON, Markdown, explanations, numbering, or blank lines.
             max_tokens=None,
             temperature=0,
             enable_thinking=False,
+            response_format=self._guided_response_format(
+                step_count=step_count,
+                include_hints=include_hints,
+            ),
         )
         mcq_generation_elapsed_ms += (
             perf_counter() - generation_started
@@ -165,15 +158,7 @@ Do not output JSON, Markdown, explanations, numbering, or blank lines.
 
         raw_generation = generation_response.get("result")
         try:
-            try:
-                generated_payload = self._parse_generated_records(
-                    raw_generation,
-                    include_hints=include_hints,
-                )
-            except (TypeError, ValueError, json.JSONDecodeError):
-                # Keep compatibility with local models that still emit the
-                # older JSON shape despite the compact-record instruction.
-                generated_payload = self._parse_json(raw_generation)
+            generated_payload = self._parse_json(raw_generation)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             # Keep this failure diagnostic and deterministic. Do not spend
             # another 40-60 seconds on an LLM repair attempt.
@@ -633,6 +618,53 @@ Using those verified intermediate choices, write the complete final solution.
             "engine": "local_llm",
             "tool_calls": [],
             "cached": False,
+        }
+
+    @staticmethod
+    def _guided_response_format(
+        step_count: int,
+        include_hints: bool,
+    ) -> dict[str, Any]:
+        """Return a strict JSON schema for the single guided generation call."""
+        step_properties: dict[str, Any] = {
+            "question": {"type": "string", "minLength": 1},
+            "options": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {"type": "string", "minLength": 1},
+            },
+            "correct_index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3,
+            },
+        }
+        required = ["question", "options", "correct_index"]
+        if include_hints:
+            step_properties["hint"] = {"type": "string", "minLength": 1}
+            required.append("hint")
+
+        return {
+            "type": "json_schema",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "steps": {
+                        "type": "array",
+                        "minItems": step_count,
+                        "maxItems": step_count,
+                        "items": {
+                            "type": "object",
+                            "properties": step_properties,
+                            "required": required,
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["steps"],
+                "additionalProperties": False,
+            },
         }
 
     @staticmethod
