@@ -31,7 +31,7 @@ Problem:
 {problem}
 
 Choose the smallest sufficient number of progressive solution-path stages
-needed to reach the final answer. Use 2 to 8 stages.
+needed to reach the final answer. Use 2 to 5 stages.
 
 Also provide one short ABSTRACT stage description for each stage. The stage
 descriptions are structural guidance for another model; they must not solve the
@@ -54,7 +54,7 @@ Your job is ONLY to create a structural dependency plan for a mathematical
 problem.
 
 Return exactly one JSON object with:
-- "step_count": an integer from 2 through 8;
+- "step_count": an integer from 2 through 5;
 - "path": an array of exactly step_count short abstract stage descriptions.
 
 Do NOT solve the problem.
@@ -79,7 +79,7 @@ purpose is to establish the requested final result.
                 max_tokens=220,
             )
 
-            step_count = 4
+            step_count = 3
 
             if plan_response.get("success"):
                 try:
@@ -101,7 +101,7 @@ purpose is to establish the requested final result.
                 if (
                     isinstance(planned_count, int)
                     and not isinstance(planned_count, bool)
-                    and 2 <= planned_count <= 8
+                    and 2 <= planned_count <= 5
                     and isinstance(candidate_path, list)
                     and len(candidate_path) == planned_count
                     and all(
@@ -115,7 +115,7 @@ purpose is to establish the requested final result.
                         for item in candidate_path
                     ]
 
-        if not isinstance(step_count, int) or not 2 <= step_count <= 8:
+        if not isinstance(step_count, int) or not 2 <= step_count <= 5:
             return {
                 "success": False,
                 "error": "Guided attempt step count must be between 2 and 8.",
@@ -131,8 +131,8 @@ purpose is to establish the requested final result.
         # stages; this budget scales with that structure rather than imposing
         # a fixed response size on every problem.
         generation_budget = min(
-            2400,
-            max(1000, step_count * (360 if include_hints else 280)),
+            900,
+            max(600, step_count * (220 if include_hints else 190)),
         )
 
         system_prompt = """
@@ -302,55 +302,12 @@ Output only the JSON object.
             problem,
         )
 
-        # The guided writer is deterministic, but structured MCQs can still
-        # occasionally violate the dependency/leakage checks. Regenerate once
-        # with the concrete validation failure instead of exposing a transient
-        # model-generation failure to the user. Keep the validator strict:
-        # retries are for correcting the generated path, not for weakening the
-        # pedagogical contract.
-        if not valid:
-            retry_prompt = f"""
-The previous guided-attempt draft failed validation:
-
-{steps_or_error}
-
-Regenerate the complete guided MCQ path for the original problem. Correct the
-specific validation failure above. In particular, the requested final result
-must appear only in the final step, and every earlier step must establish a
-distinct intermediate result that is actually needed by a later step.
-
-Return ONLY the same JSON object with exactly the requested number of steps.
-""".strip()
-
-            retry_response = self.router.generate(
-                prompt=f"{prompt}\n\n{retry_prompt}",
-                system_prompt=system_prompt,
-                max_tokens=generation_budget,
-                temperature=0,
-                enable_thinking=False,
-            )
-
-            if retry_response.get("success"):
-                try:
-                    retry_payload = self._parse_json(
-                        retry_response.get("result")
-                    )
-                    retry_valid, retry_steps_or_error = self._validate(
-                        retry_payload,
-                        include_hints,
-                        step_count,
-                        problem,
-                    )
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    retry_valid = False
-                    retry_steps_or_error = (
-                        "Guided attempt generator returned invalid JSON."
-                    )
-
-                if retry_valid:
-                    steps_or_error = retry_steps_or_error
-                    valid = True
-
+        # Do not automatically run a second full LLM generation when
+        # the first draft violates a pedagogical rule. A retry doubles the
+        # expensive local-model latency and can reproduce the same violation.
+        # Formatting/contract failures are surfaced directly as well; the
+        # generation prompt is deliberately strict enough that retries are not
+        # part of the normal guided path.
         if not valid:
             return {"success": False, "error": steps_or_error}
 
