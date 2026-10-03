@@ -1,4 +1,4 @@
-﻿import json
+import json
 import re
 import random
 from typing import Any
@@ -31,7 +31,7 @@ Problem:
 {problem}
 
 Choose the smallest sufficient number of progressive solution-path stages
-needed to reach the final answer. Use 2 to 4 stages.
+needed to reach the final answer. Use 3 to 5 stages.
 
 Also provide one short ABSTRACT stage description for each stage. The stage
 descriptions are structural guidance for another model; they must not solve the
@@ -54,7 +54,7 @@ Your job is ONLY to create a structural dependency plan for a mathematical
 problem.
 
 Return exactly one JSON object with:
-- "step_count": an integer from 2 through 4;
+- "step_count": an integer from 3 through 5;
 - "path": an array of exactly step_count short abstract stage descriptions.
 
 Do NOT solve the problem.
@@ -76,10 +76,10 @@ Choose the smallest sufficient dependency chain. Do not force every example
 stage into every problem. The final path item must be the only item whose
 purpose is to establish the requested final result.
 """.strip(),
-                max_tokens=220,
+                max_tokens=160,
             )
 
-            step_count = 2
+            step_count = 3
 
             if plan_response.get("success"):
                 try:
@@ -101,7 +101,7 @@ purpose is to establish the requested final result.
                 if (
                     isinstance(planned_count, int)
                     and not isinstance(planned_count, bool)
-                    and 2 <= planned_count <= 4
+                    and 3 <= planned_count <= 5
                     and isinstance(candidate_path, list)
                     and len(candidate_path) == planned_count
                     and all(
@@ -115,10 +115,10 @@ purpose is to establish the requested final result.
                         for item in candidate_path
                     ]
 
-        if not isinstance(step_count, int) or not 2 <= step_count <= 4:
+        if not isinstance(step_count, int) or not 3 <= step_count <= 5:
             return {
                 "success": False,
-                "error": "Guided attempt step count must be between 2 and 4.",
+                "error": "Guided attempt step count must be between 3 and 5.",
             }
 
         hint_instruction = (
@@ -132,7 +132,7 @@ purpose is to establish the requested final result.
         # a fixed response size on every problem.
         generation_budget = min(
             650,
-            max(450, step_count * (160 if include_hints else 145)),
+            max(360, step_count * (125 if include_hints else 110)),
         )
 
         system_prompt = """
@@ -452,7 +452,7 @@ Using those verified intermediate choices, write the complete final solution.
         steps = payload.get("steps")
         if (
             not isinstance(steps, list)
-            or not 2 <= len(steps) <= 8
+            or not 3 <= len(steps) <= 5
             or (
                 requested_step_count is not None
                 and len(steps) != requested_step_count
