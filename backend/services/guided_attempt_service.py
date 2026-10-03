@@ -204,53 +204,55 @@ Current step:
 Generate only this one step.
 """.strip()
 
-            mcq_step_started = perf_counter()
-            response = self.router.generate(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                max_tokens=None,
-                temperature=0,
-                enable_thinking=False,
-            )
-            mcq_generation_elapsed_ms += (
-                perf_counter() - mcq_step_started
-            ) * 1000
+            normalized_step = None
+            last_error = None
 
-            if not response.get("success"):
-                return {
-                    "success": False,
-                    "error": (
+            # Retry only a malformed single step; never regenerate the whole path.
+            for _attempt in range(2):
+                mcq_step_started = perf_counter()
+                response = self.router.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=None,
+                    temperature=0,
+                    enable_thinking=False,
+                )
+                mcq_generation_elapsed_ms += (
+                    perf_counter() - mcq_step_started
+                ) * 1000
+
+                if not response.get("success"):
+                    last_error = (
                         response.get("error")
                         or f"Guided attempt generation failed at step {step_number}."
-                    ),
-                    "planner_elapsed_ms": planner_elapsed_ms,
-                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                    "answer_tokens_advisory": guided_answer_tokens,
-                }
+                    )
+                    continue
 
-            try:
-                payload = self._parse_json(response.get("result"))
-            except (TypeError, ValueError, json.JSONDecodeError):
-                return {
-                    "success": False,
-                    "error": (
+                try:
+                    payload = self._parse_json(response.get("result"))
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    last_error = (
                         f"Guided attempt generator returned invalid JSON at step {step_number}."
-                    ),
-                    "planner_elapsed_ms": planner_elapsed_ms,
-                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                    "answer_tokens_advisory": guided_answer_tokens,
-                }
+                    )
+                    continue
 
-            normalized_step = self._validate_single_step(
-                payload,
-                include_hints=include_hints,
-                is_final=is_final,
-            )
+                normalized_step = self._validate_single_step(
+                    payload,
+                    include_hints=include_hints,
+                    is_final=is_final,
+                )
+                if normalized_step is not None:
+                    break
+
+                last_error = (
+                    f"Guided attempt generator returned an invalid step at step {step_number}."
+                )
+
             if normalized_step is None:
                 return {
                     "success": False,
-                    "error": (
-                        f"Guided attempt generator returned an invalid step at step {step_number}."
+                    "error": last_error or (
+                        f"Guided attempt generation failed at step {step_number}."
                     ),
                     "planner_elapsed_ms": planner_elapsed_ms,
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
@@ -258,6 +260,90 @@ Generate only this one step.
                 }
 
             generated_steps.append(normalized_step)
+
+        # The final answer is known now. If it leaked into an earlier option,
+        # repair only that intermediate step instead of discarding the entire path.
+        if len(generated_steps) >= 2:
+            final_correct = generated_steps[-1]["options"][
+                generated_steps[-1]["correct_index"]
+            ]["text"]
+
+            def _option_key(value: str) -> str:
+                return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+            final_key = _option_key(final_correct)
+            leaked_index = None
+            for index, earlier_step in enumerate(generated_steps[:-1]):
+                if any(
+                    _option_key(option["text"]) == final_key
+                    for option in earlier_step["options"]
+                ):
+                    leaked_index = index
+                    break
+
+            if leaked_index is not None:
+                leaked_step = generated_steps[leaked_index]
+                repair_prompt = f"""
+Original problem:
+{problem}
+
+Intermediate step {leaked_index + 1} of {step_count}:
+{json.dumps(leaked_step, ensure_ascii=False)}
+
+Final result:
+{final_correct}
+
+Rewrite ONLY this intermediate step. No option may contain the final result
+or an algebraically equivalent expression. Preserve the existing correct
+intermediate result exactly when it is not the final result, because later
+steps depend on it. Replace leaking distractors with genuinely incorrect but
+plausible alternatives.
+
+Return ONLY:
+{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},],"correct_index":0,"step_goal":"..."}}.
+""".strip()
+
+                repair_system = f"""
+You are repairing one intermediate MCQ in a sequential STEM solution.
+The final result is known and must not appear in this intermediate step.
+Return exactly one valid step with question, four text-only options,
+correct_index, and step_goal{', plus hint' if include_hints else ''}.
+Keep the mathematics correct and preserve the existing correct intermediate
+result when it is not the final result.
+{'Include one short hint without revealing the answer.' if include_hints else ''}
+""".strip()
+
+                repair_started = perf_counter()
+                repair_response = self.router.generate(
+                    prompt=repair_prompt,
+                    system_prompt=repair_system,
+                    max_tokens=None,
+                    temperature=0,
+                    enable_thinking=False,
+                )
+                mcq_generation_elapsed_ms += (
+                    perf_counter() - repair_started
+                ) * 1000
+
+                if repair_response.get("success"):
+                    try:
+                        repaired_payload = self._parse_json(
+                            repair_response.get("result")
+                        )
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        repaired_payload = None
+
+                    repaired_step = (
+                        self._validate_single_step(
+                            repaired_payload,
+                            include_hints=include_hints,
+                            is_final=False,
+                        )
+                        if repaired_payload is not None
+                        else None
+                    )
+                    if repaired_step is not None:
+                        generated_steps[leaked_index] = repaired_step
 
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
