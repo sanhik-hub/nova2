@@ -8,7 +8,7 @@ from backend.services.provider_router import ProviderRouter
 
 
 class GuidedAttemptService:
-    """Use advisory planning plus the main LLM to generate a sequential guided attempt."""
+    """Generate a sequential guided attempt with one main LLM generation call."""
 
     def __init__(self, router: ProviderRouter | None = None):
         self.router = router or ProviderRouter()
@@ -23,90 +23,16 @@ class GuidedAttemptService:
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
+        # Guided attempts intentionally use one LLM generation call. The old
+        # LLM complexity-planning call was only producing step-count metadata,
+        # but it still incurred full local-model inference latency (~10 seconds).
+        # Estimate the same metadata locally so planning is effectively free.
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
-        # The lightweight planner remains a benchmark only. Production guided
-        # attempts use the primary reasoning model and a single pooled MCQ call.
+
         if step_count is None:
-            main_plan_started = perf_counter()
-            main_plan_response = self.router.generate(
-                prompt=f"""
-Original problem:
-{problem}
-
-Choose the number of progressive guided steps actually needed for this problem.
-Simple problems may need a few steps; multi-stage derivations may need more
-than five. Also estimate an advisory completion-token target for the complete
-guided attempt.
-
-Return ONLY this JSON object:
-{{"step_count":N,"answer_tokens_advisory":T}}
-
-Rules:
-- step_count must be an integer from 3 through 15;
-- answer_tokens_advisory is metadata only and is NOT a generation limit;
-- do not return stage goals, questions, options, hints, or a solution.
-""".strip(),
-                system_prompt="""
-You are Nova's primary guided-attempt complexity planner.
-
-Your ONLY job is to estimate the number of useful progressive MCQ steps needed
-for the original STEM problem and an advisory completion-token target.
-
-Return exactly one compact JSON object:
-{"step_count":N,"answer_tokens_advisory":T}
-
-Choose 3 through 15 steps based on the actual mathematical/scientific
-complexity. Do not solve the problem, write questions, or provide stage goals.
-The token estimate is advisory metadata only; it must never be used as a
-generation limit.
-""".strip(),
-                max_tokens=192,
-                temperature=0,
-                enable_thinking=False,
-            )
-
-            planner_elapsed_ms += (
-                perf_counter() - main_plan_started
-            ) * 1000
-
-            main_plan = None
-            if main_plan_response.get("success"):
-                try:
-                    main_plan = self._parse_json(main_plan_response.get("result"))
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    main_plan = None
-
-            planned_count = (
-                main_plan.get("step_count")
-                if isinstance(main_plan, dict)
-                else None
-            )
-            advisory_tokens = (
-                main_plan.get("answer_tokens_advisory")
-                if isinstance(main_plan, dict)
-                else None
-            )
-
-            if (
-                isinstance(planned_count, int)
-                and not isinstance(planned_count, bool)
-                and 3 <= planned_count <= 15
-            ):
-                step_count = planned_count
-
-            if (
-                isinstance(advisory_tokens, int)
-                and not isinstance(advisory_tokens, bool)
-                and advisory_tokens > 0
-            ):
-                guided_answer_tokens = advisory_tokens
-
-            # Emergency fallback only if the stronger planning call fails.
-            # The lightweight planner never determines the actual step count.
-            if step_count is None:
-                step_count = 6
+            step_count, guided_answer_tokens = self._estimate_guided_complexity(problem)
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 15:
             return {
@@ -281,6 +207,52 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
             }
+
+    @staticmethod
+    def _estimate_guided_complexity(problem: str) -> tuple[int, int]:
+        """Estimate guided-path complexity without invoking the local LLM."""
+        text = problem.lower()
+        words = re.findall(r"[a-z]+", text)
+
+        # Start with a useful minimum for a guided STEM solution, then add
+        # stages only for concrete signs of multi-step work. This is metadata
+        # only; it never limits the main MCQ generation call.
+        steps = 4
+
+        complexity_markers = (
+            "derive", "derivation", "prove", "proof", "show that",
+            "calculate", "determine", "evaluate", "find",
+            "integrate", "integration", "differentiate", "differentiation",
+            "solve", "equation", "equations", "substitute", "substitution",
+            "simplify", "simplification", "limit", "series",
+            "stoichiometry", "mechanism", "equilibrium", "titration",
+            "moles", "reaction", "kinetic", "thermodynamic",
+        )
+        for marker in complexity_markers:
+            if marker in text:
+                steps += 1
+
+        # Multi-part or chained conditions usually require an additional
+        # intermediate decision/result.
+        if any(token in text for token in ("then", "after", "next", "given that", "where")):
+            steps += 1
+        if any(token in text for token in ("and", "also", "respectively")):
+            steps += 1
+
+        # Mathematical/scientific notation and multiple explicit quantities
+        # are useful complexity signals, but keep the estimate conservative.
+        if len(words) > 55:
+            steps += 1
+        if len(re.findall(r"\\b(?:x|y|z|t|m|M|L|r|R|v|u|a|q|p|V|T|P|I|omega|\\u03c9)\\b", problem)) >= 4:
+            steps += 1
+
+        steps = max(3, min(15, steps))
+
+        # Advisory completion size scales with the number of generated MCQs.
+        # It is telemetry/UI guidance only and is deliberately not passed as
+        # max_tokens to the main generator.
+        advisory_tokens = max(420, min(1400, 90 * steps))
+        return steps, advisory_tokens
 
     @staticmethod
     def _validate_single_step(
@@ -705,42 +677,10 @@ Using those verified intermediate choices, write the complete final solution.
         # pedagogically broken. Reject the most important forms of leakage or
         # disconnected steps rather than silently presenting them as a guided path.
 
-        # Reject common formula-recall / restatement failures before the
-        # result reaches the UI. Extract the requested target from the original
-        # problem and make sure earlier questions do not simply ask for that
-        # target's standard formula.
-        target_match = re.search(
-            r"\b(?:determine|find|calculate|derive|evaluate|obtain)\s+(?:the\s+)?(.+?)(?:[?.!]|$)",
-            problem,
-            flags=re.IGNORECASE,
-        )
-        if target_match and len(normalized) >= 2:
-            target_words = [
-                word
-                for word in re.findall(r"[a-zA-Z]+", target_match.group(1).lower())
-                if word not in {
-                    "the", "a", "an", "of", "for", "to", "from", "in",
-                    "on", "about", "using", "with", "given", "its",
-                }
-            ]
-            target_terms = set(target_words[:4])
-            if len(target_terms) >= 2:
-                for earlier_step in normalized[:-1]:
-                    earlier_text = earlier_step["question"].lower()
-                    earlier_words = set(re.findall(r"[a-zA-Z]+", earlier_text))
-                    overlap = target_terms & earlier_words
-                    asks_formula = any(
-                        phrase in earlier_text
-                        for phrase in (
-                            "formula", "equation", "expression for",
-                            "relation for", "law for",
-                        )
-                    )
-                    if asks_formula and len(overlap) >= 2:
-                        return False, (
-                            "Guided attempt asks for the requested final quantity "
-                            "or its standard formula before the final step."
-                        )
+        # Final-result ordering is handled by _reorder_final_step() before
+        # validation. A generated pool is therefore allowed to contain the
+        # requested result naturally; the deterministic ordering pass moves the
+        # best matching final-result question to the end without another LLM call.
 
         # Reject steps that merely ask the student to identify a quantity
         # explicitly supplied by the original problem.
