@@ -1,0 +1,1 @@
+id,domain,name,problem,planner_url,http_success,elapsed_ms,finish_reason,completion_tokens,prompt_tokens,raw_content,valid_json,complexity,step_count_advisory,schema_valid,advisory_range_valid,contains_path,contains_solution_like_text,error
