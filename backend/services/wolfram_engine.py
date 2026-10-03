@@ -78,10 +78,10 @@ class WolframEngine:
 
         atexit.register(self.close)
 
-        # Start the persistent kernel immediately. WolframLanguageSession
-        # itself is lazy, so creating the session object is not sufficient;
-        # the lightweight evaluation below actually launches the kernel.
-        self.start()
+        # Do not launch the native kernel while Python is importing the
+        # FastAPI application. The Wolfram client is reliable when started
+        # after the application process has finished importing, so FastAPI's
+        # lifespan starts the persistent session explicitly.
 
     def start(self) -> bool:
         """
