@@ -1,6 +1,7 @@
 import json
 import re
 import random
+from time import perf_counter
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
@@ -23,8 +24,11 @@ class GuidedAttemptService:
             return {"success": False, "error": "Question is empty."}
 
         planned_path: list[str] | None = None
+        planner_elapsed_ms = 0.0
+        mcq_generation_elapsed_ms = 0.0
 
         if step_count is None:
+            planner_started = perf_counter()
             plan_response = self.router.plan(
                 prompt=f"""
 Problem:
@@ -78,6 +82,7 @@ purpose is to establish the requested final result.
 """.strip(),
                 max_tokens=160,
             )
+            planner_elapsed_ms = round((perf_counter() - planner_started) * 1000, 2)
 
             step_count = 3
 
@@ -276,12 +281,17 @@ question. The first step_goal must not be the final answer.
 Output only the JSON object.
 """.strip()
 
+        mcq_generation_started = perf_counter()
         response = self.router.generate(
             prompt=prompt,
             system_prompt=system_prompt,
             max_tokens=generation_budget,
             temperature=0,
             enable_thinking=False,
+        )
+        mcq_generation_elapsed_ms = round(
+            (perf_counter() - mcq_generation_started) * 1000,
+            2,
         )
 
         if not response.get("success"):
@@ -321,6 +331,8 @@ Output only the JSON object.
             "steps": steps_or_error,
             "include_hints": include_hints,
             "include_full_solution": False,
+            "planner_elapsed_ms": planner_elapsed_ms,
+            "mcq_generation_elapsed_ms": mcq_generation_elapsed_ms,
         }
 
     def generate_solution(
