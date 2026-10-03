@@ -658,9 +658,9 @@ Using those verified intermediate choices, write the complete final solution.
             # Small local instruction models may prefix a valid record with
             # numbering, bullets, or a short label. Strip only that harmless
             # wrapper; the actual field structure remains strict.
-            record_match = re.search(r"(?:^|\\s)(STEP\\|\\|\\|.*)$", line, flags=re.IGNORECASE)
-            if record_match:
-                line = record_match.group(1).strip()
+            marker_index = line.upper().find("STEP|||")
+            if marker_index >= 0:
+                line = line[marker_index:].strip()
             else:
                 continue
 
