@@ -91,26 +91,34 @@ Original problem:
 Generate exactly {step_count} multiple-choice questions that form one complete
 guided solution path for the original problem.
 
-Silently solve the problem before writing JSON. Build the dependency chain from
-the givens to the requested result. Do not output the chain.
+Before writing the JSON, solve the original problem yourself step by step, as if
+you were working it out on paper. Identify the givens, the requested quantity,
+the governing relations, the substitutions or transformations, and each
+intermediate result needed to reach the final result. Then turn that actual
+solution path into MCQs. Do not output your private solution or reasoning chain;
+output only the MCQs.
 
 HARD RULES:
-- Every non-final question must produce an intermediate result, transformation,
-  decision, or relation that is used by a later question.
-- Do not ask generic definitions or formula-recall questions when the
-  problem-specific derivation can be tested.
+- Think through the complete solution sequentially before generating any MCQ.
+- Each non-final MCQ must test one concrete step from that solved path and its
+  correct answer must be an intermediate result, transformation, decision, or
+  relation that is actually needed by a later step.
+- Prefer problem-specific calculation/derivation over generic definitions or
+  formula recall. If a formula can be derived from the stated setup, test the
+  relevant derivation step rather than asking for the memorized formula.
 - Never use the same equation, relation, formula, or mathematical result as the
   correct answer of two different questions.
 - Never ask for a quantity already given in the problem.
 - Use the original symbols, data, and context.
-- For continuous/distributed systems, prefer the local/differential contribution
-  and required sum/integral before the derived closed form.
-- For multi-step math, physics, or chemistry, test the actual setup,
-  substitution/transformation, intermediate result, and consequence required by
-  this problem.
+- For continuous/distributed systems, derive the local/differential contribution
+  and required sum/integral before using the resulting closed form.
+- For multi-step math, physics, or chemistry, test the actual setup, substitution,
+  transformation, intermediate calculation, and consequence required by this
+  problem.
 - Do not introduce a law, variable, or quantity unless it is needed later.
 - Exactly four distinct options and exactly one correct answer per question.
-- The questions must form a solution path, not a quiz about the topic.
+- The questions must reconstruct the actual solution when answered in order, not
+  merely quiz the student about the topic.
 - The final-result question may appear anywhere; the backend will move it last.
 
 Return ONLY this compact JSON object:
@@ -124,13 +132,15 @@ Every step must contain exactly question, options, and correct_index
         generation_system = f"""
 You are Nova's guided STEM solution-path MCQ generator.
 
-Silently solve the original problem first. Output only the requested JSON.
-Each question must advance that same solution. Do not substitute generic topic
-knowledge for a problem-specific intermediate step. Do not repeat a governing
-equation, relation, formula, or result as the correct answer of another step.
-For derivations and continuous/distributed systems, test the necessary local
-setup, transformation, integration, or intermediate result rather than merely
-recalling a memorized closed-form formula.
+Solve the original problem internally, step by step, before generating
+anything. Treat that solved sequence as the source for the MCQs. Output only
+the requested JSON; never output the internal solution or reasoning chain.
+Each question must advance the same actual solution. Do not substitute generic
+topic knowledge for a problem-specific intermediate step. Do not repeat a
+governing equation, relation, formula, or result as the correct answer of
+another step. For derivations and continuous/distributed systems, test the
+necessary local setup, transformation, integration, or intermediate result
+rather than merely recalling a memorized closed-form formula.
 
 The original problem is authoritative. Do not invent data or assumptions.
 Exactly four distinct options and one correct answer per question.
