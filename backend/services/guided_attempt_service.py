@@ -90,62 +90,32 @@ Original problem:
 Generate exactly {step_count} multiple-choice questions that form a complete
 guided solution path for the original problem.
 
-BEFORE writing any JSON, silently construct the dependency chain:
-1. Identify the requested final result.
-2. Work backward to the necessary intermediate results.
-3. Ensure each stage produces something needed by a later stage.
-4. Then write the MCQs. Do not output this plan.
+Before writing JSON, silently solve the problem and identify the dependency
+chain from the givens to the requested result. Work backward from the target
+to the necessary intermediate results. Do not output this reasoning.
 
-Generate the questions as a COMPLETE POOL first. Do not worry about the order
-in which they will be presented. If a question that asks for the requested
-final quantity/result naturally appears before prerequisite questions, that is
-allowed: the backend will reorder the generated pool before returning it.
-
-The pool must:
-- cover the necessary mathematical/scientific reasoning from the original
-  problem;
-- form a dependency-first solution spine: each non-final question should
-  establish a result, relation, or decision that is actually useful for a
-  later question;
-- contain genuinely useful intermediate decisions/results, not filler;
-- contain one question that establishes the requested final result;
-- avoid simply asking for quantities already supplied in the problem;
-- avoid duplicate questions or asking for the same governing idea in different
-  wording;
-- avoid generic formula-recall questions when the problem can instead test the
-  specific derivation, substitution, consequence, or intermediate result needed
-  for this problem;
-- avoid introducing a law, relation, variable, or physical/chemical quantity
-  that is never used later in the solution path;
-- use exactly four distinct options per question with exactly one correct;
-- keep each question self-contained enough for a student to understand it;
-- work across mathematics, physics, chemistry, and other STEM problems.
-
-Build the path around the actual structure of the problem, not a generic
-textbook checklist. Before writing each question, identify what the student
-must know or calculate next in order to reach the requested result.
-
-For derivations, continuous systems, calculus, mechanics, chemistry
-calculations, and similar multi-stage problems, prefer meaningful intermediate
-results such as a differential contribution, governing relation applied to the
-given system, substitution of the problem's quantities, integration,
-simplification, conservation consequence, stoichiometric consequence, or other
-problem-specific intermediate result rather than memorized final formulas.
-
-For continuous-body or distributed-quantity problems, prefer setting up the
-local/differential contribution and combining it over the system when that is
-the natural derivation. Do not insert an unrelated kinematic or textbook
-formula merely because it is associated with the topic.
-
-For multi-step algebra or chemistry calculations, make the intermediate MCQs
-progress toward the requested quantity: setup -> necessary transformation or
-substitution -> intermediate result -> final result, adapting the sequence to
-the actual problem rather than forcing this exact template.
-
-The requested final result may occur anywhere in the generated pool. Do NOT
-discard a useful question merely because it currently appears to reveal the
-final answer; the backend will identify and move the final-result step to the
-end.
+HARD QUALITY RULES:
+- Every non-final question must produce a result, relation, transformation, or
+  decision that is actually used by a later question.
+- Do not ask generic definitions or formula-recall questions when the
+  problem-specific derivation, substitution, consequence, or intermediate
+  result can be tested instead.
+- Never ask two questions whose correct answers are the same equation,
+  relation, formula, or mathematical result, even with different wording.
+- Do not ask for quantities explicitly given in the problem.
+- Use the original symbols, data, and physical/chemical context.
+- For continuous or distributed systems, prefer the local/differential
+  contribution and the required sum or integral before the derived closed
+  form when that is the natural derivation.
+- For multi-step algebra, physics, or chemistry, use the actual setup,
+  transformation/substitution, intermediate result, and final consequence
+  needed by this problem; do not force a generic textbook template.
+- Do not introduce a law, variable, or quantity unless it is needed later.
+- Use exactly four distinct options and exactly one correct answer per question.
+- Make the complete path specific to the original problem, not a collection
+  of facts about its topic.
+- The pool may contain the final-result question anywhere; the backend will
+  deterministically move the best matching final-result question to the end.
 
 Return ONLY one JSON object:
 {{"steps":[
@@ -161,26 +131,20 @@ Keep the JSON compact. Options must be strings.
         generation_system = f"""
 You are Nova's guided-attempt MCQ generator.
 
-Generate the COMPLETE set of {step_count} MCQs for the original STEM problem
-in one response. This is a generation task, not a sequential dialogue.
+Generate the complete set of {step_count} MCQs in one response. Silently solve
+the original problem first; output only the requested JSON.
 
-Do not artificially force the final-result question to be last. Generate the
-best complete solution pool you can. A separate backend ordering pass will
-place the final-result question at the end.
+Each question must advance the same solution. Do not use generic topic
+knowledge as a substitute for a problem-specific intermediate step. Never
+repeat the same governing equation, relation, or result as the correct answer
+of two different questions. For derivations and continuous/distributed
+systems, test the necessary local setup, transformation, integration, or
+intermediate result rather than merely recalling a memorized closed-form
+formula.
 
 The original problem is authoritative. Do not invent data or assumptions.
-Each question must have exactly four distinct text options and one correct
-answer. The correct answer must be mathematically/scientifically correct.
-
-Use concise but meaningful questions. Complex problems may require more than
-five stages; do not collapse a multi-stage derivation into a single formula
-recall question.
-
-Quality rule: a student who answers the MCQs in order should be able to use
-the correct result from one stage to understand or solve a later stage. The
-path should therefore read like an actual solution, not a collection of facts
-about the topic. A prerequisite formula is appropriate only when it is the
-next necessary tool for this specific problem.
+Each question must have exactly four distinct options and one correct answer.
+Complex problems may require more than five stages.
 
 Return only the requested JSON object. No markdown, commentary, or extra keys.
 """.strip()
