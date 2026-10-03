@@ -309,6 +309,21 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         plan = self._parse_json(planner["result"])
 
+        # Lightweight local planner models can occasionally preserve an older
+        # top-level type label (for example "reasoning") even when they emit
+        # the current structured plan fields correctly. Recover only when the
+        # complete current contract is otherwise present; never turn arbitrary
+        # planner output into a plan.
+        if isinstance(plan, dict) and plan.get("type") != "plan":
+            compatible_fields = {
+                "intent",
+                "needs_wolfram",
+                "operation",
+                "arguments",
+            }
+            if compatible_fields.issubset(plan):
+                plan["type"] = "plan"
+
         if not isinstance(plan, dict) or plan.get("type") != "plan":
             return self._error("Planner returned an invalid plan.")
 
