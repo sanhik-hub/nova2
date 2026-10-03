@@ -27,17 +27,9 @@ class GuidedAttemptService:
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
-        planner_complexity_advisory: str | None = None
-
-        # The lightweight planner is intentionally bypassed in production.
-        # It remains available only through tools/test_planner.py as a benchmark.
-        # The primary reasoning model must determine the actual progression itself.
-        planner_complexity_advisory = None
-
-        # The stronger local LLM determines the actual guided progression.
-        # The small planner's estimate is supplied only as a soft hint.
+        # The lightweight planner remains a benchmark only. Production guided
+        # attempts use the primary reasoning model and a single pooled MCQ call.
         if step_count is None:
-            planning_hint = "not available"
             main_plan_started = perf_counter()
             main_plan_response = self.router.generate(
                 prompt=f"""
@@ -86,7 +78,7 @@ planning model is the stronger reasoning model used by the guided generator.
                 temperature=0,
                 enable_thinking=False,
             )
-            mcq_generation_elapsed_ms += (
+            planner_elapsed_ms += (
                 perf_counter() - main_plan_started
             ) * 1000
 
@@ -141,264 +133,146 @@ planning model is the stronger reasoning model used by the guided generator.
                 "error": "Guided attempt step count must be between 3 and 15.",
             }
 
-        generated_steps: list[dict[str, Any]] = []
-
-        for step_number in range(1, step_count + 1):
-            is_final = step_number == step_count
-            stage_description = (
-                planned_path[step_number - 1]
-                if planned_path
-                else (
-                    "Establish the next necessary intermediate result."
-                    if not is_final
-                    else "Combine the required intermediate results and establish the requested result."
-                )
-            )
-
-            prior_lines = []
-            for index, prior in enumerate(generated_steps, start=1):
-                correct = prior["options"][prior["correct_index"]]["text"]
-                prior_lines.append(
-                    f"Step {index} question: {prior['question']}\n"
-                    f"Step {index} correct intermediate result: {correct}"
-                )
-            prior_context = "\n\n".join(prior_lines) or "No earlier step exists."
-
-            if is_final:
-                target_rule = """
-This is the FINAL step. It must establish the answer requested by the
-original problem. It may ask for the requested quantity, final expression,
-final value, or final conclusion. This is the first step where the requested
-final result may appear.
-""".strip()
-            else:
-                target_rule = """
-This is an INTERMEDIATE step. It must NOT ask for the requested final
-quantity or final expression. It must establish only a genuinely necessary
-intermediate result that the next step can use.
-
-Do not put the requested final result, its exact expression, or an algebraically
-equivalent expression in any option. Do not ask a formula-recall question for
-the final quantity.
-""".strip()
-
-            system_prompt = f"""
-You are Nova's guided-attempt question writer.
-
-Generate exactly ONE multiple-choice step for a STEM problem.
-
-The guided attempt is generated sequentially. Earlier steps have already been
-created, and their correct intermediate results are supplied as context.
-Build this step directly on that dependency chain.
-
-This is step {step_number} of {step_count}.
-
-{target_rule}
-
-The planner's abstract stage for this step is:
-{stage_description}
-
-The original problem is authoritative. Do not invent information.
-
-The question must ask for one concrete mathematical decision or result.
-The correct option must be mathematically correct and useful to the next step.
-All four options must be distinct, with exactly one correct answer.
-
-For continuous-body mechanics, derivations, calculus, chemistry calculations,
-or other multi-stage STEM problems, prefer deriving the needed local or
-intermediate quantity before accumulating, substituting, simplifying, or
-concluding. Do not turn a supplied quantity into a question asking the student
-to identify it.
-
-Return ONLY:
-{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],"correct_index":0,"step_goal":"..."}}.
-
-Every response must contain exactly the keys question, options, correct_index,
-and step_goal{', plus hint' if include_hints else ''}.
-The options must contain only text.
-
-Do not include step labels, markdown headings, explanations, or extra JSON keys.
-The UI supplies the step number.
-{'The hint must be short and must not reveal the correct option.' if include_hints else ''}
-""".strip()
-
-            prompt = f"""
+        # Generate the complete MCQ pool in one call. The model is allowed to
+        # produce the natural solution progression without being forced to decide
+        # which item must be presented first. The backend reorders the pool after
+        # generation so the requested final result is presented last.
+        generation_prompt = f"""
 Original problem:
 {problem}
 
-Previously generated solution path:
-{prior_context}
+Generate exactly {step_count} multiple-choice questions that together form a
+complete guided solution path for the original problem.
 
-Current step:
-{step_number} of {step_count}
+Generate the questions as a COMPLETE POOL first. Do not worry about the order
+in which they will be presented. If a question that asks for the requested
+final quantity/result naturally appears before prerequisite questions, that is
+allowed: the backend will reorder the generated pool before returning it.
 
-Generate only this one step.
+The pool must:
+- cover the necessary mathematical/scientific reasoning from the original
+  problem;
+- contain genuinely useful intermediate decisions/results, not filler;
+- contain one question that establishes the requested final result;
+- avoid simply asking for quantities already supplied in the problem;
+- avoid duplicate questions;
+- use exactly four distinct options per question with exactly one correct;
+- keep each question self-contained enough for a student to understand it;
+- work across mathematics, physics, chemistry, and other STEM problems.
+
+For derivations, continuous systems, calculus, mechanics, chemistry
+calculations, and similar multi-stage problems, prefer meaningful intermediate
+results such as a differential contribution, governing relation, substitution,
+integration, simplification, or physical/chemical consequence rather than
+memorized final formulas.
+
+The requested final result may occur anywhere in the generated pool. Do NOT
+discard a useful question merely because it currently appears to reveal the
+final answer; the backend will identify and move the final-result step to the
+end.
+
+Return ONLY one JSON object:
+{{"steps":[
+  {{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],
+    "correct_index":0,"step_goal":"..."}}
+]}}
+
+Every step must contain exactly question, options, correct_index, and step_goal
+{', plus hint' if include_hints else ''}. Do not include any other JSON keys.
+The options must contain only text.
+{'Each step must also contain a short hint that does not reveal the correct option.' if include_hints else ''}
 """.strip()
 
-            normalized_step = None
-            last_error = None
+        generation_system = f"""
+You are Nova's guided-attempt MCQ generator.
 
-            # Retry only a malformed single step; never regenerate the whole path.
-            for _attempt in range(2):
-                mcq_step_started = perf_counter()
-                response = self.router.generate(
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    max_tokens=None,
-                    temperature=0,
-                    enable_thinking=False,
-                )
-                mcq_generation_elapsed_ms += (
-                    perf_counter() - mcq_step_started
-                ) * 1000
+Generate the COMPLETE set of {step_count} MCQs for the original STEM problem
+in one response. This is a generation task, not a sequential dialogue.
 
-                if not response.get("success"):
-                    last_error = (
-                        response.get("error")
-                        or f"Guided attempt generation failed at step {step_number}."
-                    )
-                    continue
+Do not artificially force the final-result question to be last. Generate the
+best complete solution pool you can. A separate backend ordering pass will
+place the final-result question at the end.
 
-                try:
-                    payload = self._parse_json(response.get("result"))
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    last_error = (
-                        f"Guided attempt generator returned invalid JSON at step {step_number}."
-                    )
-                    continue
+The original problem is authoritative. Do not invent data or assumptions.
+Each question must have exactly four distinct text options and one correct
+answer. The correct answer must be mathematically/scientifically correct.
 
-                normalized_step = self._validate_single_step(
-                    payload,
-                    include_hints=include_hints,
-                    is_final=is_final,
-                )
-                if normalized_step is not None:
-                    break
+Use concise but meaningful questions. Complex problems may require more than
+five stages; do not collapse a multi-stage derivation into a single formula
+recall question.
 
-                last_error = (
-                    f"Guided attempt generator returned an invalid step at step {step_number}."
-                )
+Return only the requested JSON object. No markdown, commentary, or extra keys.
+""".strip()
 
+        generation_started = perf_counter()
+        generation_response = self.router.generate(
+            prompt=generation_prompt,
+            system_prompt=generation_system,
+            max_tokens=None,
+            temperature=0,
+            enable_thinking=False,
+        )
+        mcq_generation_elapsed_ms += (
+            perf_counter() - generation_started
+        ) * 1000
+
+        if not generation_response.get("success"):
+            return {
+                "success": False,
+                "error": (
+                    generation_response.get("error")
+                    or "Guided attempt generation failed."
+                ),
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
+
+        try:
+            generated_payload = self._parse_json(
+                generation_response.get("result")
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {
+                "success": False,
+                "error": "Guided attempt generator returned invalid JSON.",
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
+
+        raw_steps = (
+            generated_payload.get("steps")
+            if isinstance(generated_payload, dict)
+            else None
+        )
+        if not isinstance(raw_steps, list):
+            return {
+                "success": False,
+                "error": "Guided attempt generator returned an invalid step pool.",
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
+
+        generated_steps = []
+        for payload in raw_steps:
+            normalized_step = self._validate_single_step(
+                payload,
+                include_hints=include_hints,
+                is_final=False,
+            )
             if normalized_step is None:
                 return {
                     "success": False,
-                    "error": last_error or (
-                        f"Guided attempt generation failed at step {step_number}."
-                    ),
-                    "planner_elapsed_ms": planner_elapsed_ms,
+                    "error": "Guided attempt generator returned an invalid step contract.",
+                    "planner_elapsed_ms": round(planner_elapsed_ms, 2),
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                     "answer_tokens_advisory": guided_answer_tokens,
-                    }
-
+                }
             generated_steps.append(normalized_step)
 
-        # The final answer is known now. If it leaked into an earlier option,
-        # repair only that intermediate step instead of discarding the entire path.
-        if len(generated_steps) >= 2:
-            final_correct = generated_steps[-1]["options"][
-                generated_steps[-1]["correct_index"]
-            ]["text"]
-
-            def _option_key(value: str) -> str:
-                return re.sub(r"[^a-z0-9]+", "", value.lower())
-
-            final_key = _option_key(final_correct)
-            leaked_index = None
-            for index, earlier_step in enumerate(generated_steps[:-1]):
-                if any(
-                    _option_key(option["text"]) == final_key
-                    for option in earlier_step["options"]
-                ):
-                    leaked_index = index
-                    break
-
-            if leaked_index is not None:
-                leaked_step = generated_steps[leaked_index]
-                repair_prompt = f"""
-Original problem:
-{problem}
-
-Intermediate step {leaked_index + 1} of {step_count}:
-{json.dumps(leaked_step, ensure_ascii=False)}
-
-Final result:
-{final_correct}
-
-Rewrite ONLY this intermediate step. No option may contain the final result
-or an algebraically equivalent expression. Preserve the existing correct
-intermediate result exactly when it is not the final result, because later
-steps depend on it. Replace leaking distractors with genuinely incorrect but
-plausible alternatives.
-
-Return ONLY:
-{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],"correct_index":0,"step_goal":"..."}}.
-""".strip()
-
-                repair_system = f"""
-You are repairing one intermediate MCQ in a sequential STEM solution.
-The final result is known and must not appear in this intermediate step.
-Return exactly one valid step with question, four text-only options,
-correct_index, and step_goal{', plus hint' if include_hints else ''}.
-Keep the mathematics correct and preserve the existing correct intermediate
-result when it is not the final result.
-{'Include one short hint without revealing the answer.' if include_hints else ''}
-""".strip()
-
-                repaired_step = None
-                # Repair only the offending intermediate step. Retry the targeted
-                # repair rather than discarding the entire generated path.
-                for _repair_attempt in range(3):
-                    repair_started = perf_counter()
-                    repair_response = self.router.generate(
-                        prompt=repair_prompt,
-                        system_prompt=repair_system,
-                        max_tokens=None,
-                        temperature=0,
-                        enable_thinking=False,
-                    )
-                    mcq_generation_elapsed_ms += (
-                        perf_counter() - repair_started
-                    ) * 1000
-
-                    if not repair_response.get("success"):
-                        continue
-
-                    try:
-                        repaired_payload = self._parse_json(
-                            repair_response.get("result")
-                        )
-                    except (TypeError, ValueError, json.JSONDecodeError):
-                        continue
-
-                    candidate = (
-                        self._validate_single_step(
-                            repaired_payload,
-                            include_hints=include_hints,
-                            is_final=False,
-                        )
-                        if repaired_payload is not None
-                        else None
-                    )
-                    if candidate is None:
-                        continue
-
-                    candidate_key = _option_key(
-                        candidate["options"][candidate["correct_index"]]["text"]
-                    )
-                    if candidate_key == final_key:
-                        continue
-                    if any(
-                        _option_key(option["text"]) == final_key
-                        for option in candidate["options"]
-                    ):
-                        continue
-
-                    repaired_step = candidate
-                    break
-
-                if repaired_step is not None:
-                    generated_steps[leaked_index] = repaired_step
-
+        generated_steps = self._reorder_final_step(problem, generated_steps)
 
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
@@ -425,8 +299,7 @@ result when it is not the final result.
             "planner_elapsed_ms": planner_elapsed_ms,
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_complexity_advisory,
-        }
+            }
 
     @staticmethod
     def _validate_single_step(
@@ -497,6 +370,87 @@ result when it is not the final result.
             result["hint"] = hint.strip()
 
         return result
+
+    @staticmethod
+    def _reorder_final_step(
+        problem: str,
+        steps: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Move the step that asks for the requested final result to the end.
+
+        The LLM generates the complete solution pool first. This pass is
+        deliberately deterministic and does not call the LLM again.
+        """
+        if len(steps) < 2:
+            return steps
+
+        def key(value: str) -> str:
+            return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+        target_match = re.search(
+            r"\b(?:determine|find|calculate|derive|evaluate|obtain)\s+"
+            r"(?:the\s+)?(.+?)(?:[?.!]|$)",
+            problem,
+            flags=re.IGNORECASE,
+        )
+
+        target_text = target_match.group(1) if target_match else ""
+        target_terms = {
+            word
+            for word in re.findall(r"[a-zA-Z]+", target_text.lower())
+            if word not in {
+                "the", "a", "an", "of", "for", "to", "from", "in",
+                "on", "about", "using", "with", "given", "its",
+            }
+        }
+
+        def final_score(step: dict[str, Any]) -> int:
+            question = step.get("question", "").lower()
+            goal = step.get("step_goal", "").lower()
+            combined = f"{question} {goal}"
+            score = 0
+
+            # Explicit final-result language is the strongest signal.
+            if any(
+                phrase in question
+                for phrase in (
+                    "final answer", "final result", "requested quantity",
+                    "determine the", "calculate the", "find the",
+                )
+            ):
+                score += 6
+
+            # Match terms from the original requested target.
+            if target_terms:
+                words = set(re.findall(r"[a-zA-Z]+", combined))
+                score += min(6, 2 * len(target_terms & words))
+
+            # A final step normally has a concluding goal.
+            if any(
+                phrase in goal
+                for phrase in (
+                    "final", "requested result", "requested quantity",
+                    "conclude", "obtain the result", "determine the result",
+                )
+            ):
+                score += 4
+
+            return score
+
+        scores = [final_score(step) for step in steps]
+        candidate_index = max(range(len(steps)), key=lambda index: scores[index])
+
+        # If no step has a meaningful final-result signal, preserve the model's
+        # natural order rather than making a speculative rearrangement.
+        if scores[candidate_index] <= 0:
+            return steps
+
+        candidate = steps[candidate_index]
+        return [
+            step
+            for index, step in enumerate(steps)
+            if index != candidate_index
+        ] + [candidate]
 
     def generate_solution(
         self,
@@ -800,18 +754,10 @@ Using those verified intermediate choices, write the complete final solution.
             def option_key(value: str) -> str:
                 return re.sub(r"[^a-z0-9]+", "", value.lower())
 
-            final_correct = normalized[-1]["options"][
-                normalized[-1]["correct_index"]
-            ]["text"]
-            final_key = option_key(final_correct)
-
-            for earlier_step in normalized[:-1]:
-                for option in earlier_step["options"]:
-                    if option_key(option["text"]) == final_key:
-                        return False, (
-                            "Guided attempt revealed the final result before the final step."
-                        )
-
+            # Final-result ordering is handled before validation by
+            # _reorder_final_step(). Do not reject the pool merely because the
+            # same final expression appeared in an earlier generated option.
+            # The generator is intentionally allowed to produce its natural pool.
             # Do not allow a later question to simply ask for the same
             # mathematical target as an earlier question. This catches common
             # "formula -> substitution -> formula" failures without encoding a
