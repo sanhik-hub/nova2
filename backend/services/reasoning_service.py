@@ -6,6 +6,7 @@ from threading import Lock
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
+from backend.services.expression_normalizer import normalize_expression
 class ReasoningService:
 
     # =========================================================
