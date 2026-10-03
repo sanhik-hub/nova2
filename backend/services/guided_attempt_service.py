@@ -292,6 +292,55 @@ Output only the JSON object.
             include_hints,
             step_count,
         )
+
+        # The guided writer is deterministic, but structured MCQs can still
+        # occasionally violate the dependency/leakage checks. Regenerate once
+        # with the concrete validation failure instead of exposing a transient
+        # model-generation failure to the user. Keep the validator strict:
+        # retries are for correcting the generated path, not for weakening the
+        # pedagogical contract.
+        if not valid:
+            retry_prompt = f"""
+The previous guided-attempt draft failed validation:
+
+{steps_or_error}
+
+Regenerate the complete guided MCQ path for the original problem. Correct the
+specific validation failure above. In particular, the requested final result
+must appear only in the final step, and every earlier step must establish a
+distinct intermediate result that is actually needed by a later step.
+
+Return ONLY the same JSON object with exactly the requested number of steps.
+""".strip()
+
+            retry_response = self.router.generate(
+                prompt=f"{prompt}\n\n{retry_prompt}",
+                system_prompt=system_prompt,
+                max_tokens=generation_budget,
+                temperature=0,
+                enable_thinking=False,
+            )
+
+            if retry_response.get("success"):
+                try:
+                    retry_payload = self._parse_json(
+                        retry_response.get("result")
+                    )
+                    retry_valid, retry_steps_or_error = self._validate(
+                        retry_payload,
+                        include_hints,
+                        step_count,
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    retry_valid = False
+                    retry_steps_or_error = (
+                        "Guided attempt generator returned invalid JSON."
+                    )
+
+                if retry_valid:
+                    steps_or_error = retry_steps_or_error
+                    valid = True
+
         if not valid:
             return {"success": False, "error": steps_or_error}
 
