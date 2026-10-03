@@ -1288,12 +1288,9 @@ Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=(
-                estimated_answer_tokens
-                if type(estimated_answer_tokens) is int
-                and estimated_answer_tokens > 0
-                else None
-            ),
+            # answer_tokens is advisory guidance only. Do not turn the
+            # planner's estimate into a hard generation ceiling.
+            max_tokens=None,
             temperature=0,
             enable_thinking=False,
         )
