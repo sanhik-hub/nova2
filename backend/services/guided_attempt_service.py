@@ -658,10 +658,6 @@ Using those verified intermediate choices, write the complete final solution.
             if not question:
                 return False, "Guided attempt contains an empty question."
 
-            step_goal = step["step_goal"]
-            if not isinstance(step_goal, str) or not step_goal.strip():
-                return False, "Guided attempt contains an empty step goal."
-
             options = step["options"]
             if not isinstance(options, list) or len(options) != 4:
                 return False, "Each guided step must have exactly four options."
