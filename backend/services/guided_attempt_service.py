@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 import random
@@ -87,66 +88,52 @@ class GuidedAttemptService:
 Original problem:
 {problem}
 
-Generate exactly {step_count} multiple-choice questions that form a complete
+Generate exactly {step_count} multiple-choice questions that form one complete
 guided solution path for the original problem.
 
-Before writing JSON, silently solve the problem and identify the dependency
-chain from the givens to the requested result. Work backward from the target
-to the necessary intermediate results. Do not output this reasoning.
+Silently solve the problem before writing JSON. Build the dependency chain from
+the givens to the requested result. Do not output the chain.
 
-HARD QUALITY RULES:
-- Every non-final question must produce a result, relation, transformation, or
-  decision that is actually used by a later question.
+HARD RULES:
+- Every non-final question must produce an intermediate result, transformation,
+  decision, or relation that is used by a later question.
 - Do not ask generic definitions or formula-recall questions when the
-  problem-specific derivation, substitution, consequence, or intermediate
-  result can be tested instead.
-- Never ask two questions whose correct answers are the same equation,
-  relation, formula, or mathematical result, even with different wording.
-- Do not ask for quantities explicitly given in the problem.
-- Use the original symbols, data, and physical/chemical context.
-- For continuous or distributed systems, prefer the local/differential
-  contribution and the required sum or integral before the derived closed
-  form when that is the natural derivation.
-- For multi-step algebra, physics, or chemistry, use the actual setup,
-  transformation/substitution, intermediate result, and final consequence
-  needed by this problem; do not force a generic textbook template.
+  problem-specific derivation can be tested.
+- Never use the same equation, relation, formula, or mathematical result as the
+  correct answer of two different questions.
+- Never ask for a quantity already given in the problem.
+- Use the original symbols, data, and context.
+- For continuous/distributed systems, prefer the local/differential contribution
+  and required sum/integral before the derived closed form.
+- For multi-step math, physics, or chemistry, test the actual setup,
+  substitution/transformation, intermediate result, and consequence required by
+  this problem.
 - Do not introduce a law, variable, or quantity unless it is needed later.
-- Use exactly four distinct options and exactly one correct answer per question.
-- Make the complete path specific to the original problem, not a collection
-  of facts about its topic.
-- The pool may contain the final-result question anywhere; the backend will
-  deterministically move the best matching final-result question to the end.
+- Exactly four distinct options and exactly one correct answer per question.
+- The questions must form a solution path, not a quiz about the topic.
+- The final-result question may appear anywhere; the backend will move it last.
 
-Return ONLY one JSON object:
-{{"steps":[
-  {{"question":"...","options":["...","...","...","..."],"correct_index":0}}
-]}}
+Return ONLY this compact JSON object:
+{{"steps":[{{"question":"...","options":["...","...","...","..."],"correct_index":0}}]}}
 
 Every step must contain exactly question, options, and correct_index
-{', plus hint' if include_hints else ''}. Do not include any other JSON keys.
-Keep the JSON compact. Options must be strings.
+{', plus hint' if include_hints else ''}. Do not include other JSON keys.
 {'Each step must also contain a short hint that does not reveal the correct option.' if include_hints else ''}
 """.strip()
 
         generation_system = f"""
-You are Nova's guided-attempt MCQ generator.
+You are Nova's guided STEM solution-path MCQ generator.
 
-Generate the complete set of {step_count} MCQs in one response. Silently solve
-the original problem first; output only the requested JSON.
-
-Each question must advance the same solution. Do not use generic topic
-knowledge as a substitute for a problem-specific intermediate step. Never
-repeat the same governing equation, relation, or result as the correct answer
-of two different questions. For derivations and continuous/distributed
-systems, test the necessary local setup, transformation, integration, or
-intermediate result rather than merely recalling a memorized closed-form
-formula.
+Silently solve the original problem first. Output only the requested JSON.
+Each question must advance that same solution. Do not substitute generic topic
+knowledge for a problem-specific intermediate step. Do not repeat a governing
+equation, relation, formula, or result as the correct answer of another step.
+For derivations and continuous/distributed systems, test the necessary local
+setup, transformation, integration, or intermediate result rather than merely
+recalling a memorized closed-form formula.
 
 The original problem is authoritative. Do not invent data or assumptions.
-Each question must have exactly four distinct options and one correct answer.
-Complex problems may require more than five stages.
-
-Return only the requested JSON object. No markdown, commentary, or extra keys.
+Exactly four distinct options and one correct answer per question.
 """.strip()
 
         generation_started = perf_counter()
@@ -624,9 +611,22 @@ Using those verified intermediate choices, write the complete final solution.
             return json.loads(object_text)
         except json.JSONDecodeError as first_error:
             repaired = GuidedAttemptService._repair_json_string_escapes(object_text)
-            if repaired == object_text:
+            if repaired != object_text:
+                try:
+                    return json.loads(repaired)
+                except json.JSONDecodeError:
+                    pass
+
+            # Some local instruction models emit a Python-literal dictionary
+            # (single quotes, True/False, etc.) despite being asked for JSON.
+            # This is deterministic parsing only; it never invokes another LLM.
+            try:
+                parsed = ast.literal_eval(object_text)
+            except (SyntaxError, ValueError, TypeError):
                 raise first_error
-            return json.loads(repaired)
+            if isinstance(parsed, (dict, list)):
+                return parsed
+            raise first_error
 
     @staticmethod
     def _extract_json_object(text: str) -> str | None:
