@@ -646,7 +646,7 @@ Using those verified intermediate choices, write the complete final solution.
             required.append("hint")
 
         return {
-            "type": "json_schema",
+            "type": "json_object",
             "schema": {
                 "type": "object",
                 "properties": {
