@@ -1,4 +1,5 @@
 ﻿from contextlib import asynccontextmanager
+from time import perf_counter
 
 from fastapi import FastAPI
 
@@ -60,19 +61,31 @@ def reason(request: ComputationRequest):
 
 @app.post("/api/guided/start")
 def start_guided_attempt(request: GuidedAttemptRequest):
-    return guided_attempts.generate(
+    started = perf_counter()
+    result = guided_attempts.generate(
         query=request.query,
         include_hints=request.include_hints,
         step_count=request.step_count,
     )
+    elapsed_ms = round((perf_counter() - started) * 1000, 2)
+    result["elapsed_ms"] = elapsed_ms
+    result["mcq_elapsed_ms"] = elapsed_ms
+    # Hints are currently generated in the same structured MCQ response, so
+    # there is no independent hint-generation phase to time.
+    result["hint_elapsed_ms"] = elapsed_ms if request.include_hints else 0.0
+    return result
 
 
 @app.post("/api/guided/solution")
 def generate_guided_solution(payload: dict):
-    return guided_attempts.generate_solution(
+    started = perf_counter()
+    result = guided_attempts.generate_solution(
         query=str(payload.get("query") or ""),
         steps=payload.get("steps") or [],
     )
+    result["elapsed_ms"] = round((perf_counter() - started) * 1000, 2)
+    result["final_solution_elapsed_ms"] = result["elapsed_ms"]
+    return result
 
 
 @app.get("/")
