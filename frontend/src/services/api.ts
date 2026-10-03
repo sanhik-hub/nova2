@@ -22,12 +22,19 @@ export type ComputationResponse = {
 };
 
 async function parseResponse<T>(response: Response): Promise<T> {
+  const raw = await response.text();
   let data: unknown;
 
   try {
-    data = await response.json();
+    data = JSON.parse(raw);
   } catch {
-    throw new Error("The server returned an invalid response.");
+    const body = raw.trim().replace(/\\s+/g, " ");
+    const detail = body.length > 240 ? body.slice(0, 240) + "…" : body;
+    throw new Error(
+      detail
+        ? `The server returned a non-JSON response (${response.status}): ${detail}`
+        : `The server returned an empty non-JSON response (${response.status}).`,
+    );
   }
 
   if (!response.ok) {
@@ -38,6 +45,15 @@ async function parseResponse<T>(response: Response): Promise<T> {
       typeof data.detail === "string"
     ) {
       throw new Error(data.detail);
+    }
+
+    if (
+      typeof data === "object" &&
+      data !== null &&
+      "error" in data &&
+      typeof data.error === "string"
+    ) {
+      throw new Error(data.error);
     }
 
     throw new Error("The server could not complete the request.");
