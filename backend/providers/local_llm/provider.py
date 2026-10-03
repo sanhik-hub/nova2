@@ -35,6 +35,7 @@ class LocalLLMProvider(ComputationProvider):
         temperature: Optional[float] = None,
         system_prompt: Optional[str] = None,
         enable_thinking: bool = False,
+        response_format: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
 
         try:
@@ -44,6 +45,7 @@ class LocalLLMProvider(ComputationProvider):
                 temperature=temperature,
                 system_prompt=system_prompt,
                 enable_thinking=enable_thinking,
+                response_format=response_format,
             )
 
             return {
