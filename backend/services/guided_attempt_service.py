@@ -37,6 +37,11 @@ Problem:
 Choose the smallest sufficient number of progressive solution-path stages
 needed to reach the final answer. Use 3 to 5 stages.
 
+Also estimate an advisory completion-token target for the MCQ writer. Base it
+on the actual problem complexity and number of stages, with enough room for
+four options per stage, questions, metadata, and JSON syntax. This is guidance,
+not a hard generation limit.
+
 Also provide one short ABSTRACT stage description for each stage. The stage
 descriptions are structural guidance for another model; they must not solve the
 problem.
@@ -49,7 +54,7 @@ A stage description must:
 - make the final stage the only stage that establishes the requested result.
 
 Return ONLY this JSON object:
-{{"step_count": N, "path": ["stage 1", "stage 2", "..."]}}
+{{"step_count": N, "answer_tokens": T, "path": ["stage 1", "stage 2", "..."]}}
 """.strip(),
                 system_prompt="""
 You are Nova's guided-attempt planning model.
@@ -59,7 +64,11 @@ problem.
 
 Return exactly one JSON object with:
 - "step_count": an integer from 3 through 5;
-- "path": an array of exactly step_count short abstract stage descriptions.
+- "path": an array of exactly step_count short abstract stage descriptions;
+- "answer_tokens": an advisory integer estimate for the complete MCQ JSON response.
+
+The answer_tokens estimate must be specific to this problem and planned stages,
+not a fixed value or fixed multiplier. Give enough room for the complete JSON.
 
 Do NOT solve the problem.
 Do NOT include the final answer.
@@ -80,7 +89,7 @@ Choose the smallest sufficient dependency chain. Do not force every example
 stage into every problem. The final path item must be the only item whose
 purpose is to establish the requested final result.
 """.strip(),
-                max_tokens=160,
+                max_tokens=320,
             )
             planner_elapsed_ms = round((perf_counter() - planner_started) * 1000, 2)
 
@@ -102,6 +111,11 @@ purpose is to establish the requested final result.
                     if isinstance(plan, dict)
                     else None
                 )
+                advisory_answer_tokens = (
+                    plan.get("answer_tokens")
+                    if isinstance(plan, dict)
+                    else None
+                )
 
                 if (
                     isinstance(planned_count, int)
@@ -119,6 +133,17 @@ purpose is to establish the requested final result.
                         item.strip()
                         for item in candidate_path
                     ]
+                    if (
+                        isinstance(advisory_answer_tokens, int)
+                        and not isinstance(advisory_answer_tokens, bool)
+                        and 300 <= advisory_answer_tokens <= 1200
+                    ):
+                        guided_answer_tokens = advisory_answer_tokens
+                    else:
+                        guided_answer_tokens = None
+
+        if "guided_answer_tokens" not in locals():
+            guided_answer_tokens = None
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 5:
             return {
@@ -132,13 +157,10 @@ purpose is to establish the requested final result.
             else "Do not include a hint field."
         )
 
-        # Keep guided MCQs concise. The planner determines the number of
-        # stages; this budget scales with that structure rather than imposing
-        # a fixed response size on every problem.
-        generation_budget = min(
-            650,
-            max(360, step_count * (125 if include_hints else 110)),
-        )
+        # The planner supplies a problem-specific advisory completion target.
+        # There is deliberately no fixed final token ceiling here.
+        if guided_answer_tokens is None:
+            guided_answer_tokens = 700
 
         system_prompt = """
 You are Nova's guided-attempt question writer.
@@ -278,6 +300,12 @@ field. Do not prefix it with a step number or heading. Also provide a distinct
 internal "step_goal" describing the intermediate result established by that
 question. The first step_goal must not be the final answer.
 {hint_instruction}
+
+The planner estimates approximately {guided_answer_tokens} completion tokens
+for this specific response. Treat that number as an advisory target, not a
+hard limit. Use only the tokens necessary to finish the JSON correctly; if
+more are needed for a complete valid response, continue.
+
 Output only the JSON object.
 """.strip()
 
@@ -285,7 +313,7 @@ Output only the JSON object.
         response = self.router.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            max_tokens=generation_budget,
+            max_tokens=None,
             temperature=0,
             enable_thinking=False,
         )
@@ -333,6 +361,7 @@ Output only the JSON object.
             "include_full_solution": False,
             "planner_elapsed_ms": planner_elapsed_ms,
             "mcq_generation_elapsed_ms": mcq_generation_elapsed_ms,
+            "answer_tokens_advisory": guided_answer_tokens,
         }
 
     def generate_solution(
