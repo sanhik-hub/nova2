@@ -860,3 +860,5 @@ body{background:#0b0912;color:#e9e7ff}
   margin-top: 0.35rem;
   color: #aaa0b8;
 }
+
+.guided-timing-card{margin-top:1.25rem}.guided-timing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin-top:.9rem}.guided-timing-grid>div{display:flex;flex-direction:column;gap:.25rem;border:1px solid #3a2c4e;border-radius:.8rem;padding:.85rem;background:#120d19}.guided-timing-grid span{font-size:1.05rem;font-weight:700}.guided-timing-grid small{color:#8e879e;font-size:.68rem}@media(max-width:700px){.guided-timing-grid{grid-template-columns:1fr}}
