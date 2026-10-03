@@ -15,10 +15,9 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Keep planner/final generation bounded. The planner's answer_tokens
-    # remains advisory metadata; these service-level caps protect latency.
+    # The planner's answer_tokens is the per-request final-generation budget.
+    # There is deliberately no hardcoded final-answer token ceiling here.
     PLANNER_TOKENS = 220
-    FINAL_TOKENS = 260
 
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
@@ -1262,9 +1261,9 @@ Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the complete solution text.
 """
 
-        # The planner's estimate remains useful routing metadata, but the
-        # service-level FINAL_TOKENS cap is the authoritative generation budget.
-        if type(estimated_answer_tokens) is int and estimated_answer_tokens > 0:
+        # The planner supplies a request-specific advisory generation budget.
+        # It is passed through to the model when valid; there is deliberately
+        # no service-level fixed final-answer token cap.
             final_system += (
                 "\n\nInternal answer-size guidance: aim for approximately "
                 f"{estimated_answer_tokens} completion tokens. "
@@ -1289,7 +1288,12 @@ Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            max_tokens=self.FINAL_TOKENS,
+            max_tokens=(
+                estimated_answer_tokens
+                if type(estimated_answer_tokens) is int
+                and estimated_answer_tokens > 0
+                else None
+            ),
             temperature=0,
             enable_thinking=False,
         )
@@ -1321,12 +1325,6 @@ Return ONLY the complete solution text.
             "cached": False,
             "_final_llm_ms": final_llm_ms,
         }
-
-    # =========================================================
-    # FINAL GENERATION BUDGET
-    # =========================================================
-
-    # Final generation is bounded by FINAL_TOKENS in _final_explanation().
 
     # =========================================================
     # JSON PARSER
