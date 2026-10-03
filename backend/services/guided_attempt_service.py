@@ -174,14 +174,16 @@ Exactly four distinct options and one correct answer per question.
                 "answer_tokens_advisory": guided_answer_tokens,
             }
 
+        raw_generation = generation_response.get("result")
         try:
-            generated_payload = self._parse_json(
-                generation_response.get("result")
-            )
-        except (TypeError, ValueError, json.JSONDecodeError):
+            generated_payload = self._parse_json(raw_generation)
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            # Keep this failure diagnostic and deterministic. Do not spend
+            # another 40-60 seconds on an LLM repair attempt.
+            detail = str(exc).strip() or "unknown JSON parsing error"
             return {
                 "success": False,
-                "error": "Guided attempt generator returned invalid JSON.",
+                "error": f"Guided attempt generator returned invalid JSON: {detail}",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
@@ -656,7 +658,13 @@ Using those verified intermediate choices, write the complete final solution.
 
         object_text = GuidedAttemptService._extract_json_object(text)
         if object_text is None:
-            raise ValueError("No JSON object found.")
+            # Local instruction models occasionally append an unterminated
+            # string/object when generation stops at the context boundary.
+            # Recover only when the output has a clear JSON object start and
+            # the only missing syntax is closing JSON delimiters.
+            object_text = GuidedAttemptService._repair_truncated_json(text)
+            if object_text is None:
+                raise ValueError("No complete JSON object found.")
 
         try:
             return json.loads(object_text)
@@ -711,6 +719,50 @@ Using those verified intermediate choices, write the complete final solution.
                 if depth == 0:
                     return text[start:index + 1]
 
+        return None
+
+    @staticmethod
+    def _repair_truncated_json(text: str) -> str | None:
+        """Close only clearly truncated JSON; never invent missing content."""
+        start = text.find("{")
+        if start < 0:
+            return None
+
+        fragment = text[start:]
+        stack: list[str] = []
+        in_string = False
+        escaped = False
+
+        for char in fragment:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                stack.append("}")
+            elif char == "[":
+                stack.append("]")
+            elif char in "}]" and stack and stack[-1] == char:
+                stack.pop()
+            elif char in "}]" and stack:
+                return None
+
+        # Do not fabricate text inside an unfinished string. If the model
+        # stopped after a complete token but before delimiters, closing the
+        # string and remaining containers is safe.
+        if in_string or not stack:
+            if in_string:
+                fragment += '"'
+            while stack:
+                fragment += stack.pop()
+            return fragment
         return None
 
     @staticmethod
