@@ -26,6 +26,7 @@ class GuidedAttemptService:
         planned_path: list[str] | None = None
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
+        guided_answer_tokens: int | None = None
 
         if step_count is None:
             planner_started = perf_counter()
@@ -37,21 +38,13 @@ Problem:
 Choose the smallest sufficient number of progressive solution-path stages
 needed to reach the final answer. Use 3 to 5 stages.
 
-Also estimate an advisory completion-token target for the MCQ writer. Base it
-on the actual problem complexity and number of stages, with enough room for
-four options per stage, questions, metadata, and JSON syntax. This is guidance,
-not a hard generation limit.
+Also estimate an advisory completion-token target for the complete guided
+attempt. Base it on the actual problem complexity and number of stages. This
+is guidance only, not a generation limit.
 
 Also provide one short ABSTRACT stage description for each stage. The stage
-descriptions are structural guidance for another model; they must not solve the
-problem.
-
-A stage description must:
-- describe a mathematical action or dependency, not a question;
-- contain no computed result, final formula, numeric answer, or problem-specific
-  equation;
-- be useful for constructing the next stage;
-- make the final stage the only stage that establishes the requested result.
+descriptions are structural guidance for another model; they must not solve
+the problem.
 
 Return ONLY this JSON object:
 {{"step_count": N, "answer_tokens": T, "path": ["stage 1", "stage 2", "..."]}}
@@ -59,63 +52,37 @@ Return ONLY this JSON object:
                 system_prompt="""
 You are Nova's guided-attempt planning model.
 
-Your job is ONLY to create a structural dependency plan for a mathematical
-problem.
-
 Return exactly one JSON object with:
 - "step_count": an integer from 3 through 5;
 - "path": an array of exactly step_count short abstract stage descriptions;
-- "answer_tokens": an advisory integer estimate for the complete MCQ JSON response.
+- "answer_tokens": an advisory integer estimate for the complete guided attempt.
 
-The answer_tokens estimate must be specific to this problem and planned stages,
-not a fixed value or fixed multiplier. Give enough room for the complete JSON.
+The answer_tokens estimate must be specific to this problem and planned
+stages, not a fixed value or fixed multiplier.
 
 Do NOT solve the problem.
 Do NOT include the final answer.
 Do NOT include problem-specific equations, symbolic results, numeric values,
 question text, options, hints, explanations, or answer choices.
-Do NOT copy an equation from the problem into the path.
-Do NOT describe the answer itself.
 
-Each path item must describe only the kind of dependency that the next model
-must turn into a concrete MCQ, for example:
-- establish the governing definition or local quantity;
-- derive an intermediate relationship;
-- apply the relevant condition or substitution;
-- combine previously obtained results;
-- simplify/evaluate and establish the requested result.
-
-Choose the smallest sufficient dependency chain. Do not force every example
-stage into every problem. The final path item must be the only item whose
-purpose is to establish the requested final result.
+Each path item must describe only a mathematical dependency or action.
+The final path item must be the only item whose purpose is to establish the
+requested final result.
 """.strip(),
                 max_tokens=320,
             )
             planner_elapsed_ms = round((perf_counter() - planner_started) * 1000, 2)
 
             step_count = 3
-
             if plan_response.get("success"):
                 try:
                     plan = self._parse_json(plan_response.get("result"))
                 except (TypeError, ValueError, json.JSONDecodeError):
                     plan = None
 
-                planned_count = (
-                    plan.get("step_count")
-                    if isinstance(plan, dict)
-                    else None
-                )
-                candidate_path = (
-                    plan.get("path")
-                    if isinstance(plan, dict)
-                    else None
-                )
-                advisory_answer_tokens = (
-                    plan.get("answer_tokens")
-                    if isinstance(plan, dict)
-                    else None
-                )
+                planned_count = plan.get("step_count") if isinstance(plan, dict) else None
+                candidate_path = plan.get("path") if isinstance(plan, dict) else None
+                advisory = plan.get("answer_tokens") if isinstance(plan, dict) else None
 
                 if (
                     isinstance(planned_count, int)
@@ -123,27 +90,16 @@ purpose is to establish the requested final result.
                     and 3 <= planned_count <= 5
                     and isinstance(candidate_path, list)
                     and len(candidate_path) == planned_count
-                    and all(
-                        isinstance(item, str) and item.strip()
-                        for item in candidate_path
-                    )
+                    and all(isinstance(item, str) and item.strip() for item in candidate_path)
                 ):
                     step_count = planned_count
-                    planned_path = [
-                        item.strip()
-                        for item in candidate_path
-                    ]
+                    planned_path = [item.strip() for item in candidate_path]
                     if (
-                        isinstance(advisory_answer_tokens, int)
-                        and not isinstance(advisory_answer_tokens, bool)
-                        and 300 <= advisory_answer_tokens <= 1200
+                        isinstance(advisory, int)
+                        and not isinstance(advisory, bool)
+                        and 300 <= advisory <= 1200
                     ):
-                        guided_answer_tokens = advisory_answer_tokens
-                    else:
-                        guided_answer_tokens = None
-
-        if "guided_answer_tokens" not in locals():
-            guided_answer_tokens = None
+                        guided_answer_tokens = advisory
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 5:
             return {
@@ -151,207 +107,173 @@ purpose is to establish the requested final result.
                 "error": "Guided attempt step count must be between 3 and 5.",
             }
 
-        hint_instruction = (
-            "Include one short hint for each step."
-            if include_hints
-            else "Do not include a hint field."
-        )
-
-        # The planner supplies a problem-specific advisory completion target.
-        # There is deliberately no fixed final token ceiling here.
         if guided_answer_tokens is None:
             guided_answer_tokens = 700
 
-        system_prompt = """
-You are Nova's guided-attempt question writer.
+        generated_steps: list[dict[str, Any]] = []
 
-Generate ONLY the multiple-choice steps for the STEM problem.
-The small planning model has already selected the number of steps.
-
-Create exactly the requested number of progressive MCQs that collectively
-construct the solution to the original STEM problem.
-
-The MCQs are not independent concept questions. They are the solution path
-broken into answerable decisions. Each step must establish a mathematical
-result, rule, transformation, substitution, or conclusion that is useful for
-the next step.
-
-Every later step must build on the result of the previous step. Do not skip
-from the setup directly to the final answer when intermediate mathematics is
-needed.
-
-The final step must bring the student to the requested final result. Do not
-make the final step merely ask them to repeat an answer that was already given
-earlier.
-
-A correct answer to an earlier step must be a usable intermediate result,
-not a fact that is merely related to the topic. Each step must create an input
-for a later step. Do not write independent concept questions that could be
-answered without using the previous step.
-
-Never ask for the requested final quantity, its final formula, or an algebraic
-equivalent of that final formula before the final step, unless the original
-problem is genuinely a one-step calculation. In particular, do not turn a
-derivation into a formula-recall quiz.
-
-For derivations and proofs, construct a dependency chain from the first needed
-quantity to the requested result. A useful generic pattern is:
-- identify the governing definition/law or the first local quantity;
-- derive the next intermediate expression from it;
-- substitute the relevant relationship or condition;
-- accumulate, solve, simplify, or evaluate as required;
-- state the requested result only at the final step.
-Use only the stages that are actually necessary; do not force every pattern
-stage into every problem.
-
-For differentiation, use a dependency chain such as selecting the applicable
-rule, differentiating the required terms or inner/outer functions, combining
-those results, and simplifying. For equations, use the given condition,
-substitution/isolation, solving, and checking only when those stages are needed.
-For proofs, establish the necessary identity/definition first, transform it in
-small dependent steps, and conclude only at the end. For physics derivations,
-start from the local law or differential quantity, express it in terms of the
-given variables, then integrate/sum/substitute and simplify as required. Never
-ask the student to identify a quantity or parameter that the original problem
-already gives explicitly. If a standard governing relation is needed, use it
-only when it creates a genuinely new intermediate result; do not turn the
-attempt into a formula-recall quiz. These are generic pedagogical patterns,
-not fixed question templates.
-
-Do NOT put the final expression, or an algebraically equivalent form of it, in
-an earlier step's options, even as a distractor. The final expression must be constructed from
-preceding results rather than recognized from memory. Do not place the final
-answer, its exact text, or an algebraically equivalent expression in ANY
-earlier option, even as a distractor. Before returning JSON, mentally compare
-the final correct option against every earlier option and replace any duplicate
-or equivalent leakage with a genuinely different incorrect option.
-
-Return ONLY one JSON object with exactly one top-level key: "steps".
-
-Every step must contain exactly:
-- "question": a concise question
-- "options": exactly four objects, each containing only "text"
-- "correct_index": zero-based index of the correct option
-- "step_goal": a short internal description of the intermediate result this step establishes
-
-"step_goal" is internal generation metadata and will be removed before the
-response is returned to the UI.
-
-Do not include explanations, summaries, introductions, conclusions, or any
-other fields. Do not put correct_index inside an option.
-
-Keep the questions and options concise but mathematically correct.
-All four options in each question must be distinct.
-Exactly one option must be correct.
-
-Prefer concrete mathematical decisions over meta-questions such as
-"What is the first step?" when the actual mathematical operation can be asked
-directly.
-
-Do NOT put "Step 1", "Step 2", "STEP 1", numbered headings, markdown headings,
-or any other step label in the question text. The UI supplies the step number.
-Do not repeat the same question across steps. Each question must ask for a
-different intermediate result that is necessary for the next step.
-Each "step_goal" must be distinct. The first step_goal must be an intermediate
-setup/derivation result; only the final step_goal may be the requested result.
-
-Do not reveal the final answer in an earlier step.
-Do not invent information that the original problem does not provide.
-$HINT_INSTRUCTION
-""".strip().replace("$HINT_INSTRUCTION", hint_instruction)
-
-        if include_hints:
-            system_prompt = system_prompt.replace(
-                "Do not include explanations, summaries, introductions, conclusions, or any\nother fields.",
-                'Do not include explanations, summaries, introductions, conclusions, or any\nother fields except the requested "hint" field.',
-            )
-            system_prompt = system_prompt.replace(
-                '- "correct_index": zero-based index of the correct option',
-                '- "correct_index": zero-based index of the correct option\n- "hint": one short hint for this step',
+        for step_number in range(1, step_count + 1):
+            is_final = step_number == step_count
+            stage_description = (
+                planned_path[step_number - 1]
+                if planned_path
+                else (
+                    "Establish the next necessary intermediate result."
+                    if not is_final
+                    else "Combine the required intermediate results and establish the requested result."
+                )
             )
 
-        planner_guidance = ""
-        if planned_path:
-            planner_guidance = f"""
-The small planner supplied this ABSTRACT dependency path. It is structural
-guidance only; it contains no solution and must not be expanded into a copied
-answer. Use exactly one path item as the dependency target for each MCQ, in
-order:
+            prior_lines = []
+            for index, prior in enumerate(generated_steps, start=1):
+                correct = prior["options"][prior["correct_index"]]["text"]
+                prior_lines.append(
+                    f"Step {index} question: {prior['question']}\n"
+                    f"Step {index} correct intermediate result: {correct}"
+                )
+            prior_context = "\n\n".join(prior_lines) or "No earlier step exists."
 
-{chr(10).join(
-    f"{index}. {stage}"
-    for index, stage in enumerate(planned_path, start=1)
-)}
+            if is_final:
+                target_rule = """
+This is the FINAL step. It must establish the answer requested by the
+original problem. It may ask for the requested quantity, final expression,
+final value, or final conclusion. This is the first step where the requested
+final result may appear.
+""".strip()
+            else:
+                target_rule = """
+This is an INTERMEDIATE step. It must NOT ask for the requested final
+quantity or final expression. It must establish only a genuinely necessary
+intermediate result that the next step can use.
 
-The concrete mathematical content, equations, options, and correct choices
-must be derived by you from the original problem. Do not add, remove, reorder,
-or merge stages.
+Do not put the requested final result, its exact expression, or an algebraically
+equivalent expression in any option. Do not ask a formula-recall question for
+the final quantity.
 """.strip()
 
-        prompt = f"""
+            system_prompt = f"""
+You are Nova's guided-attempt question writer.
+
+Generate exactly ONE multiple-choice step for a STEM problem.
+
+The guided attempt is generated sequentially. Earlier steps have already been
+created, and their correct intermediate results are supplied as context.
+Build this step directly on that dependency chain.
+
+This is step {step_number} of {step_count}.
+
+{target_rule}
+
+The planner's abstract stage for this step is:
+{stage_description}
+
+The original problem is authoritative. Do not invent information.
+
+The question must ask for one concrete mathematical decision or result.
+The correct option must be mathematically correct and useful to the next step.
+All four options must be distinct, with exactly one correct answer.
+
+For continuous-body mechanics, derivations, calculus, chemistry calculations,
+or other multi-stage STEM problems, prefer deriving the needed local or
+intermediate quantity before accumulating, substituting, simplifying, or
+concluding. Do not turn a supplied quantity into a question asking the student
+to identify it.
+
+Return ONLY:
+{{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},],"correct_index":0,"step_goal":"..."}}.
+
+Every response must contain exactly the keys question, options, correct_index,
+and step_goal${include_hints ? ', plus hint' : ''}.
+The options must contain only text.
+
+Do not include step labels, markdown headings, explanations, or extra JSON keys.
+The UI supplies the step number.
+${include_hints ? 'The hint must be short and must not reveal the correct option.' : ''}
+""".strip()
+
+            prompt = f"""
 Original problem:
 {problem}
 
-Generate exactly {step_count} progressive MCQs forming a complete solution path.
-{planner_guidance}
+Previously generated solution path:
+{prior_context}
 
-For every step, write only the actual mathematical question in the "question"
-field. Do not prefix it with a step number or heading. Also provide a distinct
-internal "step_goal" describing the intermediate result established by that
-question. The first step_goal must not be the final answer.
-{hint_instruction}
+Current step:
+{step_number} of {step_count}
 
-The planner estimates approximately {guided_answer_tokens} completion tokens
-for this specific response. Treat that number as an advisory target, not a
-hard limit. Use only the tokens necessary to finish the JSON correctly; if
-more are needed for a complete valid response, continue.
-
-Output only the JSON object.
+Generate only this one step.
 """.strip()
 
-        mcq_generation_started = perf_counter()
-        response = self.router.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            max_tokens=None,
-            temperature=0,
-            enable_thinking=False,
-        )
-        mcq_generation_elapsed_ms = round(
-            (perf_counter() - mcq_generation_started) * 1000,
-            2,
-        )
+            mcq_step_started = perf_counter()
+            response = self.router.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=None,
+                temperature=0,
+                enable_thinking=False,
+            )
+            mcq_generation_elapsed_ms += (
+                perf_counter() - mcq_step_started
+            ) * 1000
 
-        if not response.get("success"):
-            return {
-                "success": False,
-                "error": response.get("error")
-                or "Guided attempt generation failed.",
-            }
+            if not response.get("success"):
+                return {
+                    "success": False,
+                    "error": (
+                        response.get("error")
+                        or f"Guided attempt generation failed at step {step_number}."
+                    ),
+                    "planner_elapsed_ms": planner_elapsed_ms,
+                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                    "answer_tokens_advisory": guided_answer_tokens,
+                }
 
-        try:
-            payload = self._parse_json(response.get("result"))
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return {
-                "success": False,
-                "error": "Guided attempt generator returned invalid JSON.",
-            }
+            try:
+                payload = self._parse_json(response.get("result"))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return {
+                    "success": False,
+                    "error": (
+                        f"Guided attempt generator returned invalid JSON at step {step_number}."
+                    ),
+                    "planner_elapsed_ms": planner_elapsed_ms,
+                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                    "answer_tokens_advisory": guided_answer_tokens,
+                }
+
+            normalized_step = self._validate_single_step(
+                payload,
+                include_hints=include_hints,
+                is_final=is_final,
+            )
+            if normalized_step is None:
+                return {
+                    "success": False,
+                    "error": (
+                        f"Guided attempt generator returned an invalid step at step {step_number}."
+                    ),
+                    "planner_elapsed_ms": planner_elapsed_ms,
+                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                    "answer_tokens_advisory": guided_answer_tokens,
+                }
+
+            generated_steps.append(normalized_step)
 
         valid, steps_or_error = self._validate(
-            payload,
+            {"steps": generated_steps},
             include_hints,
             step_count,
             problem,
         )
 
-        # Do not automatically run a second full LLM generation when
-        # the first draft violates a pedagogical rule. A retry doubles the
-        # expensive local-model latency and can reproduce the same violation.
-        # Formatting/contract failures are surfaced directly as well; the
-        # generation prompt is deliberately strict enough that retries are not
-        # part of the normal guided path.
         if not valid:
-            return {"success": False, "error": steps_or_error}
+            return {
+                "success": False,
+                "error": steps_or_error,
+                "planner_elapsed_ms": planner_elapsed_ms,
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
 
         return {
             "success": True,
@@ -360,9 +282,78 @@ Output only the JSON object.
             "include_hints": include_hints,
             "include_full_solution": False,
             "planner_elapsed_ms": planner_elapsed_ms,
-            "mcq_generation_elapsed_ms": mcq_generation_elapsed_ms,
+            "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
         }
+
+    @staticmethod
+    def _validate_single_step(
+        payload: Any,
+        include_hints: bool,
+        is_final: bool,
+    ) -> dict[str, Any] | None:
+        if not isinstance(payload, dict):
+            return None
+
+        required = {"question", "options", "correct_index", "step_goal"}
+        allowed = required | ({"hint"} if include_hints else set())
+        if set(payload) != allowed:
+            return None
+
+        question = payload.get("question")
+        if not isinstance(question, str):
+            return None
+        question = re.sub(
+            r"^\s*(?:#{1,6}\s*)?(?:step\s*)?\d+\s*[:.)-]?\s*",
+            "",
+            question,
+            flags=re.IGNORECASE,
+        ).strip()
+        if not question:
+            return None
+
+        step_goal = payload.get("step_goal")
+        if not isinstance(step_goal, str) or not step_goal.strip():
+            return None
+
+        options = payload.get("options")
+        if not isinstance(options, list) or len(options) != 4:
+            return None
+
+        normalized_options = []
+        for option in options:
+            if isinstance(option, str):
+                text = option
+            elif isinstance(option, dict) and "text" in option:
+                text = option["text"]
+            else:
+                return None
+
+            if not isinstance(text, str) or not text.strip():
+                return None
+            normalized_options.append({"text": text.strip()})
+
+        correct_index = payload.get("correct_index")
+        if (
+            not isinstance(correct_index, int)
+            or isinstance(correct_index, bool)
+            or not 0 <= correct_index < 4
+        ):
+            return None
+
+        result = {
+            "question": question,
+            "options": normalized_options,
+            "correct_index": correct_index,
+        }
+
+        if include_hints:
+            hint = payload.get("hint")
+            if not isinstance(hint, str) or not hint.strip():
+                return None
+            result["hint"] = hint.strip()
+
+        return result
 
     def generate_solution(
         self,
