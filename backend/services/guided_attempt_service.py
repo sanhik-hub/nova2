@@ -636,16 +636,123 @@ Using those verified intermediate choices, write the complete final solution.
 
     @staticmethod
     def _parse_json(raw: Any) -> Any:
+        """Parse model JSON while tolerating harmless local-model formatting."""
         if not isinstance(raw, str):
             raise ValueError("Expected JSON text.")
 
         text = raw.strip()
 
         if text.startswith("```"):
-            text = re.sub(r"^```(?:json)?\s*", "", text, count=1, flags=re.IGNORECASE)
-            text = re.sub(r"\s*```$", "", text, count=1)
+            text = re.sub(
+                r"^```(?:json)?\\s*",
+                "",
+                text,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+            text = re.sub(r"\\s*```\\s*$", "", text, count=1)
 
-        return json.loads(text)
+        object_text = GuidedAttemptService._extract_json_object(text)
+        if object_text is None:
+            raise ValueError("No JSON object found.")
+
+        try:
+            return json.loads(object_text)
+        except json.JSONDecodeError as first_error:
+            repaired = GuidedAttemptService._repair_json_string_escapes(object_text)
+            if repaired == object_text:
+                raise first_error
+            return json.loads(repaired)
+
+    @staticmethod
+    def _extract_json_object(text: str) -> str | None:
+        """Return the first balanced JSON object from model output."""
+        start = text.find("{")
+        if start < 0:
+            return None
+
+        depth = 0
+        in_string = False
+        escaped = False
+
+        for index in range(start, len(text)):
+            char = text[index]
+
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start:index + 1]
+
+        return None
+
+    @staticmethod
+    def _repair_json_string_escapes(text: str) -> str:
+        """Escape invalid backslashes and control characters inside JSON strings."""
+        valid_escapes = {'"', "\\", "/", "b", "f", "n", "r", "t", "u"}
+        chars: list[str] = []
+        in_string = False
+        escaped = False
+        index = 0
+
+        while index < len(text):
+            char = text[index]
+
+            if not in_string:
+                chars.append(char)
+                if char == '"':
+                    in_string = True
+                index += 1
+                continue
+
+            if escaped:
+                if char not in valid_escapes:
+                    chars.append("\\")
+                chars.append(char)
+                escaped = False
+                index += 1
+                continue
+
+            if char == "\\":
+                chars.append(char)
+                escaped = True
+                index += 1
+                continue
+
+            if char == '"':
+                chars.append(char)
+                in_string = False
+                index += 1
+                continue
+
+            if ord(char) < 0x20:
+                if char == "\n":
+                    chars.append("\\n")
+                elif char == "\r":
+                    chars.append("\\r")
+                elif char == "\t":
+                    chars.append("\\t")
+                else:
+                    chars.append(f"\\u{ord(char):04x}")
+                index += 1
+                continue
+
+            chars.append(char)
+            index += 1
+
+        return "".join(chars)
 
     def _validate(
         self,
