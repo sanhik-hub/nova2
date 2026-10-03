@@ -786,44 +786,112 @@ def wait_for_http(url: str, timeout: int, name: str):
 
 
 def start_all():
-    """Start Nova natively so Control Center does not spawn PowerShell."""
+    """Start Nova services in sequence.
+
+    This function may take several minutes because model servers can need
+    time to load large local models. It is intentionally run in a worker
+    thread so the Control Center HTTP request never has to stay open for
+    the entire startup sequence.
+    """
     log("Starting Nova services natively...")
 
-    start_llm()
-    planner = start_planner()
-    planner_config = load_planner_config()
-    planner_url = str(planner_config.get("server_url", "")).rstrip("/")
-    if not planner_url or not wait_for_http(
-        f"{planner_url}/health", 30, "Planner model server"
-    ):
-        raise RuntimeError("The planner model server did not become ready.")
+    try:
+        start_llm()
 
-    config = load_llm_config()
-    llm_url = str(config.get("server_url", "")).rstrip("/")
+        start_planner()
+        planner_config = load_planner_config()
+        planner_url = str(
+            planner_config.get("server_url", "")
+        ).rstrip("/")
 
-    if not llm_url or not wait_for_http(
-        f"{llm_url}/health", 60, "Local model server"
-    ):
-        raise RuntimeError("The local model server did not become ready.")
+        if not planner_url or not wait_for_http(
+            f"{planner_url}/health",
+            30,
+            "Planner model server",
+        ):
+            raise RuntimeError(
+                "The planner model server did not become ready."
+            )
 
-    start_backend()
-    if not wait_for_http(
-        f"http://{HOST}:{BACKEND_PORT}/docs", 30, "Backend"
-    ):
-        raise RuntimeError("Backend did not become ready.")
+        config = load_llm_config()
+        llm_url = str(
+            config.get("server_url", "")
+        ).rstrip("/")
 
-    start_wolfram()
+        if not llm_url or not wait_for_http(
+            f"{llm_url}/health",
+            60,
+            "Local model server",
+        ):
+            raise RuntimeError(
+                "The local model server did not become ready."
+            )
 
-    start_frontend()
-    if not wait_for_http(
-        f"http://{HOST}:{FRONTEND_PORT}/", 30, "Frontend"
-    ):
-        raise RuntimeError("Frontend did not become ready.")
+        start_backend()
 
-    log("Nova services are running.")
+        if not wait_for_http(
+            f"http://{HOST}:{BACKEND_PORT}/docs",
+            30,
+            "Backend",
+        ):
+            raise RuntimeError(
+                "Backend did not become ready."
+            )
+
+        start_wolfram()
+
+        start_frontend()
+
+        if not wait_for_http(
+            f"http://{HOST}:{FRONTEND_PORT}/",
+            30,
+            "Frontend",
+        ):
+            raise RuntimeError(
+                "Frontend did not become ready."
+            )
+
+        log("Nova services are running.")
+
+    except Exception as exc:
+        log(f"Start All failed: {exc}")
+
+    finally:
+        global START_ALL_RUNNING
+        START_ALL_RUNNING = False
+
+
+START_ALL_RUNNING = False
+START_ALL_LOCK = threading.Lock()
+
+
+def start_all_background():
+    """Queue Start All and return immediately to the browser."""
+    global START_ALL_RUNNING
+
+    with START_ALL_LOCK:
+        if START_ALL_RUNNING:
+            return {
+                "ok": True,
+                "running": True,
+                "message": "Start All is already running.",
+            }
+
+        START_ALL_RUNNING = True
+
+    thread = threading.Thread(
+        target=start_all,
+        name="nova-start-all",
+        daemon=True,
+    )
+    thread.start()
+
+    log("Start All queued; startup is continuing in the background.")
+
     return {
         "ok": True,
-        "message": "Nova services started.",
+        "running": True,
+        "message": "Nova startup started in the background.",
     }
 
 
@@ -1175,27 +1243,60 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/status":
-            api_response(
-                self,
-                health_status(),
-            )
+            try:
+                api_response(
+                    self,
+                    health_status(),
+                )
+            except Exception as exc:
+                log(f"Status request failed: {exc}")
+                api_response(
+                    self,
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                    },
+                    500,
+                )
             return
 
         if parsed.path == "/api/logs":
-            with LOG_LOCK:
-                logs = list(LOGS)
+            try:
+                with LOG_LOCK:
+                    logs = list(LOGS)
 
-            api_response(
-                self,
-                {"logs": logs},
-            )
+                api_response(
+                    self,
+                    {"logs": logs},
+                )
+            except Exception as exc:
+                log(f"Log request failed: {exc}")
+                api_response(
+                    self,
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                    },
+                    500,
+                )
             return
 
         if parsed.path == "/api/processes":
-            api_response(
-                self,
-                process_snapshot(),
-            )
+            try:
+                api_response(
+                    self,
+                    process_snapshot(),
+                )
+            except Exception as exc:
+                log(f"Process request failed: {exc}")
+                api_response(
+                    self,
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                    },
+                    500,
+                )
             return
 
         api_response(
@@ -1257,7 +1358,8 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/start":
                 api_response(
                     self,
-                    start_all(),
+                    start_all_background(),
+                    202,
                 )
                 return
 
