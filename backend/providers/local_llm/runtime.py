@@ -1,7 +1,7 @@
 import json
 import urllib.request
 import urllib.error
-from typing import Optional
+from typing import Any, Optional
 
 from .config import LocalLLMConfig
 
@@ -63,6 +63,7 @@ class LocalLLMRuntime:
         temperature: Optional[float] = None,
         system_prompt: Optional[str] = None,
         enable_thinking: bool = False,
+        response_format: Optional[dict[str, Any]] = None,
     ) -> str:
 
         if not self.loaded:
@@ -101,6 +102,9 @@ class LocalLLMRuntime:
                 "enable_thinking": enable_thinking
             },
         }
+
+        if response_format is not None:
+            payload["response_format"] = response_format
 
         if max_tokens is None:
             payload.pop("max_tokens", None)
