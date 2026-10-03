@@ -1,4 +1,4 @@
-import json
+﻿import json
 import re
 import random
 from typing import Any
@@ -682,3 +682,4 @@ Using those verified intermediate choices, write the complete final solution.
                 return False, "Guided attempt contains repeated questions."
 
         return True, normalized
+
