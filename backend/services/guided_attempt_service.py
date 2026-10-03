@@ -29,70 +29,23 @@ class GuidedAttemptService:
         guided_answer_tokens: int | None = None
         planner_complexity_advisory: str | None = None
 
-        # The small planner is advisory only. It estimates complexity; it never
-        # determines the solution path or actual number of steps.
-        if step_count is None:
-            planner_started = perf_counter()
-            plan_response = self.router.plan(
-                prompt=f"""
-Problem:
-{problem}
-
-Estimate the complexity of this STEM problem and the approximate number of
-guided MCQ steps a stronger reasoning model may need.
-
-Return ONLY:
-{{"complexity":"simple|moderate|complex|very_complex","step_count_advisory":N}}
-""".strip(),
-                system_prompt="""
-You are Nova's lightweight guided-attempt complexity estimator.
-
-Your output is advisory metadata only. You do NOT solve the problem and you
-do NOT determine its solution steps.
-
-Return exactly one JSON object:
-{"complexity":"simple|moderate|complex|very_complex","step_count_advisory":N}
-
-Use your best estimate of how much reasoning a stronger model will need.
-The advisory step count may be greater than 5 for complex problems.
-It is not a hard limit and must not contain a solution path, equations,
-formulas, results, options, hints, or explanations.
-""".strip(),
-                max_tokens=160,
-            )
-            planner_elapsed_ms = round((perf_counter() - planner_started) * 1000, 2)
-
-            if plan_response.get("success"):
-                try:
-                    plan = self._parse_json(plan_response.get("result"))
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    plan = None
-
-                complexity = (
-                    plan.get("complexity")
-                    if isinstance(plan, dict)
-                    else None
-                )
-                if complexity in {"simple", "moderate", "complex", "very_complex"}:
-                    planner_complexity_advisory = complexity
+        # The lightweight planner is intentionally bypassed in production.
+        # It remains available only through tools/test_planner.py as a benchmark.
+        # The primary reasoning model must determine the actual progression itself.
+        planner_complexity_advisory = None
 
         # The stronger local LLM determines the actual guided progression.
         # The small planner's estimate is supplied only as a soft hint.
         if step_count is None:
-            planning_hint = (
-                planner_complexity_advisory
-                if planner_complexity_advisory is not None
-                else "not available"
-            )
+            planning_hint = "not available"
             main_plan_started = perf_counter()
             main_plan_response = self.router.generate(
                 prompt=f"""
 Original problem:
 {problem}
 
-A lightweight model estimated approximately {planning_hint} guided steps.
-This estimate is advisory only. Use your own reasoning and choose the actual
-number of progressive guided steps needed for this problem.
+No lightweight planning estimate is available. Use your own reasoning and
+choose the actual number of progressive guided steps needed for this problem.
 
 Create the internal solution progression for the stronger guided-attempt
 generator. The progression may contain more than five steps for complex
@@ -180,7 +133,7 @@ planning model is the stronger reasoning model used by the guided generator.
             # Emergency fallback only if the stronger planning call fails.
             # The lightweight planner never determines the actual step count.
             if step_count is None:
-                step_count = 5
+                step_count = 6
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 15:
             return {
@@ -335,8 +288,7 @@ Generate only this one step.
                     "planner_elapsed_ms": planner_elapsed_ms,
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                     "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_complexity_advisory,
-                }
+                    }
 
             generated_steps.append(normalized_step)
 
@@ -392,27 +344,33 @@ result when it is not the final result.
 {'Include one short hint without revealing the answer.' if include_hints else ''}
 """.strip()
 
-                repair_started = perf_counter()
-                repair_response = self.router.generate(
-                    prompt=repair_prompt,
-                    system_prompt=repair_system,
-                    max_tokens=None,
-                    temperature=0,
-                    enable_thinking=False,
-                )
-                mcq_generation_elapsed_ms += (
-                    perf_counter() - repair_started
-                ) * 1000
+                repaired_step = None
+                # Repair only the offending intermediate step. Retry the targeted
+                # repair rather than discarding the entire generated path.
+                for _repair_attempt in range(3):
+                    repair_started = perf_counter()
+                    repair_response = self.router.generate(
+                        prompt=repair_prompt,
+                        system_prompt=repair_system,
+                        max_tokens=None,
+                        temperature=0,
+                        enable_thinking=False,
+                    )
+                    mcq_generation_elapsed_ms += (
+                        perf_counter() - repair_started
+                    ) * 1000
 
-                if repair_response.get("success"):
+                    if not repair_response.get("success"):
+                        continue
+
                     try:
                         repaired_payload = self._parse_json(
                             repair_response.get("result")
                         )
                     except (TypeError, ValueError, json.JSONDecodeError):
-                        repaired_payload = None
+                        continue
 
-                    repaired_step = (
+                    candidate = (
                         self._validate_single_step(
                             repaired_payload,
                             include_hints=include_hints,
@@ -421,8 +379,26 @@ result when it is not the final result.
                         if repaired_payload is not None
                         else None
                     )
-                    if repaired_step is not None:
-                        generated_steps[leaked_index] = repaired_step
+                    if candidate is None:
+                        continue
+
+                    candidate_key = _option_key(
+                        candidate["options"][candidate["correct_index"]]["text"]
+                    )
+                    if candidate_key == final_key:
+                        continue
+                    if any(
+                        _option_key(option["text"]) == final_key
+                        for option in candidate["options"]
+                    ):
+                        continue
+
+                    repaired_step = candidate
+                    break
+
+                if repaired_step is not None:
+                    generated_steps[leaked_index] = repaired_step
+
 
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
@@ -438,7 +414,6 @@ result when it is not the final result.
                 "planner_elapsed_ms": planner_elapsed_ms,
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_complexity_advisory,
             }
 
         return {
