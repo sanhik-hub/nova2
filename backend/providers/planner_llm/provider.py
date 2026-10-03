@@ -17,6 +17,7 @@ class PlannerLLMProvider:
         system_prompt: str,
         max_tokens: int | None = None,
         compact: bool = False,
+        request_timeout: int | None = None,
     ) -> dict[str, Any]:
         try:
             result = self.runtime.generate_json(
@@ -24,6 +25,7 @@ class PlannerLLMProvider:
                 system_prompt=system_prompt,
                 max_tokens=max_tokens,
                 structured_json=not compact,
+                request_timeout=request_timeout,
             )
             return {
                 "success": True,
