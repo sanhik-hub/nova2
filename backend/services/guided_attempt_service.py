@@ -582,7 +582,7 @@ Using those verified intermediate choices, write the complete final solution.
         # problem and make sure earlier questions do not simply ask for that
         # target's standard formula.
         target_match = re.search(
-            r"\b(?:determine|find|calculate|derive|evaluate|obtain)\\s+(?:the\\s+)?(.+?)(?:[?.!]|$)",
+            r"\b(?:determine|find|calculate|derive|evaluate|obtain)\s+(?:the\s+)?(.+?)(?:[?.!]|$)",
             problem,
             flags=re.IGNORECASE,
         )
@@ -620,7 +620,7 @@ Using those verified intermediate choices, write the complete final solution.
         for match in re.finditer(
             r"\b(?:length|mass|radius|time|speed|velocity|acceleration|"
             r"angular velocity|frequency|charge|voltage|current|pressure|"
-            r"temperature|density)\\s+(?:is|=)\\s+([A-Za-z0-9_\\.]+)",
+            r"temperature|density)\s+(?:is|=)\s+([A-Za-z0-9_\\.]+)",
             problem,
             flags=re.IGNORECASE,
         ):
