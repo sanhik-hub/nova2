@@ -438,7 +438,7 @@ result when it is not the final result.
                 "planner_elapsed_ms": planner_elapsed_ms,
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_step_advisory,
+                "planner_step_count_advisory": planner_complexity_advisory,
             }
 
         return {
@@ -450,7 +450,7 @@ result when it is not the final result.
             "planner_elapsed_ms": planner_elapsed_ms,
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_step_advisory,
+                "planner_step_count_advisory": planner_complexity_advisory,
         }
 
     @staticmethod
