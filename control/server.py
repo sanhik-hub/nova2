@@ -665,9 +665,7 @@ def start_planner():
         model_path = str(NOVA_ROOT / model_path)
 
     if not Path(model_path).exists():
-        raise RuntimeError(
-            f"Planner model not found: {model_path}"
-        )
+        raise RuntimeError(f"Planner model not found: {model_path}")
 
     parsed = urlparse(server_url)
     port = parsed.port or PLANNER_PORT
@@ -683,8 +681,6 @@ def start_planner():
             "--batch-size", str(config.get("batch_size", 128)),
             "--n-gpu-layers", str(config.get("n_gpu_layers", 0)),
         ],
-        cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
         NOVA_ROOT,
     )
     return {"ok": True, "message": "Planner model server start requested."}
@@ -702,8 +698,6 @@ def start_backend():
             "--host", HOST,
             "--port", str(BACKEND_PORT),
         ],
-        cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
         NOVA_ROOT,
     )
     return {"ok": True, "message": "Backend start requested."}
@@ -755,8 +749,6 @@ def start_frontend():
             "--host", HOST,
             "--port", str(FRONTEND_PORT),
         ],
-        cwd=str(FRONTEND_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
         FRONTEND_ROOT,
     )
     return {"ok": True, "message": "Frontend start requested."}
@@ -769,6 +761,7 @@ def start_llm():
     config = load_llm_config()
     model_path = str(config.get("model_path", "")).strip()
     server_url = str(config.get("server_url", "")).strip()
+
     if not model_path or not server_url:
         raise RuntimeError("Local model configuration is incomplete.")
 
@@ -797,8 +790,6 @@ def start_llm():
                 load_llm_config().get("n_gpu_layers", 0)
             ),
         ],
-        cwd=str(NOVA_ROOT),
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,,
         NOVA_ROOT,
     )
     return {"ok": True, "message": "Local model server start requested."}
