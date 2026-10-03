@@ -383,7 +383,7 @@ result when it is not the final result.
 
         required = {"question", "options", "correct_index", "step_goal"}
         allowed = required | ({"hint"} if include_hints else set())
-        if set(payload) != allowed:
+        if not required.issubset(payload):
             return None
 
         question = payload.get("question")
