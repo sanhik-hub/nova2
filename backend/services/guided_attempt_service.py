@@ -1,5 +1,6 @@
 import json
 import re
+import random
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
@@ -126,9 +127,12 @@ purpose is to establish the requested final result.
             else "Do not include a hint field."
         )
 
+        # Keep guided MCQs concise. The planner determines the number of
+        # stages; this budget scales with that structure rather than imposing
+        # a fixed response size on every problem.
         generation_budget = min(
-            3600,
-            max(1200, step_count * (420 if include_hints else 330)),
+            2400,
+            max(1000, step_count * (360 if include_hints else 280)),
         )
 
         system_prompt = """
@@ -180,8 +184,12 @@ substitution/isolation, solving, and checking only when those stages are needed.
 For proofs, establish the necessary identity/definition first, transform it in
 small dependent steps, and conclude only at the end. For physics derivations,
 start from the local law or differential quantity, express it in terms of the
-given variables, then integrate/sum/substitute and simplify as required.
-These are generic pedagogical patterns, not fixed question templates.
+given variables, then integrate/sum/substitute and simplify as required. Never
+ask the student to identify a quantity or parameter that the original problem
+already gives explicitly. If a standard governing relation is needed, use it
+only when it creates a genuinely new intermediate result; do not turn the
+attempt into a formula-recall quiz. These are generic pedagogical patterns,
+not fixed question templates.
 
 Do NOT put the final expression, or an algebraically equivalent form of it, in
 an earlier step's options. The final expression must be constructed from
@@ -568,6 +576,87 @@ Using those verified intermediate choices, write the complete final solution.
         # The model may return a syntactically valid path that is still
         # pedagogically broken. Reject the most important forms of leakage or
         # disconnected steps rather than silently presenting them as a guided path.
+
+        # Reject common formula-recall / restatement failures before the
+        # result reaches the UI. Extract the requested target from the original
+        # problem and make sure earlier questions do not simply ask for that
+        # target's standard formula.
+        target_match = re.search(
+            r"\\b(?:determine|find|calculate|derive|evaluate|obtain)\\s+(?:the\\s+)?(.+?)(?:[?.!]|$)",
+            problem,
+            flags=re.IGNORECASE,
+        )
+        if target_match and len(normalized) >= 2:
+            target_words = [
+                word
+                for word in re.findall(r"[a-zA-Z]+", target_match.group(1).lower())
+                if word not in {
+                    "the", "a", "an", "of", "for", "to", "from", "in",
+                    "on", "about", "using", "with", "given", "its",
+                }
+            ]
+            target_terms = set(target_words[:4])
+            if len(target_terms) >= 2:
+                for earlier_step in normalized[:-1]:
+                    earlier_text = earlier_step["question"].lower()
+                    earlier_words = set(re.findall(r"[a-zA-Z]+", earlier_text))
+                    overlap = target_terms & earlier_words
+                    asks_formula = any(
+                        phrase in earlier_text
+                        for phrase in (
+                            "formula", "equation", "expression for",
+                            "relation for", "law for",
+                        )
+                    )
+                    if asks_formula and len(overlap) >= 2:
+                        return False, (
+                            "Guided attempt asks for the requested final quantity "
+                            "or its standard formula before the final step."
+                        )
+
+        # Reject steps that merely ask the student to identify a quantity
+        # explicitly supplied by the original problem.
+        given_quantities = set()
+        for match in re.finditer(
+            r"\\b(?:length|mass|radius|time|speed|velocity|acceleration|"
+            r"angular velocity|frequency|charge|voltage|current|pressure|"
+            r"temperature|density)\\s+(?:is|=)\\s+([A-Za-z0-9_\\.]+)",
+            problem,
+            flags=re.IGNORECASE,
+        ):
+            given_quantities.add(match.group(0).lower().split()[0])
+        if given_quantities:
+            for earlier_step in normalized[:-1]:
+                q = earlier_step["question"].lower()
+                if "what is" in q and any(
+                    quantity in q for quantity in given_quantities
+                ):
+                    return False, (
+                        "Guided attempt asks the student to identify a quantity "
+                        "that is already provided by the problem."
+                    )
+
+        # The UI should not inherit the model's positional bias. Shuffle the
+        # four options while keeping exactly one correct answer and deliberately
+        # vary the correct position across the path.
+        rng = random.SystemRandom()
+        positions = list(range(4))
+        rng.shuffle(positions)
+        for index in range(4, len(normalized)):
+            choices = [
+                position for position in range(4)
+                if position != positions[index - 1]
+            ]
+            positions.append(rng.choice(choices))
+        for step, target_position in zip(normalized, positions):
+            current_index = step["correct_index"]
+            if current_index == target_position:
+                continue
+            options = step["options"]
+            correct_option = options.pop(current_index)
+            options.insert(target_position, correct_option)
+            step["correct_index"] = target_position
+
         if len(normalized) >= 2:
             def option_key(value: str) -> str:
                 return re.sub(r"[^a-z0-9]+", "", value.lower())
