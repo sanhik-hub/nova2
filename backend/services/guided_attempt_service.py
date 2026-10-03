@@ -317,7 +317,7 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
         if not isinstance(payload, dict):
             return None
 
-        required = {"question", "options", "correct_index", "step_goal"}
+        required = {"question", "options", "correct_index"}
         allowed = required | ({"hint"} if include_hints else set())
         if not required.issubset(payload):
             return None
