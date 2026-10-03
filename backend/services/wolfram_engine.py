@@ -22,8 +22,9 @@ class WolframEngine:
     """
     Interface between Python and the Wolfram Language Engine.
 
-    A single persistent WolframLanguageSession is reused for all
-    calculations made by this backend process.
+    A single persistent WolframLanguageSession is created when this
+    engine is initialized and reused for all calculations made by
+    this backend process.
 
     Python
         ↓
@@ -73,19 +74,115 @@ class WolframEngine:
 
         self._session: Optional[WolframLanguageSession] = None
         self._session_lock = threading.RLock()
+        self._startup_error: Optional[str] = None
 
         atexit.register(self.close)
 
+        # Start the persistent kernel immediately. WolframLanguageSession
+        # itself is lazy, so creating the session object is not sufficient;
+        # the lightweight evaluation below actually launches the kernel.
+        self.start()
+
+    def start(self) -> bool:
+        """
+        Start the persistent Wolfram session immediately.
+
+        WolframLanguageSession starts lazily, so a harmless evaluation
+        is performed to force the underlying Wolfram kernel to launch.
+        """
+
+        with self._session_lock:
+            self._startup_error = None
+
+            # Already running.
+            if self._session is not None:
+                try:
+                    if bool(self._session.started):
+                        return True
+                except Exception:
+                    pass
+
+            # Remove a stale session before creating a new one.
+            if self._session is not None:
+                try:
+                    self._session.terminate()
+                except Exception:
+                    pass
+                finally:
+                    self._session = None
+
+            try:
+                session = WolframLanguageSession(self.kernel)
+
+                # WolframLanguageSession is lazy. This evaluation is
+                # intentionally tiny and only exists to start the kernel.
+                session.evaluate("2+2")
+
+                try:
+                    started = bool(session.started)
+                except Exception:
+                    started = True
+
+                if not started:
+                    try:
+                        session.terminate()
+                    except Exception:
+                        pass
+
+                    self._startup_error = (
+                        "Wolfram Language session was created but "
+                        "the Wolfram kernel did not remain running."
+                    )
+                    return False
+
+                self._session = session
+                return True
+
+            except Exception as exc:
+                self._session = None
+                self._startup_error = (
+                    f"Wolfram persistent session failed to start: {exc}"
+                )
+                return False
+
     def _get_session(self) -> WolframLanguageSession:
         """
-        Return the persistent Wolfram session, creating it lazily.
+        Return the persistent Wolfram session.
 
-        The session is created only when the first calculation is made.
+        Normally the session has already been started by __init__().
+        If it was terminated unexpectedly, start() recreates it.
         """
 
         with self._session_lock:
             if self._session is None:
-                self._session = WolframLanguageSession(self.kernel)
+                if not self.start():
+                    raise RuntimeError(
+                        self._startup_error
+                        or "Wolfram persistent session is unavailable."
+                    )
+
+            else:
+                try:
+                    if not bool(self._session.started):
+                        if not self.start():
+                            raise RuntimeError(
+                                self._startup_error
+                                or "Wolfram persistent session is unavailable."
+                            )
+                except RuntimeError:
+                    raise
+                except Exception:
+                    if not self.start():
+                        raise RuntimeError(
+                            self._startup_error
+                            or "Wolfram persistent session is unavailable."
+                        )
+
+            if self._session is None:
+                raise RuntimeError(
+                    self._startup_error
+                    or "Wolfram persistent session is unavailable."
+                )
 
             return self._session
 
@@ -95,26 +192,40 @@ class WolframEngine:
         """
 
         with self._session_lock:
-            if self._session is not None:
+            session = self._session
+            self._session = None
+
+            if session is not None:
                 try:
-                    self._session.terminate()
+                    session.terminate()
                 except Exception:
                     pass
-                finally:
-                    self._session = None
 
-    def restart(self) -> None:
-        """Reset the persistent session; the next evaluation starts a fresh kernel."""
-        self.close()
+    def restart(self) -> bool:
+        """
+        Terminate the current kernel and immediately start a fresh
+        persistent Wolfram kernel.
+        """
+
+        with self._session_lock:
+            self.close()
+            return self.start()
 
     def status(self) -> dict[str, Any]:
-        """Report session state without starting a kernel just to inspect it."""
+        """
+        Report the actual persistent session state.
+
+        This method does not start a kernel merely to inspect status.
+        """
+
         with self._session_lock:
             session = self._session
+
             if session is None:
                 return {
                     "session_exists": False,
                     "session_started": False,
+                    "startup_error": self._startup_error,
                 }
 
             try:
@@ -125,6 +236,7 @@ class WolframEngine:
             return {
                 "session_exists": True,
                 "session_started": started,
+                "startup_error": self._startup_error,
             }
 
     def _evaluate(self, expression: str) -> Any:
