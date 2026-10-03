@@ -97,26 +97,29 @@ Then work through the actual mathematical/scientific derivation and use its
 intermediate results to build the MCQs. Do not output that internal solution.
 
 HARD RULES:
-- Every non-final question must perform or test a real operation in the solution:
-  setup, definition applied to the given system, algebraic transformation,
-  substitution, differentiation/integration, reaction/stoichiometric step,
-  physical relation applied to the stated quantities, or a necessary
-  intermediate result.
-- Never make an MCQ whose only purpose is to ask what is given, what is required,
-  what topic this is, or which generic formula/law applies.
-- Do not ask for a value that is explicitly given in the original problem.
-- If a standard closed-form formula is derivable from the stated setup, do not
-  use memorization of that closed form as an intermediate MCQ. Test the
-  problem-specific setup/derivation that produces it.
-- Each correct answer must be new information that is used by a later step;
-  do not repeat a formula, equation, or result.
-- For continuous/distributed systems, use the local/differential contribution
-  and required sum/integral before the closed form whenever the problem permits.
+- Every non-final question must perform or test one real computational step:
+  setup, a definition applied to the stated system, transformation, substitution,
+  differentiation/integration, stoichiometric/reaction step, physical relation
+  applied to the actual quantities, or a necessary intermediate result.
+- Never ask what is given, what is required, what topic this is, or which generic
+  formula/law applies.
+- Never ask for a quantity explicitly supplied in the original problem.
+- The FIRST MCQ must establish the first useful derived quantity or relation from
+  the givens. Do not jump directly to a known closed-form result.
+- The FINAL MCQ is the only place where the requested final quantity may be the
+  correct answer.
+- If a closed-form formula is derivable from the setup, derive it through the
+  necessary local/differential expression and algebra/integration before using
+  that closed form.
+- Each correct answer must be new and used by a later step; never repeat a
+  formula, equation, or result as a correct answer.
+- For continuous/distributed systems, explicitly form the local contribution and
+  required sum/integral before the closed form whenever applicable.
 - For multi-step math, physics, or chemistry, use the actual data, symbols,
   conditions, and transformations from the original problem.
 - Exactly four distinct options and exactly one correct answer per question.
 - The questions must reconstruct the actual solution when answered in order.
-- The final-result question may appear anywhere; the backend will move it last.
+- The backend will move the strongest final-result question to the end.
 
 Return ONLY this compact JSON object:
 {{"steps":[{{"question":"...","options":["...","...","...","..."],"correct_index":0}}]}}
@@ -133,16 +136,15 @@ Solve the original problem internally before generating anything. Treat
 the resulting solution sequence as the source for the MCQs. Output only the
 requested JSON; never output the internal solution.
 
-Every non-final MCQ must test a real solution operation or intermediate result:
-setup, application of a definition to the stated quantities, transformation,
-substitution, differentiation/integration, stoichiometric or reaction step,
-physical relation applied to the actual system, or another necessary
-calculation. Never generate meta-questions about what is given, what is asked,
-what topic is involved, or which generic formula/law applies. Do not ask for a
-quantity already supplied. Do not use a memorized closed-form result as an
-intermediate step when the problem's setup permits deriving it. Each correct
-answer must be new and needed later, with no repeated governing equation or
-result.
+Every non-final MCQ must test one real computational step or new
+intermediate result. Never generate meta-questions about what is given, what is
+asked, what topic is involved, or which generic formula/law applies. Never ask
+for a quantity already supplied. The first question must derive the first useful
+quantity or relation from the givens, not a memorized closed-form result. The
+final question alone may establish the requested final quantity. For continuous
+systems, form the local/differential contribution and required integral before
+the closed form. Each correct answer must be new and needed later, with no
+repeated equation or result.
 
 The original problem is authoritative. Do not invent data or assumptions.
 Exactly four distinct options and one correct answer per question.
@@ -308,6 +310,40 @@ Exactly four distinct options and one correct answer per question.
         return step_count, answer_tokens
 
     @staticmethod
+    def _clean_mojibake(value: str) -> str:
+        """Repair common UTF-8/Latin-1 mojibake in guided display text."""
+        if not isinstance(value, str):
+            return value
+        text = value
+        for _ in range(2):
+            if not any(marker in text for marker in ("Â", "Ã", "Î", "Ï", "â")):
+                break
+            try:
+                repaired = text.encode("latin1").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            if repaired == text:
+                break
+            bad = sum(text.count(marker) for marker in ("Â", "Ã", "Î", "Ï", "â"))
+            new_bad = sum(repaired.count(marker) for marker in ("Â", "Ã", "Î", "Ï", "â"))
+            if new_bad >= bad:
+                break
+            text = repaired
+        # The local model can truncate the mojibake form of omega to Ï.
+        text = re.sub(r"(?<=[=+\-*/(])\s*Ï(?=\s*(?:$|[+\-*/),]))", "ω", text)
+        text = re.sub(r"\bÏ\s*(?=[²2\^*/,)\s]|$)", "ω", text)
+        return text
+
+    @staticmethod
+    def _normalize_generated_text(value: str) -> str:
+        if not isinstance(value, str):
+            return value
+        text = GuidedAttemptService._clean_mojibake(value)
+        text = text.replace("∗", "×")
+        text = re.sub(r"\bsmallelement\b", "small element", text, flags=re.IGNORECASE)
+        return text.strip()
+
+    @staticmethod
     def _validate_single_step(
         payload: Any,
         include_hints: bool,
@@ -324,6 +360,7 @@ Exactly four distinct options and one correct answer per question.
         question = payload.get("question")
         if not isinstance(question, str):
             return None
+        question = GuidedAttemptService._normalize_generated_text(question)
         question = re.sub(
             r"^\s*(?:#{1,6}\s*)?(?:step\s*)?\d+\s*[:.)-]?\s*",
             "",
@@ -348,7 +385,9 @@ Exactly four distinct options and one correct answer per question.
 
             if not isinstance(text, str) or not text.strip():
                 return None
-            normalized_options.append({"text": text.strip()})
+            normalized_options.append({
+                "text": GuidedAttemptService._normalize_generated_text(text)
+            })
 
         correct_index = payload.get("correct_index")
         if (
@@ -800,7 +839,9 @@ Using those verified intermediate choices, write the complete final solution.
                 if not isinstance(option_text, str) or not option_text.strip():
                     return False, "Guided attempt contains an empty option."
 
-                normalized_options.append({"text": option_text.strip()})
+                normalized_options.append({
+                    "text": GuidedAttemptService._normalize_generated_text(option_text)
+                })
 
             index = step["correct_index"]
             if (
