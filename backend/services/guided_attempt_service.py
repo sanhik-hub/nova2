@@ -780,14 +780,7 @@ Using those verified intermediate choices, write the complete final solution.
             return False, "Guided attempt generator returned an invalid structure."
 
         steps = payload.get("steps")
-        if (
-            not isinstance(steps, list)
-            or not 3 <= len(steps) <= 15
-            or (
-                requested_step_count is not None
-                and len(steps) != requested_step_count
-            )
-        ):
+        if not isinstance(steps, list) or not 3 <= len(steps) <= 15:
             return False, "Guided attempt generator returned the wrong number of steps."
 
         normalized = []
@@ -931,7 +924,23 @@ Using those verified intermediate choices, write the complete final solution.
             # subject-specific solution.
             question_keys = [option_key(step["question"]) for step in normalized]
             if len(question_keys) != len(set(question_keys)):
-                return False, "Guided attempt contains repeated questions."
+                # A small local model can duplicate one MCQ verbatim even when
+                # the rest of the generated path is usable. Keep the later
+                # occurrence (the final-result occurrence is normally later
+                # after _reorder_final_step) and drop the earlier duplicate.
+                # This is deterministic and avoids a second expensive LLM call.
+                deduped = []
+                seen = set()
+                for step in reversed(normalized):
+                    key = option_key(step["question"])
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    deduped.append(step)
+                deduped.reverse()
+                if len(deduped) < 3:
+                    return False, "Guided attempt contains repeated questions."
+                normalized = deduped
 
         return True, normalized
 
