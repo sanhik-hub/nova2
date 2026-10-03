@@ -50,6 +50,7 @@ class GuidedAttemptService:
                 ),
                 max_tokens=48,
                 compact=True,
+                request_timeout=3,
             )
             planner_elapsed_ms = (perf_counter() - planner_started) * 1000
 
