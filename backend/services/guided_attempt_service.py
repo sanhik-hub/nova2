@@ -8,7 +8,12 @@ from backend.services.provider_router import ProviderRouter
 
 
 class GuidedAttemptService:
-    """Generate a sequential guided attempt with one main LLM generation call."""
+    """Generate a guided attempt with one main LLM generation call.
+
+    The lightweight planner supplies only coarse complexity metadata. It is
+    deliberately not trusted with semantic stage planning because its small
+    model can produce plausible-looking but incorrect STEM decompositions.
+    """
 
     def __init__(self, router: ProviderRouter | None = None):
         self.router = router or ProviderRouter()
@@ -56,7 +61,15 @@ class GuidedAttemptService:
 
             planned = self._parse_compact_plan(planner_response.get("result"))
             if planned is not None:
-                step_count, guided_answer_tokens = planned
+                planned_steps, planned_tokens = planned
+                # The compact 0.5B planner is advisory. Trust it for small
+                # adjustments, but reject implausible jumps from the deterministic
+                # local estimate rather than letting one bad completion distort
+                # the guided path.
+                if abs(planned_steps - fallback_step_count) <= 2:
+                    step_count, guided_answer_tokens = planned_steps, planned_tokens
+                else:
+                    step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
             else:
                 step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
 
@@ -66,10 +79,10 @@ class GuidedAttemptService:
                 "error": "Guided attempt step count must be between 3 and 15.",
             }
 
-        # Generate the complete MCQ pool in one call. The model is allowed to
-        # produce the natural solution progression without being forced to decide
-        # which item must be presented first. The backend reorders the pool after
-        # generation so the requested final result is presented last.
+        # Generate the complete MCQ pool in one call. The main model remains
+        # responsible for the actual STEM reasoning. The tiny planner is used
+        # only for coarse complexity metadata; its semantic reasoning is not
+        # trusted enough to dictate individual solution stages.
         generation_prompt = f"""
 Original problem:
 {problem}
@@ -106,13 +119,12 @@ end.
 
 Return ONLY one JSON object:
 {{"steps":[
-  {{"question":"...","options":[{{"text":"..."}},{{"text":"..."}},{{"text":"..."}},{{"text":"..."}}],
-    "correct_index":0,"step_goal":"..."}}
+  {{"question":"...","options":["...","...","...","..."],"correct_index":0}}
 ]}}
 
-Every step must contain exactly question, options, correct_index, and step_goal
+Every step must contain exactly question, options, and correct_index
 {', plus hint' if include_hints else ''}. Do not include any other JSON keys.
-The options must contain only text.
+Keep the JSON compact. Options must be strings.
 {'Each step must also contain a short hint that does not reveal the correct option.' if include_hints else ''}
 """.strip()
 
@@ -322,10 +334,6 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
         if not question:
             return None
 
-        step_goal = payload.get("step_goal")
-        if not isinstance(step_goal, str) or not step_goal.strip():
-            return None
-
         options = payload.get("options")
         if not isinstance(options, list) or len(options) != 4:
             return None
@@ -355,7 +363,6 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
             "question": question,
             "options": normalized_options,
             "correct_index": correct_index,
-            "step_goal": step_goal.strip(),
         }
 
         if include_hints:
@@ -414,10 +421,7 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
 
         def final_score(step: dict[str, Any]) -> int:
             question = str(step.get("question", ""))
-            goal = str(step.get("step_goal", ""))
             question_norm = normalized(question)
-            goal_norm = normalized(goal)
-            combined = f"{question_norm} {goal_norm}"
             question_terms = terms(question)
             score = 0
 
@@ -451,16 +455,6 @@ Return only the requested JSON object. No markdown, commentary, or extra keys.
                 )
             ):
                 score += 5
-
-            if any(
-                phrase in goal_norm
-                for phrase in (
-                    "final", "requested result", "requested quantity",
-                    "conclude", "obtain the result", "determine the result",
-                    "calculate the result",
-                )
-            ):
-                score += 4
 
             # Penalize generic prerequisite/formula questions when they are not
             # themselves the requested target.
@@ -644,7 +638,7 @@ Using those verified intermediate choices, write the complete final solution.
             if not isinstance(step, dict):
                 return False, "Guided attempt generator returned an invalid step."
 
-            required = {"question", "options", "correct_index", "step_goal"}
+            required = {"question", "options", "correct_index"}
             allowed = required | ({"hint"} if include_hints else set())
             if set(step) != allowed:
                 return False, "Guided attempt generator returned an invalid step contract."
