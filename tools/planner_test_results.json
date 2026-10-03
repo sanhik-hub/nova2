@@ -1,0 +1,13 @@
+{
+  "status": "not_run",
+  "run_at_utc": null,
+  "planner_url": "http://127.0.0.1:8081/v1/chat/completions",
+  "test_count": 0,
+  "summary": {
+    "http_success": 0,
+    "valid_json": 0,
+    "schema_valid": 0,
+    "advisory_range_valid": 0
+  },
+  "tests": []
+}
