@@ -27,10 +27,10 @@ class GuidedAttemptService:
         planner_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
-        planner_step_advisory: int | None = None
+        planner_complexity_advisory: str | None = None
 
-        # The small planner is advisory only. It estimates complexity and an
-        # approximate number of guided steps; it never defines the solution path.
+        # The small planner is advisory only. It estimates complexity; it never
+        # determines the solution path or actual number of steps.
         if step_count is None:
             planner_started = perf_counter()
             plan_response = self.router.plan(
@@ -68,24 +68,20 @@ formulas, results, options, hints, or explanations.
                 except (TypeError, ValueError, json.JSONDecodeError):
                     plan = None
 
-                advisory_count = (
-                    plan.get("step_count_advisory")
+                complexity = (
+                    plan.get("complexity")
                     if isinstance(plan, dict)
                     else None
                 )
-                if (
-                    isinstance(advisory_count, int)
-                    and not isinstance(advisory_count, bool)
-                    and 3 <= advisory_count <= 15
-                ):
-                    planner_step_advisory = advisory_count
+                if complexity in {"simple", "moderate", "complex", "very_complex"}:
+                    planner_complexity_advisory = complexity
 
         # The stronger local LLM determines the actual guided progression.
         # The small planner's estimate is supplied only as a soft hint.
         if step_count is None:
             planning_hint = (
-                str(planner_step_advisory)
-                if planner_step_advisory is not None
+                planner_complexity_advisory
+                if planner_complexity_advisory is not None
                 else "not available"
             )
             main_plan_started = perf_counter()
@@ -339,7 +335,7 @@ Generate only this one step.
                     "planner_elapsed_ms": planner_elapsed_ms,
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                     "answer_tokens_advisory": guided_answer_tokens,
-                "planner_step_count_advisory": planner_step_advisory,
+                "planner_step_count_advisory": planner_complexity_advisory,
                 }
 
             generated_steps.append(normalized_step)
