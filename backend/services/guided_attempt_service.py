@@ -8,7 +8,7 @@ from backend.services.provider_router import ProviderRouter
 
 
 class GuidedAttemptService:
-    """Plan a guided attempt with the small model and generate MCQs with the main LLM."""
+    """Use advisory planning plus the main LLM to generate a sequential guided attempt."""
 
     def __init__(self, router: ProviderRouter | None = None):
         self.router = router or ProviderRouter()
@@ -182,9 +182,9 @@ planning model is the stronger reasoning model used by the guided generator.
                     guided_answer_tokens = advisory_tokens
 
             # Emergency fallback only if the stronger planning call fails.
-            # The lightweight planner still never supplies solution steps.
+            # The lightweight planner never determines the actual step count.
             if step_count is None:
-                step_count = planner_step_advisory or 5
+                step_count = 5
 
         if not isinstance(step_count, int) or not 3 <= step_count <= 15:
             return {
@@ -339,6 +339,7 @@ Generate only this one step.
                     "planner_elapsed_ms": planner_elapsed_ms,
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                     "answer_tokens_advisory": guided_answer_tokens,
+                "planner_step_count_advisory": planner_step_advisory,
                 }
 
             generated_steps.append(normalized_step)
@@ -441,6 +442,7 @@ result when it is not the final result.
                 "planner_elapsed_ms": planner_elapsed_ms,
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
+                "planner_step_count_advisory": planner_step_advisory,
             }
 
         return {
@@ -452,6 +454,7 @@ result when it is not the final result.
             "planner_elapsed_ms": planner_elapsed_ms,
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
+                "planner_step_count_advisory": planner_step_advisory,
         }
 
     @staticmethod
