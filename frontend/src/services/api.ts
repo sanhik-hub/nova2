@@ -5,6 +5,7 @@
   engine?: string | null;
    tool_calls?: unknown[];
   cached?: boolean;
+  result_only?: boolean;
   elapsed_ms?: number;
   final_solution_elapsed_ms?: number;
 };
