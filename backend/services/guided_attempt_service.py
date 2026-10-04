@@ -45,7 +45,7 @@ class GuidedAttemptService:
         # questions the reasoning service can use the computational engine;
         # conceptual STEM questions are handled by the reasoning model.
         verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="off" if reasoning._detect_explicit_operation(problem) is not None else "concise")
+        verified = reasoning.solve(problem, explanation="off")
         verified_elapsed_ms = (perf_counter() - verified_started) * 1000
         if not verified.get("success"):
             return {
@@ -888,8 +888,24 @@ givens. Output only the requested STEP records.""".strip()
                 raise ValueError(f"Line {line_number} has an empty option.")
             try:
                 correct_index = int(index_text)
-            except ValueError as exc:
-                raise ValueError(f"Line {line_number} has a non-integer correct_index.") from exc
+            except ValueError:
+                numeric = re.fullmatch(r"([0-3])(?:\.0+)?", index_text)
+                if numeric:
+                    correct_index = int(numeric.group(1))
+                else:
+                    label = index_text.upper().strip("[]()")
+                    label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+                    if label in label_map:
+                        correct_index = label_map[label]
+                    else:
+                        # Also tolerate harmless wrappers such as
+                        # "CORRECT_INDEX=2" from the small local model.
+                        match = re.fullmatch(r"(?:CORRECT_INDEX|INDEX)\s*=\s*([0-3])", label)
+                        if not match:
+                            raise ValueError(
+                                f"Line {line_number} has a non-integer correct_index."
+                            )
+                        correct_index = int(match.group(1))
             if not 0 <= correct_index < 4:
                 raise ValueError(f"Line {line_number} has correct_index outside 0-3.")
             step: dict[str, Any] = {
