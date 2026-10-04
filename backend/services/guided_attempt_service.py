@@ -383,7 +383,7 @@ The response is constrained by a JSON schema. Return only the schema object.
         if not isinstance(payload, dict):
             return None
 
-        required = {"question", "options", "correct_index"}
+        required = {"question", "stage_answer", "options", "correct_index"}
         allowed = required | ({"hint"} if include_hints else set())
         if not required.issubset(payload):
             return None
@@ -433,6 +433,7 @@ The response is constrained by a JSON schema. Return only the schema object.
 
         result = {
             "question": question,
+            "stage_answer": stage_answer.strip(),
             "options": normalized_options,
             "correct_index": correct_index,
         }
@@ -1048,8 +1049,13 @@ Using those verified intermediate choices, write the complete final solution.
             ):
                 return False, "Guided attempt contains an invalid correct answer."
 
+            stage_answer = step["stage_answer"]
+            if not isinstance(stage_answer, str) or not stage_answer.strip():
+                return False, "Guided attempt contains an empty stage answer."
+
             normalized_step = {
                 "question": question,
+                "stage_answer": stage_answer.strip(),
                 "options": normalized_options,
                 "correct_index": index,
             }
@@ -1152,6 +1158,33 @@ Using those verified intermediate choices, write the complete final solution.
             }
             return " ".join(word for word in q.split() if word not in stop)
 
+        # Some small local model generations collapse all MCQs onto one
+        # reusable option pool even when the schema is valid. Repair this
+        # deterministically instead of spending another full LLM call.
+        stage_answers = []
+        for step in normalized:
+            answer = re.sub(r"\s+", " ", step["stage_answer"]).strip()
+            if answer and answer not in stage_answers:
+                stage_answers.append(answer)
+
+        if len(stage_answers) >= 4:
+            rebuilt_sets = []
+            for step in normalized:
+                correct_text = re.sub(
+                    r"\s+", " ", step["stage_answer"]
+                ).strip()
+                distractors = [
+                    answer for answer in stage_answers
+                    if answer != correct_text
+                ][:3]
+                if len(distractors) == 3:
+                    rebuilt_sets.append([correct_text, *distractors])
+
+            if len(rebuilt_sets) == len(normalized):
+                for step, choices in zip(normalized, rebuilt_sets):
+                    step["options"] = [{"text": choice} for choice in choices]
+                    step["correct_index"] = 0
+
         seen_option_sets: set[tuple[str, ...]] = set()
         for step in normalized:
             option_set = tuple(
@@ -1229,5 +1262,8 @@ Using those verified intermediate choices, write the complete final solution.
                 if len(deduped) < 3:
                     return False, "Guided attempt contains repeated questions."
                 normalized = deduped
+
+        for step in normalized:
+            step.pop("stage_answer", None)
 
         return True, normalized
