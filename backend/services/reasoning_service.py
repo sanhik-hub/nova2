@@ -1227,9 +1227,16 @@ Output rules:
 For chemistry, first internally identify exactly what the user requested
 (reaction, product, formula, structure, name, oxidation state, or condition).
 For an overall-reaction request, reproduce the requested transformation itself;
-do not substitute a related reaction, reagent, product, or mechanism. Check
-reactants, reagents/conditions, stoichiometry, regiochemistry, and product
-identity internally before emitting the result.
+do not substitute a related reaction, reagent, product, mechanism, intermediate,
+or side product. For a named reaction, use its standard chemical transformation
+and do not invent a new stoichiometric transformation from the reagent names.
+If the substrate is generic, preserve its generic carbon skeleton and place the
+functional group at the chemically correct position rather than inventing extra
+functional groups or atoms. Check reactants, reagents/conditions, reaction
+class, stoichiometry, regiochemistry, and product identity internally before
+emitting the result. In particular, do not turn an alkene-to-alcohol reaction
+into a diol or other multi-functional transformation unless the requested
+reaction actually produces that product.
 For physics and mathematics, check the governing relationship and any required
 substitution internally before emitting the requested result.
 Never invent missing data or assumptions.
