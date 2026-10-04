@@ -593,16 +593,17 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                     arguments = recovered_arguments
 
         if plan["needs_wolfram"]:
-            if not isinstance(operation, str) or not operation.strip():
-                return self._error(
-                    "Planner requested exact computation but did not provide "
-                    "a valid operation."
-                )
-            if not isinstance(arguments, dict):
-                return self._error(
-                    "Planner requested exact computation but did not provide "
-                    "structured arguments."
-                )
+            if not isinstance(operation, str) or not operation.strip() or not isinstance(arguments, dict):
+                # The planner is advisory. If it cannot produce a usable
+                # exact-computation contract, fall back to semantic solving
+                # instead of exposing "invalid plan" to the user.
+                recovered = self._detect_explicit_operation(problem)
+                if recovered is not None:
+                    operation, arguments = recovered
+                else:
+                    plan["needs_wolfram"] = False
+                    operation = None
+                    arguments = None
         else:
             operation = None
             arguments = None
