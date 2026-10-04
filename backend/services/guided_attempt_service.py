@@ -164,6 +164,8 @@ givens. Output only the requested STEP records.""".strip()
                     **({"hint": self._normalize_generated_text(item["hint"])} if include_hints else {}),
                 })
 
+            generated = self._reorder_final_step(problem, generated)
+
             valid, steps_or_error = self._validate(
                 {"steps": generated},
                 include_hints,
