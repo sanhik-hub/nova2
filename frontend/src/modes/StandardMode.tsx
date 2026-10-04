@@ -15,7 +15,6 @@ import {
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
 import MathText from "../components/MathText";
-import WorkspaceSolutionText from "../components/WorkspaceSolutionText";
 
 type TaskMode = "solution" | "guided";
 
@@ -73,6 +72,55 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   } | null>(null);
 
   const guidedCacheKey = "prismoffline-guided-attempt";
+
+  useEffect(() => {
+    if (!savedGuidedAttempt || savedGuidedAttempt.kind !== "guided_attempt") return;
+    const payload = savedGuidedAttempt.payload;
+    if (!Array.isArray(payload.steps)) return;
+    const steps = payload.steps as GuidedStep[];
+    const followUps = Array.isArray(payload.follow_ups)
+      ? (payload.follow_ups as FollowUpTurn[])
+      : [];
+    const fullSolutionText =
+      typeof payload.full_solution === "string" ? payload.full_solution : "";
+    const restored: GuidedState = {
+      query: savedGuidedAttempt.question,
+      steps,
+      current: 0,
+      answers: Array(steps.length).fill(null),
+      score: 0,
+      finished: true,
+      fullSolution: fullSolutionText
+        ? {
+            success: true,
+            answer: fullSolutionText,
+            engine: "stored",
+            tool_calls: [],
+            cached: true,
+            elapsed_ms: Number(payload.final_solution_elapsed_ms ?? 0),
+          }
+        : null,
+      fullSolutionLoading: false,
+      mcqElapsedMs: Number(payload.mcq_elapsed_ms ?? 0),
+      hintElapsedMs: Number(payload.hint_elapsed_ms ?? 0),
+      finalSolutionElapsedMs:
+        payload.final_solution_elapsed_ms == null
+          ? null
+          : Number(payload.final_solution_elapsed_ms),
+    };
+    setQuestion(savedGuidedAttempt.question);
+    setTaskMode("guided");
+    setIncludeHints(Boolean(payload.include_hints));
+    setIncludeFullSolution(Boolean(payload.include_full_solution));
+    setGuided(restored);
+    setGuidedFollowUps(followUps);
+    setGuidedFollowUpText("");
+    setSavedGuidedId(savedGuidedAttempt.id);
+    setSavedGuided(true);
+    setSelectedOption(null);
+    setResponse(null);
+    onSavedGuidedOpened?.();
+  }, [savedGuidedAttempt, onSavedGuidedOpened]);
 
   useEffect(() => {
     void getLocalSettings()
@@ -925,6 +973,59 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
           {includeFullSolution && guided.fullSolutionLoading && (
             <LoadingState text="Finishing the complete solution..." />
           )}
+          <section className="card follow-up-card">
+            <div className="eyebrow">FOLLOW UP</div>
+            <h2>Continue this question</h2>
+            <p>Ask as many consecutive follow-up questions as you need. The completed attempt remains available as context.</p>
+            {guidedFollowUps.length > 0 && (
+              <div className="follow-up-history">
+                {guidedFollowUps.map((turn, index) => (
+                  <article className="follow-up-entry" key={index}>
+                    <div className="follow-up-question">
+                      <div className="eyebrow">FOLLOW-UP {index + 1}</div>
+                      <MathText>{turn.question}</MathText>
+                    </div>
+                    <ReasonResult
+                      response={{
+                        success: true,
+                        answer: turn.answer,
+                        engine: "local_llm",
+                        tool_calls: [],
+                        cached: false,
+                        elapsed_ms: turn.elapsed_ms ?? 0,
+                        follow_up: true,
+                      }}
+                    />
+                  </article>
+                ))}
+              </div>
+            )}
+            <textarea
+              className="question-input follow-up-input"
+              value={guidedFollowUpText}
+              onChange={(event) => setGuidedFollowUpText(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                  void submitGuidedFollowUp();
+                }
+              }}
+              placeholder="Ask a follow-up about this question..."
+              rows={4}
+              disabled={guidedFollowUpLoading}
+            />
+            <div className="input-footer">
+              <span className="shortcut">Ctrl + Enter to continue</span>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void submitGuidedFollowUp()}
+                disabled={!guidedFollowUpText.trim() || guidedFollowUpLoading}
+              >
+                {guidedFollowUpLoading ? "Working..." : "Ask Follow-up"}
+              </button>
+            </div>
+          </section>
+
         </>
       )}
 
