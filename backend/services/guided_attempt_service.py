@@ -994,7 +994,7 @@ Using those verified intermediate choices, write the complete final solution.
             if not isinstance(step, dict):
                 return False, "Guided attempt generator returned an invalid step."
 
-            required = {"question", "options", "correct_index"}
+            required = {"question", "stage_answer", "options", "correct_index"}
             allowed = required | ({"hint"} if include_hints else set())
             if set(step) != allowed:
                 return False, "Guided attempt generator returned an invalid step contract."
