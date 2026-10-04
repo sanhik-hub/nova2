@@ -35,6 +35,7 @@ class ComputationResponse(BaseModel):
     steps: list[Any] = []
     plots: list[Any] = []
     related: list[Any] = []
+    solution_points: list[Any] = []
 
 
 class PlotRequest(BaseModel):
