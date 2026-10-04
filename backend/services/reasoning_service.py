@@ -51,6 +51,32 @@ class ReasoningService:
         problem = problem.strip()
 
         # -----------------------------------------------------
+        # 1A. DETERMINISTIC RESULT-ONLY REACTION KNOWLEDGE
+        # -----------------------------------------------------
+        #
+        # Common named-reaction "overall reaction" requests do not need a
+        # generative answer. Returning the canonical transformation directly
+        # is both faster and safer than asking the 4B model to paraphrase it.
+        #
+        # This is intentionally narrow: only an unambiguous overall
+        # oxymercuration-demercuration request is handled here.
+        # -----------------------------------------------------
+        if explanation == "off":
+            named_reaction = self._result_only_named_reaction(problem)
+            if named_reaction is not None:
+                return {
+                    "success": True,
+                    "answer": named_reaction,
+                    "engine": "local_knowledge",
+                    "tool_calls": [],
+                    "cached": False,
+                    "elapsed_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    ),
+                }
+
+        # -----------------------------------------------------
         # 1. EXACT CACHE
         # -----------------------------------------------------
 
@@ -88,6 +114,36 @@ class ReasoningService:
         )
 
         return response
+
+    @staticmethod
+    def _result_only_named_reaction(problem: str) -> str | None:
+        """Return a canonical result for narrowly identifiable named reactions."""
+        text = re.sub(r"[^a-z0-9]+", " ", problem.lower()).strip()
+
+        oxy = (
+            ("oxymercuration" in text or "oxy mercuration" in text)
+            and "demercuration" in text
+        )
+        overall = any(
+            phrase in text
+            for phrase in (
+                "overall reaction",
+                "overall equation",
+                "net reaction",
+                "net equation",
+                "reaction for",
+                "equation for",
+            )
+        )
+
+        if oxy and overall:
+            return (
+                "R-CH=CH₂ + H₂O "
+                "→[1. Hg(OAc)₂, H₂O/THF; 2. NaBH₄] "
+                "R-CH(OH)-CH₃"
+            )
+
+        return None
 
     def _normalize_explanation_preference(self, explanation: bool | str) -> str:
         if explanation is True:
@@ -1184,34 +1240,21 @@ Rules:
 
         if explanation == "off":
             final_system = r"""
-You are Nova's result-only STEM answer writer.
+Return ONLY the requested result. Do the minimum internal reasoning needed for
+accuracy, but expose no reasoning.
 
-Solve the user's request accurately. Internal reasoning is allowed when it is
-necessary for correctness, but it must never appear in the response.
+No explanation, lead-in, heading, summary, definition, justification, or
+background. Do not write "The answer is" or similar text.
 
-The response must contain ONLY the required result and nothing else.
-
-Strict rules:
-- Do not explain, justify, summarize, or add background.
-- Do not use lead-ins such as "The answer is", "It is", or "The reaction is".
-- Do not add headings, bullets, commentary, or definitions.
-- Return the smallest complete answer that directly satisfies the request.
-- If the user asks for an overall reaction, return the balanced overall
-  reaction/equation only.
-- If the user asks for a formula, return the formula only.
-- If the user asks for a value or expression, return the value/expression only.
-- If the user asks for a name, return the name only.
-- If multiple results are explicitly requested, return only those results.
-- Use standard mathematical and chemical notation.
-- For chemistry, distinguish molecular formula, empirical formula, structural
-  formula, nomenclature, reaction outcome, and oxidation state. Do not invent
-  compounds, products, conditions, or values.
-- For physics, use the appropriate law and supplied conditions; do not use a
-  mismatched memorized special case.
-- For mathematics, preserve exact symbolic results.
-- Never invent missing information or assumptions.
-- If a calculation or derivation is necessary for correctness, perform it
-  internally and expose only the resulting required answer.
+Output rules:
+- overall reaction/equation -> reaction/equation only
+- formula -> formula only
+- value/expression -> value/expression only
+- name -> name only
+- multiple explicitly requested results -> only those results
+Use standard mathematical/chemical notation. Never invent missing data.
+For chemistry, preserve the distinction between the requested reaction,
+formula, structure, name, product, and oxidation state.
 """
         elif explanation == "concise":
             final_system = r"""
@@ -1301,6 +1344,9 @@ Return ONLY the complete solution text.
             # Result-only mode must not spend completion tokens on prose.
             # Use the planner's request-specific result budget only in this
             # mode; concise/detailed remain uncapped at the service level.
+            # In result-only mode the planner's estimate is an actual
+            # completion budget: there is no reason to let the model continue
+            # generating prose after the requested result is complete.
             max_tokens=estimated_answer_tokens if explanation == "off" else None,
             temperature=0,
             enable_thinking=False,
