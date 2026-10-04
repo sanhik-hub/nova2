@@ -1167,6 +1167,7 @@ Using those verified intermediate choices, write the complete final solution.
             if answer and answer not in stage_answers:
                 stage_answers.append(answer)
 
+        rebuilt_from_stage_answers = False
         if len(stage_answers) >= 4:
             rebuilt_sets = []
             for step in normalized:
@@ -1181,6 +1182,7 @@ Using those verified intermediate choices, write the complete final solution.
                     rebuilt_sets.append([correct_text, *distractors])
 
             if len(rebuilt_sets) == len(normalized):
+                rebuilt_from_stage_answers = True
                 for step, choices in zip(normalized, rebuilt_sets):
                     step["options"] = [{"text": choice} for choice in choices]
                     step["correct_index"] = 0
@@ -1195,7 +1197,7 @@ Using those verified intermediate choices, write the complete final solution.
             )
             if len(set(option_set)) != 4:
                 return False, "Guided attempt contains duplicate options in a question."
-            if option_set in seen_option_sets:
+            if option_set in seen_option_sets and not rebuilt_from_stage_answers:
                 return False, "Guided attempt reused the same option pool across questions."
             seen_option_sets.add(option_set)
 
