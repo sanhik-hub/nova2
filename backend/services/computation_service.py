@@ -3,6 +3,7 @@ from backend.services.expression_normalizer import normalize_expression
 from backend.services.expression_normalizer import (
     normalize_expression_result,
 )
+import re
 
 class ComputationService:
 
@@ -158,6 +159,7 @@ class ComputationService:
                     error=f"Provider '{provider}' does not support plotting.",
                 )
 
+            solution_result = self._solve_graph_equation(normalized_expression, variable, selected)
             result = selected.plot(
                 expression=normalized_expression,
                 variable=variable,
@@ -169,7 +171,7 @@ class ComputationService:
                 "success": result["success"],
                 "operation": "plot",
                 "input": expression,
-                "result": None,
+                "result": solution_result["text"],
                 "error": result["error"],
                 "engine": result["engine"],
                 "steps": [],
@@ -181,6 +183,7 @@ class ComputationService:
                     }
                 ] if result["success"] else [],
                 "related": [],
+                "solution_points": solution_result["points"],
             }
 
         except ValueError as exc:
@@ -197,6 +200,21 @@ class ComputationService:
                 operation="plot",
                 error=f"Plotting failed: {exc}",
             )
+    @staticmethod
+    def _solve_graph_equation(expression: str, variable: str, provider):
+        try:
+            equation = expression if "=" in expression else f"{expression} == 0"
+            solved = provider.calculate(f"Solve[{equation}, {variable}, Reals]")
+            if not solved.get("success"):
+                return {"text": "", "points": []}
+            result_text = str(solved.get("result") or "")
+            points = []
+            for match in re.finditer(rf"{re.escape(variable)}\s*->\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)", result_text):
+                points.append([float(match.group(1)), 0.0])
+            return {"text": result_text, "points": points}
+        except Exception:
+            return {"text": "", "points": []}
+
     @staticmethod
     def _error(query: str, operation: str, error: str):
         return {
