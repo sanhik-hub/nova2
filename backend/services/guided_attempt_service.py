@@ -94,8 +94,11 @@ into one MCQ in the same order. Do not output the path separately.
 
 Rules:
 - Every stage must be a real mathematical/scientific action or intermediate result.
-- Use the actual givens; never ask for a quantity explicitly supplied.
+- Use the actual givens immediately; NEVER make a question ask the student to identify, calculate, define, or recall a quantity that the problem already explicitly provides.
+- Example: if angular velocity is given as omega, do not ask "What is the angular velocity?"; use omega in the next relevant equation.
+- Do not create a prerequisite question whose answer is already stated verbatim in the problem.
 - No generic topic/law questions disconnected from the solution.
+- Prefer the shortest valid path: do not split one substitution or algebraic simplification into multiple trivial questions unless that split is necessary for the student's reasoning.
 - The final stage must establish the requested result.
 - Each MCQ has exactly four short answer choices and exactly one correct choice.
 - Generate each question's choices independently.
@@ -106,20 +109,21 @@ Rules:
         generation_system = """
 You generate guided STEM MCQs. Internally solve the problem as a shortest
 connected sequence of useful stages, then emit one concise MCQ per stage.
-Never ask for supplied quantities or disconnected generic facts. The final
-MCQ must establish the requested result. Each MCQ has four short options and
-one correct_index. Output only the requested JSON.
+A supplied quantity is data, not a question target: never ask the student to
+identify or calculate a quantity already stated in the original problem.
+Use supplied symbols/values directly in the first relevant equation.
+Avoid trivial split-up steps; every MCQ must advance the solution.
+The final MCQ must establish the requested result. Each MCQ has four short
+options and one correct_index. Output only the requested JSON.
 """.strip()
 
         generation_started = perf_counter()
         generation_response = self.router.generate(
             prompt=generation_prompt,
             system_prompt=generation_system,
-            max_tokens=(
-                min(
-                    guided_answer_tokens or 400,
-                    (step_count * 60) + 80,
-                )
+            max_tokens=min(
+                guided_answer_tokens or 400,
+                (step_count * 64) + 96,
             ),
             temperature=0,
             enable_thinking=False,
