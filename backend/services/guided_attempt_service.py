@@ -230,24 +230,36 @@ related result. Do not expose internal reasoning.
             if include_hints and not hint:
                 continue
 
-            # Reject literal schema placeholders emitted by the local model.
-            placeholders = {"question", "correct_answer", "correct answer", "wrong1", "wrong2", "wrong3", "solution_step", "solution step", "hint"}
-            values = {solution.lower(), question.lower(), correct.lower(), *(value.lower() for value in wrong)}
-            if values & placeholders:
+            values = [solution, question, correct, *wrong]
+            if include_hints:
+                values.append(hint)
+            if any(GuidedAttemptService._is_schema_placeholder(value) for value in values):
+                continue
+
+            normalized_solution = GuidedAttemptService._normalize_generated_text(solution)
+            normalized_question = GuidedAttemptService._normalize_generated_text(question)
+            normalized_correct = GuidedAttemptService._normalize_generated_text(correct)
+            normalized_wrong = [
+                GuidedAttemptService._normalize_generated_text(value)
+                for value in wrong
+            ]
+            normalized_hint = (
+                GuidedAttemptService._normalize_generated_text(hint)
+                if include_hints else None
+            )
+
+            if not GuidedAttemptService._is_concrete_solution_step(
+                normalized_solution,
+                normalized_correct,
+            ):
                 continue
 
             records.append({
-                "solution": GuidedAttemptService._normalize_generated_text(solution),
-                "question": GuidedAttemptService._normalize_generated_text(question),
-                "correct": GuidedAttemptService._normalize_generated_text(correct),
-                "wrong": [
-                    GuidedAttemptService._normalize_generated_text(value)
-                    for value in wrong
-                ],
-                "hint": (
-                    GuidedAttemptService._normalize_generated_text(hint)
-                    if include_hints else None
-                ),
+                "solution": normalized_solution,
+                "question": normalized_question,
+                "correct": normalized_correct,
+                "wrong": normalized_wrong,
+                "hint": normalized_hint,
             })
 
         if len(records) < 3:
@@ -256,6 +268,53 @@ related result. Do not expose internal reasoning.
             )
 
         return records[:6]
+
+    @staticmethod
+    def _is_schema_placeholder(value: Any) -> bool:
+        if not isinstance(value, str):
+            return True
+        cleaned = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
+        if not cleaned:
+            return True
+        placeholders = {
+            "step", "solution_step", "solution", "question", "correct",
+            "correct_answer", "wrong1", "wrong2", "wrong3", "hint",
+            "answer", "correct_option", "wrong_option",
+        }
+        return cleaned in placeholders
+
+    @staticmethod
+    def _is_concrete_solution_step(solution: str, correct: str) -> bool:
+        text = re.sub(r"\s+", " ", solution.strip().lower())
+        if not text or GuidedAttemptService._is_schema_placeholder(correct):
+            return False
+
+        filler_patterns = (
+            r"^calculate(?: the result)?\.?$",
+            r"^use (?:the )?formula\.?$",
+            r"^apply (?:the )?formula\.?$",
+            r"^substitute(?: the values)?\.?$",
+            r"^check units\.?$",
+            r"^check (?:the )?answer\.?$",
+            r"^finalize(?: the answer)?\.?$",
+            r"^therefore\.?$",
+        )
+        if any(re.fullmatch(pattern, text) for pattern in filler_patterns):
+            return False
+
+        quantitative_markers = ("=", "+", "-", "*", "/", "^", "->", "$")
+        if bool(re.search(r"\d", text)) or any(marker in text for marker in quantitative_markers):
+            return True
+
+        action_only = re.search(
+            r"\b(?:calculate|compute|determine|find|solve|substitute|"
+            r"simplify|differentiate|integrate|derive|evaluate|use)\b",
+            text,
+        )
+        if action_only and len(re.findall(r"[a-z]+", text)) <= 10:
+            return False
+
+        return len(text) >= 12
 
     @staticmethod
     def _parse_mcq_records(
