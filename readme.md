@@ -299,14 +299,24 @@ POST /api/follow-up
 
 ### Guided Attempt
 
-Interactive step-by-step solving with:
+Interactive step-by-step solving is built as a two-stage pipeline:
 
-- generated steps and MCQs
-- hints
+1. The authoritative solver establishes the STEM answer/path first.
+2. The main local model converts that verified solution into distinct progressive MCQs.
+3. Python validates structure, duplicate questions/targets, options, ordering, and scoring.
+4. Hints are generated only when the user enables them.
+5. The complete worked solution is lazy and is generated only after the user selects **Show Full Solution**.
+
+The Guided Attempt does not force an exact number of stages; the model uses the minimum useful stages, normally 2–6. Planner estimates are advisory metadata only and never cap final generation.
+
+Interactive features:
+
+- progressive MCQs
+- optional hints (off by default)
 - answer tracking
 - scoring
 - reattempts
-- optional complete solution
+- optional full solution (off by default)
 - saved attempts
 
 Endpoints:
