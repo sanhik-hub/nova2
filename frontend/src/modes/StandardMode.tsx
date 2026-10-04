@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   reasonQuestion,
   startGuidedAttempt,
@@ -38,6 +38,32 @@ export function StandardMode() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [guidedLoading, setGuidedLoading] = useState(false);
+  const [cachedGuided, setCachedGuided] = useState<{
+    query: string;
+    includeHints: boolean;
+    includeFullSolution: boolean;
+    steps: GuidedStep[];
+  } | null>(null);
+
+  const guidedCacheKey = "prismoffline-guided-attempt";
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(guidedCacheKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed.query === "string" &&
+        Array.isArray(parsed.steps) &&
+        parsed.steps.length > 0
+      ) {
+        setCachedGuided(parsed);
+      }
+    } catch {
+      sessionStorage.removeItem(guidedCacheKey);
+    }
+  }, []);
 
   async function solve() {
     const trimmed = question.trim();
@@ -72,8 +98,27 @@ export function StandardMode() {
     setGuided(null);
     setSelectedOption(null);
 
+    const cached =
+      cachedGuided &&
+      cachedGuided.query === trimmed &&
+      cachedGuided.includeHints === includeHints &&
+      cachedGuided.includeFullSolution === includeFullSolution
+        ? cachedGuided
+        : null;
+
     try {
-      const result = await startGuidedAttempt(trimmed, includeHints, includeFullSolution);
+      const result = cached
+        ? {
+            success: true,
+            query: cached.query,
+            steps: cached.steps,
+            include_hints: cached.includeHints,
+            include_full_solution: cached.includeFullSolution,
+            elapsed_ms: 0,
+            mcq_elapsed_ms: 0,
+            hint_elapsed_ms: 0,
+          }
+        : await startGuidedAttempt(trimmed, includeHints, includeFullSolution);
 
       if (!result.success || !result.steps?.length) {
         setResponse({
@@ -83,9 +128,26 @@ export function StandardMode() {
         return;
       }
 
+      const generatedSteps = result.steps;
+      if (!cached) {
+        const cacheEntry = {
+          query: trimmed,
+          includeHints,
+          includeFullSolution,
+          steps: generatedSteps,
+        };
+        try {
+          sessionStorage.setItem(guidedCacheKey, JSON.stringify(cacheEntry));
+          setCachedGuided(cacheEntry);
+        } catch {
+          // Session caching is an optimization; a full attempt still works
+          // when storage is unavailable or full.
+        }
+      }
+
       setGuided({
         query: trimmed,
-        steps: result.steps,
+        steps: generatedSteps,
         current: 0,
         answers: Array(result.steps.length).fill(null),
         score: 0,
@@ -530,13 +592,36 @@ export function StandardMode() {
                 ? "All steps were answered correctly."
                 : "Review the steps you missed and try the problem again."}
             </p>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={resetGuided}
-            >
-              Try Another Attempt
-            </button>
+            <div className="guided-result-actions">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  const saved = guided;
+                  if (!saved) return;
+                  setGuided({
+                    ...saved,
+                    current: 0,
+                    answers: Array(saved.steps.length).fill(null),
+                    score: 0,
+                    finished: false,
+                    fullSolution: null,
+                    fullSolutionLoading: includeFullSolution,
+                    finalSolutionElapsedMs: null,
+                  });
+                  setSelectedOption(null);
+                }}
+              >
+                Reattempt
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={resetGuided}
+              >
+                Exit Attempt
+              </button>
+            </div>
           </section>
 
           <section className="card guided-review-card">
