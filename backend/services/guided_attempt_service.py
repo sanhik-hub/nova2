@@ -439,6 +439,12 @@ related result. Do not expose internal reasoning.
         # known mojibake form of ω; normalize it directly rather than exposing
         # corrupted symbols to the UI.
         text = text.replace("Ï", "omega")
+        # Keep the API representation ASCII-safe. This also prevents a second
+        # console/client decoding pass from turning scientific symbols into
+        # mojibake. The frontend math renderer can interpret these forms.
+        text = text.replace("ω", "omega")
+        text = text.replace("²", "^2").replace("³", "^3").replace("¹", "^1")
+        text = text.replace("·", "*").replace("×", "*")
         # Normalize the stable label variants emitted by small local models.
         text = re.sub(r"^SOLUTION(?:_STEP|_step|\s+STEP)\s*:\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^STEP\s*:\s*", "", text, flags=re.IGNORECASE)
