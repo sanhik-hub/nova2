@@ -114,6 +114,23 @@ class ReasoningService:
         return response
 
     @staticmethod
+    def _clean_generated_answer(value: str) -> str:
+        """Repair common UTF-8 mojibake emitted by local model output."""
+        text = value.strip() if isinstance(value, str) else str(value).strip()
+        for _ in range(2):
+            if not any(marker in text for marker in ("Â", "Ã", "Î", "Ï", "â")):
+                break
+            try:
+                repaired = text.encode("latin1").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            if repaired == text:
+                break
+            text = repaired
+        text = text.replace("â†’", "→").replace("â‡’", "⇒").replace("âˆ’", "−")
+        return text.strip()
+
+    @staticmethod
     def _normalize_explanation_preference(explanation: bool | str) -> str:
         if explanation is True:
             return "detailed"
@@ -1228,8 +1245,16 @@ For chemistry, first internally identify exactly what the user requested
 (reaction, product, formula, structure, name, oxidation state, or condition).
 For an overall-reaction request, reproduce the requested transformation itself;
 do not substitute a related reaction, reagent, product, mechanism, intermediate,
-or side product. For a named reaction, use its standard chemical transformation
-and do not invent a new stoichiometric transformation from the reagent names.
+or side product. For a named reaction, use its standard chemical transformation and do
+not invent a stoichiometric transformation by counting reagent molecules.
+For hydroboration-oxidation specifically, apply the general reaction rule:
+boron adds to the less-substituted alkene carbon, hydrogen adds to the other
+alkene carbon, and oxidation replaces the C-B bond with C-OH at that same
+carbon. The transformation introduces ONE alcohol group; it does not turn an
+alkene into a vicinal diol. For a generic terminal alkene, preserve its carbon
+skeleton and place OH on the terminal carbon. Prefer a reaction-arrow equation
+with the actual reagents/conditions over inventing balanced water/BH3
+stoichiometry unless a balanced reagent equation is explicitly requested.
 If the substrate is generic, preserve its generic carbon skeleton and place the
 functional group at the chemically correct position rather than inventing extra
 functional groups or atoms. Check reactants, reagents/conditions, reaction
@@ -1350,7 +1375,7 @@ Return ONLY the complete solution text.
             result["_final_llm_ms"] = final_llm_ms
             return result
 
-        answer = response["result"].strip()
+        answer = self._clean_generated_answer(str(response["result"] or "").strip())
 
         if not answer:
             result = self._error(
