@@ -15,7 +15,7 @@ type AccountViewProps = {
   onLogout: () => void;
 };
 
-export function AccountView({ user, onLogout }: AccountViewProps) {
+export function AccountView({ user, onLogout, onReattemptGuided }: AccountViewProps) {
   const [settings, setSettings] = useState<LocalSettings>({ save_by_default: false, save_followups_by_default: false });
   const [items, setItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +189,7 @@ export function AccountView({ user, onLogout }: AccountViewProps) {
                       )}
                     </div>
                   )}
-                  <button className="secondary-button saved-delete" type="button" onClick={() => void remove(item.id)}>
+                  {item.kind === "guided_attempt" && <button className="primary-button saved-reattempt" type="button" onClick={() => onReattemptGuided(item)}>Reattempt</button>}\n                  <button className="secondary-button saved-delete" type="button" onClick={() => void remove(item.id)}>
                     Delete
                   </button>
                 </details>
