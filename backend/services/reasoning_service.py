@@ -70,13 +70,93 @@ class ReasoningService:
 
 
         # -----------------------------------------------------
-        # 2. MODEL-DRIVEN SEMANTIC PLANNING
+        # 2. DETERMINISTIC SYMBOLIC FAST PATH
         # -----------------------------------------------------
         #
-        # Every non-cached request goes through the small planner. This is
-        # deliberate: Standard Solver is a general STEM solver, so routing
-        # must be based on the meaning of the request rather than a growing
-        # collection of operation/domain keywords.
+        # Unambiguous symbolic operations are already understood by the
+        # operation detector and can be executed directly by Wolfram. In
+        # result-only mode there is deliberately NO LLM call and the response
+        # contains only the exact computational result.
+        # -----------------------------------------------------
+
+        explicit_operation = self._detect_explicit_operation(problem)
+
+        if explicit_operation is not None:
+            operation, arguments = explicit_operation
+            tool_result = self._execute_tool(operation, arguments)
+
+            if not tool_result.get("success"):
+                return self._error(
+                    tool_result.get("error") or "The computation failed."
+                )
+
+            if explanation == "off":
+                response = {
+                    "success": True,
+                    "answer": str(tool_result.get("result") or "").strip(),
+                    "result_only": True,
+                    "engine": "wolfram",
+                    "tool_calls": [],
+                    "cached": False,
+                }
+            else:
+                response = self._final_explanation(
+                    problem=problem,
+                    tool_results=[tool_result],
+                    explanation=explanation,
+                )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            self._cache_set(problem, response, explanation)
+            return response
+
+        # -----------------------------------------------------
+        # 3. DIRECT EXPRESSION FAST PATH
+        # -----------------------------------------------------
+        #
+        # Bare mathematical expressions are also exact CAS requests. Keep
+        # these out of the planner entirely.
+        # -----------------------------------------------------
+
+        if self._is_simple_expression(problem):
+            calculation = self.router.calculate(
+                expression=problem,
+                provider="wolfram",
+            )
+
+            if not calculation.get("success"):
+                return self._error(
+                    calculation.get("error") or "The computation failed."
+                )
+
+            if explanation == "off":
+                response = {
+                    "success": True,
+                    "answer": str(calculation.get("result") or "").strip(),
+                    "result_only": True,
+                    "engine": "wolfram",
+                    "tool_calls": [],
+                    "cached": False,
+                }
+            else:
+                response = self._final_explanation(
+                    problem=problem,
+                    tool_results=[{"result": calculation.get("result")}],
+                    explanation=explanation,
+                )
+
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            self._cache_set(problem, response, explanation)
+            return response
+
+        # -----------------------------------------------------
+        # 4. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
