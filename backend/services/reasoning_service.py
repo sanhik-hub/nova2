@@ -15,10 +15,6 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # The planner's answer_tokens is the per-request final-generation budget.
-    # There is deliberately no hardcoded final-answer token ceiling here.
-    PLANNER_TOKENS = 220
-
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
 
@@ -305,7 +301,6 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 ensure_ascii=False,
             ),
             system_prompt=planner_system,
-            max_tokens=self.PLANNER_TOKENS,
         )
 
         planner_ms = round(
@@ -1307,20 +1302,12 @@ Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            # Result-only mode must not spend completion tokens on prose.
-            # Use the planner's request-specific result budget only in this
-            # mode; concise/detailed remain uncapped at the service level.
-            # In result-only mode the planner's estimate is an actual
-            # completion budget: there is no reason to let the model continue
-            # generating prose after the requested result is complete.
-            max_tokens=(
-                min(96, estimated_answer_tokens)
-                if explanation == "off" and estimated_answer_tokens
-                else None
-            ),
+            # answer_tokens is advisory metadata only. Never pass it as a
+            # provider max_tokens ceiling; a difficult STEM request may need
+            # substantially more output than the planner estimates.
             temperature=0,
             enable_thinking=False,
-            request_timeout=60 if explanation == "off" else None,
+            request_timeout=None,
         )
 
         final_llm_ms = round(
