@@ -44,13 +44,20 @@ class ProviderRouter:
 
     def calculate(
         self,
-        query: str,
+        query: str | None = None,
         provider: str = "wolfram",
+        expression: str | None = None,
     ):
+        """Run an exact calculation through the selected provider.
 
+        ``query`` is canonical; ``expression`` is a compatibility alias.
+        """
+        if query is None:
+            query = expression
+        if query is None or not str(query).strip():
+            raise ValueError("A calculation query is required.")
         selected = self.get_provider(provider)
-
-        return selected.calculate(query)
+        return selected.calculate(str(query))
 
     def generate(
         self,
