@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   reasonQuestion,
   startGuidedAttempt,
-  generateGuidedSolution,
   type ExplanationPreference,
   type GuidedStep,
   type ReasonResponse,
