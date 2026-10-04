@@ -45,7 +45,7 @@ class GuidedAttemptService:
         # questions the reasoning service can use the computational engine;
         # conceptual STEM questions are handled by the reasoning model.
         verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="detailed")
+        verified = reasoning.solve(problem, explanation="off" if reasoning._detect_explicit_operation(problem) is not None else "concise")
         verified_elapsed_ms = (perf_counter() - verified_started) * 1000
         if not verified.get("success"):
             return {
@@ -225,53 +225,48 @@ givens. Output only the requested STEP records.""".strip()
             if len(fields) != expected or fields[0].upper() != "STEP":
                 continue
 
-            solution, question, correct = fields[1], fields[2], fields[3]
-            wrong = fields[4:7]
+            question = fields[1]
+            options = fields[2:6]
+            correct_index_raw = fields[6]
             hint = fields[7] if include_hints else None
 
+            try:
+                correct_index = int(correct_index_raw.strip())
+            except (TypeError, ValueError):
+                continue
+
             if (
-                not solution
-                or not question
-                or not correct
-                or any(not value for value in wrong)
-                or len({correct, *wrong}) != 4
+                not question
+                or len(options) != 4
+                or any(not value for value in options)
+                or correct_index not in range(4)
             ):
                 continue
             if include_hints and not hint:
                 continue
 
-            values = [solution, question, correct, *wrong]
+            values = [question, *options]
             if include_hints:
                 values.append(hint)
             if any(GuidedAttemptService._is_schema_placeholder(value) for value in values):
                 continue
 
-            normalized_solution = GuidedAttemptService._normalize_generated_text(solution)
             normalized_question = GuidedAttemptService._normalize_generated_text(question)
-            normalized_correct = GuidedAttemptService._normalize_generated_text(correct)
-            normalized_wrong = [
+            normalized_options = [
                 GuidedAttemptService._normalize_generated_text(value)
-                for value in wrong
+                for value in options
             ]
             normalized_hint = (
                 GuidedAttemptService._normalize_generated_text(hint)
                 if include_hints else None
             )
 
-            if not GuidedAttemptService._is_concrete_solution_step(
-                normalized_solution,
-                normalized_correct,
-            ):
-                continue
-
             records.append({
-                "solution": normalized_solution,
                 "question": normalized_question,
-                "correct": normalized_correct,
-                "wrong": normalized_wrong,
+                "options": normalized_options,
+                "correct_index": correct_index,
                 "hint": normalized_hint,
             })
-
         if len(records) < 2:
             raise ValueError(
                 "Guided generator returned fewer than two valid step records."
