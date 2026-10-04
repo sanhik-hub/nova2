@@ -487,7 +487,30 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 plan["type"] = "plan"
 
         if not isinstance(plan, dict) or plan.get("type") != "plan":
-            return self._error("Planner returned an invalid plan.")
+            # The small planner is advisory. Never turn malformed planner JSON
+            # into a user-visible failure when the request itself can be routed
+            # safely. Recover exact operations deterministically; otherwise
+            # continue as a semantic reasoning request.
+            recovered = self._detect_explicit_operation(problem)
+            if recovered is not None:
+                operation, arguments = recovered
+                plan = {
+                    "type": "plan",
+                    "intent": "solve",
+                    "needs_wolfram": True,
+                    "operation": operation,
+                    "arguments": arguments,
+                    "answer_tokens": None,
+                }
+            else:
+                plan = {
+                    "type": "plan",
+                    "intent": "solve",
+                    "needs_wolfram": False,
+                    "operation": None,
+                    "arguments": None,
+                    "answer_tokens": None,
+                }
 
         required_fields = {
             "intent": str,
@@ -498,6 +521,24 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         for field, expected_type in required_fields.items():
             if field not in plan or not isinstance(plan[field], expected_type):
+                recovered = self._detect_explicit_operation(problem)
+                if field in {"needs_wolfram", "operation", "arguments"} and recovered is not None:
+                    recovered_operation, recovered_arguments = recovered
+                    plan["needs_wolfram"] = True
+                    plan["operation"] = recovered_operation
+                    plan["arguments"] = recovered_arguments
+                    continue
+                # Invalid optional routing metadata should not prevent the
+                # semantic solver from answering. Fall back to no exact tool.
+                if field == "needs_wolfram":
+                    plan["needs_wolfram"] = False
+                    continue
+                if field == "operation":
+                    plan["operation"] = None
+                    continue
+                if field == "arguments":
+                    plan["arguments"] = None
+                    continue
                 return self._error(
                     f"Planner returned an invalid plan field: {field}."
                 )
