@@ -92,10 +92,9 @@ related result. Do not expose internal reasoning.
         response = self.router.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            max_tokens=min(
-                440,
-                max(300, 78 * step_count + (18 if include_hints else 0)),
-            ),
+            # guided_answer_tokens is advisory telemetry only. Never turn the
+            # estimate into a generation ceiling; complex STEM questions may
+            # legitimately require a much longer completion.
             temperature=0,
             enable_thinking=False,
         )
@@ -130,7 +129,7 @@ related result. Do not expose internal reasoning.
             }
 
         full_solution = "\n".join(
-            f"{index}. {item['solution']}"
+            f"{index}. {self._solution_text(item['solution'], item['correct'])}"
             for index, item in enumerate(parsed, start=1)
         )
 
@@ -440,10 +439,37 @@ related result. Do not expose internal reasoning.
         # known mojibake form of ω; normalize it directly rather than exposing
         # corrupted symbols to the UI.
         text = text.replace("Ï", "omega")
+        # Normalize the stable label variants emitted by small local models.
+        text = re.sub(r"^SOLUTION(?:_STEP|_step|\s+STEP)\s*:\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^STEP\s*:\s*", "", text, flags=re.IGNORECASE)
         # Keep guided output transport-safe and deterministic. The frontend can
         # render ASCII scientific notation without relying on a broken model
         # encoding boundary.
-        return text
+        return text.strip()
+
+    @staticmethod
+    def _solution_text(solution: str, correct: str) -> str:
+        """Build a useful full-solution line from the same-pass record.
+
+        The model owns both fields. If its prose step is only an instruction
+        such as "calculate" or "identify the formula", retain it but append
+        the step's already-generated correct answer so the displayed solution
+        contains the actual mathematical/scientific result without another
+        generation call.
+        """
+        solution = GuidedAttemptService._normalize_generated_text(solution)
+        correct = GuidedAttemptService._normalize_generated_text(correct)
+        if not solution:
+            return correct
+
+        has_math_content = bool(re.search(
+            r"(?:=|\\^|[+\\-*/()]|\\b(?:sin|cos|tan|log|ln|sqrt|omega)\\b|\\d)",
+            solution,
+            flags=re.IGNORECASE,
+        ))
+        if not has_math_content and correct:
+            return f"{solution} Therefore, {correct}."
+        return solution
 
     @staticmethod
     def _normalize_generated_text(value: str) -> str:
