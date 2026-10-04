@@ -87,44 +87,36 @@ class GuidedAttemptService:
         generation_prompt = f"""Original problem:
 {problem}
 
-Generate exactly {step_count} multiple-choice questions that reconstruct one
-complete guided solution path for the original problem.
+Create exactly {step_count} connected guided-solution stages.
 
-First solve the original problem internally. Use the real derivation to choose
-the intermediate quantities and transformations. Do not output that solution.
+FIRST, write a very short solution path. Each path item must describe one
+actual mathematical/scientific action or intermediate result, in the order it
+is needed. Keep each item concise. Do not write a full solution.
+
+SECOND, convert those SAME path items, one-for-one and in the SAME ORDER, into
+multiple-choice questions. Each question must test the action/result described
+by its corresponding path item. Do not introduce a different solution step.
 
 HARD RULES:
-- Every non-final question must test one real computational step or new
-  intermediate result from the actual problem.
+- The path must solve the original problem, not merely describe a topic.
+- Use the shortest mathematically valid connected route.
+- Every path item must produce a result useful to the next item.
+- A standard formula or law MAY be used when directly applicable to the stated
+  problem and immediately feeds the next calculation.
 - Never ask what is given, what is required, or what topic this is.
-- A standard formula or law MAY be asked as an intermediate step when it is
-  directly applicable to the original problem and is immediately connected to
-  the next computation. For example, identifying the moment of inertia formula
-  for the stated rod is valid if the next step uses it to obtain angular
-  momentum.
-- Never ask a generic/disconnected law question such as "what is angular
-  momentum of a rigid body?" when it does not identify the actual system,
-  variables, or computation required by this problem.
-- Never ask the student to rediscover a quantity that the original problem
-  explicitly supplies. Using a supplied quantity inside a formula or
-  substitution is allowed.
-- The first question must establish the first useful formula, relation, or
-  intermediate result from the actual givens, not jump to the final answer.
-- Keep every step connected: the result established by one question must be
-  directly useful to the next question. Prefer a concise formula -> substitution
-  -> simplification chain when that is the natural solution.
-- For continuous/distributed systems, either derive the required result from a
-  differential contribution/integral or use an appropriate standard formula
-  when that is the concise, valid method for the stated system.
-- Do not force an integration/differential step when a standard closed-form
-  relation is an appropriate and mathematically valid intermediate result.
-- Use the actual data, symbols, conditions, and transformations from the problem.
-- Each correct answer must be new, not previously established, and needed by a
-  later step. Do not repeat an intermediate quantity in a later question.
-- The final question is the only place where the requested final quantity should
-  be established.
+- Never ask the student to rediscover a quantity explicitly supplied by the
+  problem. Supplied quantities may be used freely in formulas and substitutions.
+- Never create a generic/disconnected law question.
+- The first stage must use the actual givens and establish the first useful
+  relation or intermediate result.
+- The final stage must establish the requested final quantity.
+- Do not repeat an intermediate target.
+- For continuous/distributed systems, use either an appropriate standard
+  closed-form relation or a differential/integral derivation when natural.
 - Exactly four distinct options and exactly one correct answer per question.
-- Return exactly {step_count} steps.
+- Return exactly {step_count} path items and exactly {step_count} MCQs.
+- The path item and its corresponding MCQ must represent the SAME solution step.
+- Do not place the final requested result in an earlier option as a distractor.
 
 The response is constrained by a JSON schema. Output only the JSON object.
 """.strip()
@@ -132,18 +124,17 @@ The response is constrained by a JSON schema. Output only the JSON object.
         generation_system = """
 You are Nova's guided STEM solution-path MCQ generator.
 
-Solve the original problem internally and use the actual solution sequence to
-build the MCQs. Never output the internal solution.
+Build a concise, correct solution path first. Then convert that exact path into
+MCQs one-for-one in the same order. The path is the semantic backbone; the MCQs
+must not introduce different solution steps.
 
-Every question must be a real computational step or new intermediate result.
-Standard formulas and laws are allowed when they are specific to the stated
-problem and directly feed the next computation. Do not ask generic/disconnected
-formula questions. Do not ask the student to rediscover values explicitly given
-in the problem, although those values may be used freely in formulas and
-substitutions. Keep the sequence connected so each answer is useful to the next
-step. Prefer the shortest mathematically valid derivation rather than forcing
-differential/integral machinery when a standard closed-form relation is
-appropriate. Exactly four distinct options and one correct answer per question.
+Use the shortest mathematically valid connected route. Standard formulas and
+laws are allowed when directly applicable to the stated problem. Do not ask
+generic/disconnected law questions. Do not ask for values explicitly supplied
+by the problem, although supplied values may be used in substitutions. Every
+stage must produce a result useful to the next stage, and the final stage must
+establish the requested quantity. Exactly four distinct options and one correct
+answer per question.
 
 The response is constrained by a JSON schema. Return only the schema object.
 """.strip()
@@ -191,11 +182,28 @@ The response is constrained by a JSON schema. Return only the schema object.
                 "answer_tokens_advisory": guided_answer_tokens,
             }
 
+        solution_path = (
+            generated_payload.get("solution_path")
+            if isinstance(generated_payload, dict)
+            else None
+        )
         raw_steps = (
             generated_payload.get("steps")
             if isinstance(generated_payload, dict)
             else None
         )
+        if (
+            not isinstance(solution_path, list)
+            or len(solution_path) != step_count
+            or any(not isinstance(item, str) or not item.strip() for item in solution_path)
+        ):
+            return {
+                "success": False,
+                "error": "Guided attempt generator returned an invalid solution path.",
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
         if not isinstance(raw_steps, list):
             return {
                 "success": False,
@@ -675,6 +683,12 @@ Using those verified intermediate choices, write the complete final solution.
             "schema": {
                 "type": "object",
                 "properties": {
+                    "solution_path": {
+                        "type": "array",
+                        "minItems": step_count,
+                        "maxItems": step_count,
+                        "items": {"type": "string", "minLength": 1},
+                    },
                     "steps": {
                         "type": "array",
                         "minItems": step_count,
@@ -687,7 +701,7 @@ Using those verified intermediate choices, write the complete final solution.
                         },
                     },
                 },
-                "required": ["steps"],
+                "required": ["solution_path", "steps"],
                 "additionalProperties": False,
             },
         }
@@ -1194,4 +1208,3 @@ Using those verified intermediate choices, write the complete final solution.
                 normalized = deduped
 
         return True, normalized
-
