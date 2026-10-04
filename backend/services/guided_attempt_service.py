@@ -70,8 +70,8 @@ Rules:
   but when a chemical formula, structure, charge, bond, or lone pair needs
   unambiguous display, use $...$ LaTeX notation. Use explicit bonds (-, =,
   \equiv), reaction arrows (\rightarrow), formal charges (for example
-  $\mathrm{NH_4^+}$), and lone pairs (for example
-  $\overset{\cdot\,\cdot}{\mathrm{O}}$).
+  NH_4^+), and lone pairs (for example
+  O with an explicit lone-pair marker).
   Do not emit UTF-8/Latin-1 mojibake such as Ã, Â, Î, or Ï.
 - Output exactly one STEP line per solution step.
 - No JSON, Markdown, headings, commentary, or blank lines.
