@@ -43,6 +43,7 @@ export function StandardMode() {
     includeHints: boolean;
     includeFullSolution: boolean;
     steps: GuidedStep[];
+    fullSolution?: ReasonResponse | null;
   } | null>(null);
 
   const guidedCacheKey = "prismoffline-guided-attempt";
@@ -152,8 +153,8 @@ export function StandardMode() {
         answers: Array(result.steps.length).fill(null),
         score: 0,
         finished: false,
-        fullSolution: null,
-        fullSolutionLoading: includeFullSolution,
+        fullSolution: cached?.fullSolution ?? null,
+        fullSolutionLoading: includeFullSolution && !cached?.fullSolution,
         mcqElapsedMs: result.mcq_elapsed_ms ?? result.elapsed_ms ?? 0,
         hintElapsedMs: result.hint_elapsed_ms ?? 0,
         finalSolutionElapsedMs: null,
@@ -165,6 +166,23 @@ export function StandardMode() {
       if (includeFullSolution) {
         void generateGuidedSolution(trimmed, result.steps)
           .then((solution) => {
+            const updatedCache = {
+              query: trimmed,
+              includeHints,
+              includeFullSolution,
+              steps: generatedSteps,
+              fullSolution: solution,
+            };
+            try {
+              sessionStorage.setItem(
+                guidedCacheKey,
+                JSON.stringify(updatedCache),
+              );
+              setCachedGuided(updatedCache);
+            } catch {
+              // The generated attempt remains usable even without storage.
+            }
+
             setGuided((current) =>
               current
                 ? {
@@ -605,9 +623,13 @@ export function StandardMode() {
                     answers: Array(saved.steps.length).fill(null),
                     score: 0,
                     finished: false,
-                    fullSolution: null,
-                    fullSolutionLoading: includeFullSolution,
-                    finalSolutionElapsedMs: null,
+                    fullSolution: cachedGuided?.fullSolution ?? null,
+                    fullSolutionLoading:
+                      includeFullSolution && !cachedGuided?.fullSolution,
+                    finalSolutionElapsedMs:
+                      cachedGuided?.fullSolution?.final_solution_elapsed_ms ??
+                      cachedGuided?.fullSolution?.elapsed_ms ??
+                      null,
                   });
                   setSelectedOption(null);
                 }}
