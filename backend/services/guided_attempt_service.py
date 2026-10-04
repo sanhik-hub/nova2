@@ -767,102 +767,35 @@ givens. Output only the requested STEP records.""".strip()
         query: str,
         steps: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        """Generate the optional complete solution using the guided MCQ path as context."""
+        """Generate the optional full solution lazily through the solver."""
         problem = query.strip()
         if not problem:
             return {"success": False, "error": "Question is empty."}
-
         if not isinstance(steps, list) or not steps:
             return {"success": False, "error": "Guided attempt has no solution path."}
 
-        path_lines = []
-        for index, step in enumerate(steps, start=1):
-            if not isinstance(step, dict):
-                continue
-            question = str(step.get("question", "")).strip()
-            options = step.get("options", [])
-            correct_index = step.get("correct_index")
-            if not question or not isinstance(options, list):
-                continue
-            if not isinstance(correct_index, int) or not 0 <= correct_index < len(options):
-                continue
-            correct_text = options[correct_index]
-            if isinstance(correct_text, dict):
-                correct_text = correct_text.get("text", "")
-            path_lines.append(
-                f"Step {index}: {question}\\nCorrect choice: {str(correct_text).strip()}"
-            )
-
-        if not path_lines:
-            return {"success": False, "error": "Guided attempt solution path is invalid."}
-
-        system_prompt = r"""
-You are Nova's concise mathematical solution writer.
-
-Write ONE concise but complete, self-contained solution to the original problem.
-The supplied Guided Attempt is a structured solution path. Use its correct
-choices as intermediate guidance, but independently check every mathematical
-statement before writing it. Never blindly trust an incorrect MCQ choice.
-
-Accuracy has priority over brevity:
-- Re-derive or verify each essential equation and transformation.
-- Check algebra, differentiation, integration, substitutions, signs, units, and
-  final values whenever applicable.
-- If the supplied path conflicts with the mathematics or the original problem,
-  correct the mathematics rather than reproducing the path.
-- Do not invent missing information or assumptions.
-
-Concise means remove filler, not necessary mathematical work. For a calculation,
-show the essential setup and transformations. For a derivation or proof, show
-the complete mathematical chain needed to justify the result, with brief
-explanations around the equations. Do not skip a necessary step merely to make
-the answer shorter.
-
-Do not mention the Guided Attempt, MCQs, choices, AI, tools, token limits, or
-internal processing.
-Use standard Markdown prose and standard LaTeX for mathematics. When using
-inline math, use $...$; when using a displayed equation, use $...$.
-Never put Markdown backticks inside $...$ or $...$. Do not write malformed
-hybrid expressions such as L2, x2, or "wer" when the intended mathematical
-notation is L^2, x^2, etc. Keep mathematical symbols inside LaTeX delimiters.
-Do not preview or repeat the final result. State the requested final result
-exactly once, as the final mathematical statement.
-Return ONLY the solution text.
-""".strip()
-
-        prompt = f"""Original problem:
-{problem}
-
-Verified solution path:
-{chr(10).join(path_lines)}
-
-Using those verified intermediate choices, write the complete final solution.
-""".strip()
-
-        response = self.router.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            max_tokens=None,
-            temperature=0,
-            enable_thinking=False,
-        )
-
-        if not response.get("success"):
+        # Do not ask the MCQ designer to write the final solution. Re-run the
+        # authoritative reasoning path only when the user explicitly requests
+        # the full solution. This keeps the default Guided Attempt fast and
+        # avoids exposing the low-quality one-pass solution text.
+        reasoning = ReasoningService(router=self.router)
+        result = reasoning.solve(problem, explanation="detailed")
+        if not result.get("success"):
             return {
                 "success": False,
-                "error": response.get("error") or "Unable to generate the full solution.",
+                "error": result.get("error") or "Unable to generate the full solution.",
             }
 
-        answer = str(response.get("result") or "").strip()
+        answer = str(result.get("answer") or "").strip()
         if not answer:
             return {"success": False, "error": "The solution model returned no solution."}
 
         return {
             "success": True,
             "answer": answer,
-            "engine": "local_llm",
-            "tool_calls": [],
-            "cached": False,
+            "engine": result.get("engine") or "local_llm",
+            "tool_calls": result.get("tool_calls", []),
+            "cached": bool(result.get("cached", False)),
         }
 
     @staticmethod
