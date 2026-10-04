@@ -512,6 +512,18 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                     "answer_tokens": None,
                 }
 
+        # Normalize harmless scalar variants emitted by small local models
+        # before validating the routing contract.
+        if isinstance(plan.get("needs_wolfram"), str):
+            flag = plan["needs_wolfram"].strip().lower()
+            if flag in {"true", "yes", "1"}:
+                plan["needs_wolfram"] = True
+            elif flag in {"false", "no", "0"}:
+                plan["needs_wolfram"] = False
+
+        if not isinstance(plan.get("intent"), str):
+            plan["intent"] = str(plan.get("intent") or "solve")
+
         required_fields = {
             "intent": str,
             "needs_wolfram": bool,
