@@ -363,6 +363,11 @@ The response is constrained by a JSON schema. Return only the schema object.
         text = re.sub(r"IÏ(?=\s*(?:²|³|\^|$))", "Iω", text)
         text = re.sub(r"(?<=[=+\-*/(])\s*Ï(?=\s*(?:$|[+\-*/),]))", "ω", text)
         text = re.sub(r"\bÏ\s*(?=[²2³3\^*/,)\s]|$)", "ω", text)
+        # A partially decoded UTF-8 omega can survive as a bare Ï after
+        # the Latin-1 repair fails. In guided mathematical output, Ï is the
+        # known mojibake form of ω; normalize it directly rather than exposing
+        # corrupted symbols to the UI.
+        text = text.replace("Ï", "ω")
         return text
 
     @staticmethod
