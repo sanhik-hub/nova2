@@ -862,3 +862,22 @@ body{background:#0b0912;color:#e9e7ff}
 }
 
 .guided-timing-card{margin-top:1.25rem}.guided-timing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin-top:.9rem}.guided-timing-grid>div{display:flex;flex-direction:column;gap:.25rem;border:1px solid #3a2c4e;border-radius:.8rem;padding:.85rem;background:#120d19}.guided-timing-grid span{font-size:1.05rem;font-weight:700}.guided-timing-grid small{color:#8e879e;font-size:.68rem}@media(max-width:700px){.guided-timing-grid{grid-template-columns:1fr}}
+
+
+.guided-result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .guided-result-actions {
+    flex-direction: column;
+  }
+
+  .guided-result-actions .primary-button,
+  .guided-result-actions .secondary-button {
+    width: 100%;
+  }
+}
