@@ -881,3 +881,41 @@ body{background:#0b0912;color:#e9e7ff}
     width: 100%;
   }
 }
+
+
+/* Local account and offline storage */
+.account-chip{display:flex;align-items:center;gap:9px;color:#cfc7df;font-size:12px}
+.account-logout-button{border:1px solid #3a2c4e;background:#15101f;color:#aaa0b8;padding:7px 10px;border-radius:8px;font-size:11px}
+.account-logout-button:hover{background:#21172e;border-color:#6d4aa0}
+.auth-shell{min-height:60vh;display:grid;place-items:center}
+.auth-card{width:min(470px,100%);padding:30px}
+.auth-card h1{margin:7px 0 8px;color:#f4f1ff;font-size:25px}
+.auth-card>p{margin:0;color:#9b94ad;font-size:12px;line-height:1.6}
+.auth-form{display:grid;gap:9px;margin-top:22px}
+.auth-form .field-label{margin-top:4px}
+.auth-submit{width:100%;margin-top:8px}
+.auth-switch{width:100%;margin-top:10px;min-height:40px}
+.auth-error{margin-top:12px;padding:10px 12px;border-radius:9px;background:rgba(248,81,73,.10);border:1px solid rgba(248,81,73,.22);color:#f0b0aa;font-size:12px;line-height:1.45}
+.auth-loading{padding:28px;color:#aaa0b8;text-align:center}
+.account-grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
+.account-settings-card,.saved-items-card{padding:22px}
+.account-settings-card h2,.saved-items-card h2{margin:6px 0 10px;color:#f4f1ff;font-size:18px}
+.account-settings-card .choice-button{margin-top:14px}
+.account-logout{margin-top:20px}
+.saved-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.saved-list{display:grid;gap:9px;margin-top:17px}
+.saved-item{border:1px solid #3a2c4e;border-radius:10px;background:#120d19;padding:12px 14px}
+.saved-item summary{cursor:pointer;list-style:none}
+.saved-item summary::-webkit-details-marker{display:none}
+.saved-item summary>span{display:flex;flex-direction:column;gap:4px}
+.saved-item summary strong{color:#eeeaff;font-size:13px}
+.saved-item summary small{color:#8e879e;font-size:10px}
+.saved-question{margin-top:13px;padding:12px;border-radius:8px;background:#0d0a12;color:#d9d3e8;font-size:12px;line-height:1.55}
+.saved-answer{margin-top:9px;padding:12px;border-radius:8px;background:#0d0a12;color:#eeeaff;font-size:12px;line-height:1.6;white-space:pre-wrap}
+.saved-guided-summary{margin-top:12px;color:#cfc7df;font-size:12px}
+.saved-delete{margin-top:10px}
+.saved-empty{color:#8e879e;font-size:12px;line-height:1.6}
+.save-result-card{margin-top:18px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;color:#aaa0b8;font-size:11px}
+.save-error-card{margin-top:18px;padding:12px 14px;color:#f0b0aa;font-size:11px}
+@media(max-width:900px){.account-grid{grid-template-columns:1fr}.account-chip{width:100%;justify-content:space-between}}
+@media(max-width:600px){.saved-header{align-items:stretch;flex-direction:column}.save-result-card{align-items:stretch;flex-direction:column}.save-result-card button{width:100%}}
