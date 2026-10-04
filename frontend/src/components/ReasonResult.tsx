@@ -60,7 +60,11 @@ export function ReasonResult({
     return (
       <section className="result-card card result-only-card">
         <div className="answer-content">
-          {answer || "No result returned."}
+          {answer ? (
+            <WorkspaceSolutionText>{answer}</WorkspaceSolutionText>
+          ) : (
+            "No result returned."
+          )}
         </div>
       </section>
     );
