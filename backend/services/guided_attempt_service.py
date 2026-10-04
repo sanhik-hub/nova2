@@ -66,10 +66,13 @@ Rules:
 - Prefer the shortest valid derivation; avoid artificial stages.
 - The final step must establish the requested result.
 - If hints are requested, add a short hint without revealing the answer.
-- Keep every field very concise. Prefer ASCII notation in generated fields:
-  use omega instead of the Greek omega character, ^2 instead of superscript 2,
-  and * for multiplication. Do not emit UTF-8/Latin-1 mojibake such as Ã, Â, Î,
-  or Ï.
+- Keep every field very concise. Prefer ASCII notation for ordinary math,
+  but when a chemical formula, structure, charge, bond, or lone pair needs
+  unambiguous display, use $...$ LaTeX notation. Use explicit bonds (-, =,
+  \equiv), reaction arrows (\rightarrow), formal charges (for example
+  $\mathrm{NH_4^+}$), and lone pairs (for example
+  $\overset{\cdot\,\cdot}{\mathrm{O}}$).
+  Do not emit UTF-8/Latin-1 mojibake such as Ã, Â, Î, or Ï.
 - Output exactly one STEP line per solution step.
 - No JSON, Markdown, headings, commentary, or blank lines.
 """.strip()
