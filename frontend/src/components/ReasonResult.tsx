@@ -59,13 +59,23 @@ export function ReasonResult({
   if (response.result_only) {
     return (
       <section className="result-card card result-only-card">
-        <div className="answer-content">
-          {answer ? (
-            <WorkspaceSolutionText>{answer}</WorkspaceSolutionText>
-          ) : (
-            "No result returned."
-          )}
+        <div className="answer-block">
+          <div className="answer-label">Result</div>
+          <div className="answer-content">
+            {answer ? (
+              <WorkspaceSolutionText>{answer}</WorkspaceSolutionText>
+            ) : (
+              "No result returned."
+            )}
+          </div>
         </div>
+
+        {response.elapsed_ms !== undefined && (
+          <div className="result-meta">
+            <strong>Elapsed: {formatElapsed(response.elapsed_ms)}</strong>
+            {response.cached && <span>Cached result</span>}
+          </div>
+        )}
       </section>
     );
   }
