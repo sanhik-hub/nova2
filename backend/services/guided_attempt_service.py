@@ -84,71 +84,31 @@ class GuidedAttemptService:
         # responsible for the actual STEM reasoning. The tiny planner is used
         # only for coarse complexity metadata; its semantic reasoning is not
         # trusted enough to dictate individual solution stages.
-        generation_prompt = f"""Original problem:
+        generation_prompt = f"""Problem:
 {problem}
 
-Create exactly {step_count} connected guided-solution stages.
+Create exactly {step_count} connected guided MCQ stages.
 
-FIRST, write a very short solution path. Each path item must describe one
-actual mathematical/scientific action or intermediate result, in the order it
-is needed. Keep each item concise. Do not write a full solution.
+Plan the shortest correct solution path internally, then turn each path stage
+into one MCQ in the same order. Do not output the path separately.
 
-SECOND, convert those SAME path items, one-for-one and in the SAME ORDER, into
-multiple-choice questions. Each question must test the action/result described
-by its corresponding path item. Do not introduce a different solution step.
-
-HARD RULES:
-- The path must solve the original problem, not merely describe a topic.
-- Use the shortest mathematically valid connected route.
-- Every path item must produce a result useful to the next item.
-- A standard formula or law MAY be used when directly applicable to the stated
-  problem and immediately feeds the next calculation.
-- Never ask what is given, what is required, or what topic this is.
-- Never ask the student to rediscover a quantity explicitly supplied by the
-  problem. Supplied quantities may be used freely in formulas and substitutions.
-- Never create a generic/disconnected law question.
-- The first stage must use the actual givens and establish the first useful
-  relation or intermediate result.
-- The final stage must establish the requested final quantity.
-- Do not repeat an intermediate target.
-- For continuous/distributed systems, use either an appropriate standard
-  closed-form relation or a differential/integral derivation when natural.
-- For EACH MCQ, first identify its own correct answer from the corresponding
-  path item, then write exactly three plausible distractors for THAT QUESTION.
-- Every option must be a short candidate answer to that question, not an
-  instruction, not a solution step, and not a question.
-- Never reuse an option text from another MCQ. Each MCQ needs its own four
-  answer choices.
-- Exactly four distinct options and exactly one correct answer per question.
-- Return exactly {step_count} path items and exactly {step_count} MCQs.
-- The path item and its corresponding MCQ must represent the SAME solution step.
-- Do not place the final requested result in an earlier option as a distractor.
-- Do not put the wording of a later solution step into an earlier option.
-
-The response is constrained by a JSON schema. Output only the JSON object.
+Rules:
+- Every stage must be a real mathematical/scientific action or intermediate result.
+- Use the actual givens; never ask for a quantity explicitly supplied.
+- No generic topic/law questions disconnected from the solution.
+- The final stage must establish the requested result.
+- Each MCQ has exactly four short answer choices and exactly one correct choice.
+- Generate each question's choices independently.
+- Do not put the final requested result in an earlier stage.
+- Return only the required JSON object.
 """.strip()
 
         generation_system = """
-You are Nova's guided STEM solution-path MCQ generator.
-
-Build a concise, correct solution path first. Then convert that exact path into
-MCQs one-for-one in the same order. The path is the semantic backbone; the MCQs
-must not introduce different solution steps.
-
-Use the shortest mathematically valid connected route. Standard formulas and
-laws are allowed when directly applicable to the stated problem. Do not ask
-generic/disconnected law questions. Do not ask for values explicitly supplied
-by the problem, although supplied values may be used in substitutions. Every
-stage must produce a result useful to the next stage, and the final stage must
-establish the requested quantity.
-
-For every MCQ, generate its four answer choices locally to that MCQ: one
-correct candidate answer plus three plausible but incorrect alternatives.
-Options must be short answer choices, never instructions or copies of another
-stage. Never reuse an option text across different MCQs. Exactly four distinct
-options and one correct answer per question.
-
-The response is constrained by a JSON schema. Return only the schema object.
+You generate guided STEM MCQs. Internally solve the problem as a shortest
+connected sequence of useful stages, then emit one concise MCQ per stage.
+Never ask for supplied quantities or disconnected generic facts. The final
+MCQ must establish the requested result. Each MCQ has four short options and
+one correct_index. Output only the requested JSON.
 """.strip()
 
         generation_started = perf_counter()
@@ -158,7 +118,7 @@ The response is constrained by a JSON schema. Return only the schema object.
             max_tokens=(
                 min(
                     guided_answer_tokens or 400,
-                    (step_count * 72) + 40,
+                    (step_count * 60) + 80,
                 )
             ),
             temperature=0,
@@ -393,14 +353,16 @@ The response is constrained by a JSON schema. Return only the schema object.
         if not isinstance(payload, dict):
             return None
 
-        required = {"question", "stage_answer", "options", "correct_index"}
+        required = {"question", "options", "correct_index"}
         allowed = required | ({"hint"} if include_hints else set())
         if not required.issubset(payload):
             return None
 
         question = payload.get("question")
         stage_answer = payload.get("stage_answer")
-        if not isinstance(stage_answer, str) or not stage_answer.strip():
+        if stage_answer is not None and (
+            not isinstance(stage_answer, str) or not stage_answer.strip()
+        ):
             return None
         if not isinstance(question, str):
             return None
@@ -443,7 +405,11 @@ The response is constrained by a JSON schema. Return only the schema object.
 
         result = {
             "question": question,
-            "stage_answer": stage_answer.strip(),
+            "stage_answer": (
+                stage_answer.strip()
+                if isinstance(stage_answer, str) and stage_answer.strip()
+                else normalized_options[correct_index]["text"]
+            ),
             "options": normalized_options,
             "correct_index": correct_index,
         }
@@ -686,10 +652,9 @@ Using those verified intermediate choices, write the complete final solution.
         step_count: int,
         include_hints: bool,
     ) -> dict[str, Any]:
-        """Return a strict JSON schema for the single guided generation call."""
+        """Return a compact strict JSON schema for one guided generation call."""
         step_properties: dict[str, Any] = {
             "question": {"type": "string", "minLength": 1},
-            "stage_answer": {"type": "string", "minLength": 1},
             "options": {
                 "type": "array",
                 "minItems": 4,
@@ -702,7 +667,7 @@ Using those verified intermediate choices, write the complete final solution.
                 "maximum": 3,
             },
         }
-        required = ["question", "stage_answer", "options", "correct_index"]
+        required = ["question", "options", "correct_index"]
         if include_hints:
             step_properties["hint"] = {"type": "string", "minLength": 1}
             required.append("hint")
@@ -712,12 +677,6 @@ Using those verified intermediate choices, write the complete final solution.
             "schema": {
                 "type": "object",
                 "properties": {
-                    "solution_path": {
-                        "type": "array",
-                        "minItems": step_count,
-                        "maxItems": step_count,
-                        "items": {"type": "string", "minLength": 1},
-                    },
                     "steps": {
                         "type": "array",
                         "minItems": step_count,
@@ -730,7 +689,7 @@ Using those verified intermediate choices, write the complete final solution.
                         },
                     },
                 },
-                "required": ["solution_path", "steps"],
+                "required": ["steps"],
                 "additionalProperties": False,
             },
         }
