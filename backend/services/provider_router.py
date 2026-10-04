@@ -60,6 +60,7 @@ class ProviderRouter:
         system_prompt=None,
         enable_thinking=False,
         response_format=None,
+        request_timeout=None,
     ):
 
         provider = self.get_provider("local_llm")
@@ -71,4 +72,5 @@ class ProviderRouter:
             system_prompt=system_prompt,
             enable_thinking=enable_thinking,
             response_format=response_format,
+            request_timeout=request_timeout,
         )
