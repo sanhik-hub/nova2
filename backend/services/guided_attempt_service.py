@@ -1086,15 +1086,27 @@ Using those verified intermediate choices, write the complete final solution.
             )
             return re.sub(r"\s+", " ", target).strip()
 
-        for earlier_step in normalized[:-1]:
+        redundant_supplied_indices: set[int] = set()
+        for index, earlier_step in enumerate(normalized[:-1]):
             target = question_target(earlier_step["question"])
             if target and any(
                 re.search(rf"\b{re.escape(quantity)}\b", target)
                 for quantity in supplied_terms
             ):
+                # This is an unnecessary stage, not a reason to discard the
+                # whole guided attempt. Remove it deterministically so the
+                # student never gets asked to identify data already supplied.
+                redundant_supplied_indices.add(index)
+
+        if redundant_supplied_indices:
+            normalized = [
+                step
+                for index, step in enumerate(normalized)
+                if index not in redundant_supplied_indices
+            ]
+            if len(normalized) < 3:
                 return False, (
-                    "Guided attempt asks the student to identify a quantity "
-                    "that is already provided by the problem."
+                    "Guided attempt did not retain enough meaningful solution stages."
                 )
 
         # Generic-law filtering is intentionally not performed here. The
