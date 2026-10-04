@@ -1117,20 +1117,11 @@ Using those verified intermediate choices, write the complete final solution.
                     "that is already provided by the problem."
                 )
 
-        # Reject generic/disconnected law questions, but allow problem-specific
-        # formula identification such as the moment of inertia of the stated rod.
-        forbidden_generic = (
-            "what is the formula",
-            "what formula",
-            "which formula",
-            "what is the relationship",
-            "what is angular momentum of a rigid body",
-            "what is the angular momentum of a rigid body",
-        )
-        for earlier_step in normalized[:-1]:
-            q = re.sub(r"\s+", " ", earlier_step["question"].lower()).strip()
-            if any(phrase in q for phrase in forbidden_generic):
-                return False, "Guided attempt contains a generic/disconnected law question."
+        # Generic-law filtering is intentionally not performed here. The
+        # path-first generation contract already requires every MCQ to correspond
+        # one-for-one to a concrete solution-path stage. Keeping the old lexical
+        # rejection here would incorrectly reject valid problem-specific formula
+        # steps merely because their wording contains "formula" or "relationship".
 
         def target_key(question: str) -> str:
             q = question.lower()
