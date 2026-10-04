@@ -1,7 +1,7 @@
 ﻿from contextlib import asynccontextmanager
 from time import perf_counter
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 
 from backend.services.reasoning_service import ReasoningService
 from backend.services.guided_attempt_service import GuidedAttemptService
@@ -14,7 +14,22 @@ from backend.schemas.computation import (
 
 from backend.services.computation_service import ComputationService
 from backend.schemas.guided_attempt import GuidedAttemptRequest
+from backend.services.auth_storage import (
+    authenticate,
+    create_session,
+    create_user,
+    delete_item,
+    delete_session,
+    get_settings,
+    get_user_for_token,
+    initialize_database,
+    list_items,
+    save_item,
+    update_settings,
+)
 
+
+initialize_database()
 
 computation = ComputationService()
 
@@ -49,6 +64,88 @@ app = FastAPI(
 # Reuse the same provider router so Wolfram has one persistent session.
 reasoning = ReasoningService(router=computation.router)
 guided_attempts = GuidedAttemptService(router=computation.router)
+
+
+def _current_user(authorization: str | None) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Login required.")
+    user = get_user_for_token(authorization[7:].strip())
+    if user is None:
+        raise HTTPException(status_code=401, detail="Your local session has expired. Please log in again.")
+    return user
+
+
+@app.post("/api/auth/register")
+def register(payload: dict):
+    try:
+        user = create_user(str(payload.get("username") or ""), str(payload.get("password") or ""))
+        token = create_session(user["id"])
+        return {"success": True, "user": user, "token": token}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/auth/login")
+def login(payload: dict):
+    try:
+        user = authenticate(str(payload.get("username") or ""), str(payload.get("password") or ""))
+        token = create_session(user["id"])
+        return {"success": True, "user": user, "token": token}
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+@app.post("/api/auth/logout")
+def logout(authorization: str | None = Header(default=None)):
+    token = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else None
+    delete_session(token)
+    return {"success": True}
+
+
+@app.get("/api/auth/me")
+def me(authorization: str | None = Header(default=None)):
+    return {"success": True, "user": _current_user(authorization)}
+
+
+@app.get("/api/settings")
+def settings(authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    return {"success": True, "settings": get_settings(user["id"])}
+
+
+@app.put("/api/settings")
+def update_user_settings(payload: dict, authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    value = bool(payload.get("save_by_default", False))
+    return {"success": True, "settings": update_settings(user["id"], save_by_default=value)}
+
+
+@app.get("/api/storage")
+def saved_items(authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    return {"success": True, "items": list_items(user["id"])}
+
+
+@app.post("/api/storage")
+def create_saved_item(payload: dict, authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    try:
+        item = save_item(
+            user["id"],
+            kind=str(payload.get("kind") or ""),
+            title=str(payload.get("title") or ""),
+            question=str(payload.get("question") or ""),
+            payload=payload.get("payload") if isinstance(payload.get("payload"), dict) else {},
+        )
+        return {"success": True, "item": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete("/api/storage/{item_id}")
+def remove_saved_item(item_id: int, authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    return {"success": delete_item(user["id"], item_id)}
 
 
 @app.post("/api/reason")
