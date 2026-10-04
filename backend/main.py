@@ -85,6 +85,7 @@ def start_guided_attempt(request: GuidedAttemptRequest):
     # Hints are generated in the same structured response, so there is no
     # independent hint-generation phase.
     result["hint_elapsed_ms"] = elapsed_ms if request.include_hints else 0.0
+    return result
 
 
 @app.post("/api/guided/solution")
