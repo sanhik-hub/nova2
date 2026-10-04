@@ -62,18 +62,29 @@ def reason(request: ComputationRequest):
 @app.post("/api/guided/start")
 def start_guided_attempt(request: GuidedAttemptRequest):
     started = perf_counter()
-    result = guided_attempts.generate(
-        query=request.query,
-        include_hints=request.include_hints,
-        step_count=request.step_count,
-    )
+    try:
+        result = guided_attempts.generate(
+            query=request.query,
+            include_hints=request.include_hints,
+            step_count=request.step_count,
+        )
+    except Exception as exc:
+        result = {
+            "success": False,
+            "query": request.query,
+            "steps": [],
+            "include_hints": request.include_hints,
+            "include_full_solution": request.include_full_solution,
+            "full_solution": None,
+            "error": f"Guided attempt failed: {type(exc).__name__}: {exc}",
+        }
+
     elapsed_ms = round((perf_counter() - started) * 1000, 2)
     result["elapsed_ms"] = elapsed_ms
     result["mcq_elapsed_ms"] = elapsed_ms
-    # Hints are currently generated in the same structured MCQ response, so
-    # there is no independent hint-generation phase to time.
+    # Hints are generated in the same structured response, so there is no
+    # independent hint-generation phase.
     result["hint_elapsed_ms"] = elapsed_ms if request.include_hints else 0.0
-    return result
 
 
 @app.post("/api/guided/solution")
