@@ -96,22 +96,28 @@ the intermediate quantities and transformations. Do not output that solution.
 HARD RULES:
 - Every non-final question must test one real computational step or new
   intermediate result from the actual problem.
-- Never ask what is given, what is required, what topic this is, or which generic
-  formula/law applies.
-- Never ask for a quantity explicitly supplied in the original problem.
-- The first question must derive the first useful quantity/relation from the
-  givens, not jump to the final closed form.
-- For continuous/distributed systems, derive the local/differential contribution
-  from the distribution (for example dm, dq, or dL) and perform the required
-  sum/integral before any closed form whenever applicable.
-- Do not use a memorized closed-form result such as I=(1/3)ML^2 as an intermediate
-  question when the problem gives a continuous/distributed object; make the
-  intermediate question derive it from the differential contribution instead.
-- Never ask a generic law/formula question such as "what is angular momentum
-  of a rigid body?" or "what formula applies?". The law must be used inside
-  an actual computational step.
-- Never ask for a quantity that is explicitly given, including quantities stated
-  with "with", "having", "rotating at", "moving at", "of", or "where".
+- Never ask what is given, what is required, or what topic this is.
+- A standard formula or law MAY be asked as an intermediate step when it is
+  directly applicable to the original problem and is immediately connected to
+  the next computation. For example, identifying the moment of inertia formula
+  for the stated rod is valid if the next step uses it to obtain angular
+  momentum.
+- Never ask a generic/disconnected law question such as "what is angular
+  momentum of a rigid body?" when it does not identify the actual system,
+  variables, or computation required by this problem.
+- Never ask the student to rediscover a quantity that the original problem
+  explicitly supplies. Using a supplied quantity inside a formula or
+  substitution is allowed.
+- The first question must establish the first useful formula, relation, or
+  intermediate result from the actual givens, not jump to the final answer.
+- Keep every step connected: the result established by one question must be
+  directly useful to the next question. Prefer a concise formula -> substitution
+  -> simplification chain when that is the natural solution.
+- For continuous/distributed systems, either derive the required result from a
+  differential contribution/integral or use an appropriate standard formula
+  when that is the concise, valid method for the stated system.
+- Do not force an integration/differential step when a standard closed-form
+  relation is an appropriate and mathematically valid intermediate result.
 - Use the actual data, symbols, conditions, and transformations from the problem.
 - Each correct answer must be new, not previously established, and needed by a
   later step. Do not repeat an intermediate quantity in a later question.
@@ -130,13 +136,14 @@ Solve the original problem internally and use the actual solution sequence to
 build the MCQs. Never output the internal solution.
 
 Every question must be a real computational step or new intermediate result.
-Never ask meta-questions, never ask for supplied quantities, and never jump
-straight to the final result. For continuous systems, form the local/differential
-contribution and required integral before the closed form when applicable.
-Exactly four distinct options and one correct answer per question.
-For continuous/distributed systems, use the differential contribution and its
-integral as the real intermediate path; do not ask memorized closed-form inertia
-or generic law/formula questions.
+Standard formulas and laws are allowed when they are specific to the stated
+problem and directly feed the next computation. Do not ask generic/disconnected
+formula questions. Do not ask the student to rediscover values explicitly given
+in the problem, although those values may be used freely in formulas and
+substitutions. Keep the sequence connected so each answer is useful to the next
+step. Prefer the shortest mathematically valid derivation rather than forcing
+differential/integral machinery when a standard closed-form relation is
+appropriate. Exactly four distinct options and one correct answer per question.
 
 The response is constrained by a JSON schema. Return only the schema object.
 """.strip()
@@ -1032,9 +1039,9 @@ Using those verified intermediate choices, write the complete final solution.
         # requested result naturally; the deterministic ordering pass moves the
         # best matching final-result question to the end without another LLM call.
 
-        # Reject steps that merely ask the student to identify a quantity
-        # explicitly supplied by the original problem. This recognizes both
-        # "angular velocity is ω" and "rotating with angular velocity ω".
+        # Reject only questions whose actual target is an explicitly supplied
+        # quantity. Merely mentioning a supplied quantity is valid: formulas such
+        # as L = I*omega must use the given angular velocity.
         supplied_terms = set()
         supplied_patterns = (
             r"\b(?:length|mass|radius|time|speed|velocity|acceleration|"
@@ -1044,37 +1051,60 @@ Using those verified intermediate choices, write the complete final solution.
             r"velocity|acceleration|angular velocity|frequency|charge|voltage|"
             r"current|pressure|temperature|density)\b",
         )
+        quantity_names = (
+            "angular velocity", "acceleration", "velocity", "frequency",
+            "length", "mass", "radius", "time", "speed", "charge",
+            "voltage", "current", "pressure", "temperature", "density",
+        )
         for pattern in supplied_patterns:
             for match in re.finditer(pattern, problem, flags=re.IGNORECASE):
                 phrase = match.group(0).lower()
-                for quantity in (
-                    "angular velocity", "acceleration", "velocity", "frequency",
-                    "length", "mass", "radius", "time", "speed", "charge",
-                    "voltage", "current", "pressure", "temperature", "density",
-                ):
+                for quantity in quantity_names:
                     if quantity in phrase:
                         supplied_terms.add(quantity)
+
+        def question_target(question: str) -> str:
+            match = re.search(
+                r"\b(?:what is|find|determine|calculate|evaluate)\s+"
+                r"(?:the\s+)?(.+?)(?:\?|$)",
+                question.lower(),
+            )
+            if not match:
+                return ""
+            target = match.group(1)
+            target = re.sub(
+                r"\b(?:the|a|an|value|expression|result|of|for|in|terms|"
+                r"using|with|where|given|when|from|about)\b",
+                " ",
+                target,
+            )
+            return re.sub(r"\s+", " ", target).strip()
+
         for earlier_step in normalized[:-1]:
-            q = earlier_step["question"].lower()
-            if "what is" in q and any(quantity in q for quantity in supplied_terms):
+            target = question_target(earlier_step["question"])
+            if target and any(
+                re.search(rf"\b{re.escape(quantity)}\b", target)
+                for quantity in supplied_terms
+            ):
                 return False, (
                     "Guided attempt asks the student to identify a quantity "
                     "that is already provided by the problem."
                 )
 
-        # Reject generic law/formula questions and repeated intermediate targets.
+        # Reject generic/disconnected law questions, but allow problem-specific
+        # formula identification such as the moment of inertia of the stated rod.
         forbidden_generic = (
             "what is the formula",
             "what formula",
             "which formula",
             "what is the relationship",
+            "what is angular momentum of a rigid body",
             "what is the angular momentum of a rigid body",
-            "what is the moment of inertia of a uniform rod",
         )
         for earlier_step in normalized[:-1]:
             q = re.sub(r"\s+", " ", earlier_step["question"].lower()).strip()
             if any(phrase in q for phrase in forbidden_generic):
-                return False, "Guided attempt contains a generic law/formula question."
+                return False, "Guided attempt contains a generic/disconnected law question."
 
         def target_key(question: str) -> str:
             q = question.lower()
@@ -1094,24 +1124,9 @@ Using those verified intermediate choices, write the complete final solution.
                 return False, "Guided attempt repeats the same intermediate target."
             seen_targets.add(key)
 
-        # Continuous-object problems must expose a differential/integral path
-        # rather than relying on a memorized closed-form inertia question.
-        problem_lower = problem.lower()
-        if any(token in problem_lower for token in (
-            "uniform rod", "rod of length", "uniform wire", "thin rod",
-            "disc", "disk", "ring", "lamina", "continuous", "distributed",
-        )):
-            early_text = " ".join(step["question"].lower() for step in normalized[:-1])
-            if "moment of inertia" in early_text and not any(
-                token in early_text for token in (
-                    "dm", "d m", "dx", "integral", "integrate", "differential",
-                    "small element", "linear density",
-                )
-            ):
-                return False, (
-                    "Guided attempt uses a memorized closed-form result instead "
-                    "of deriving the continuous-system contribution."
-                )
+        # Do not require a particular derivation style. A standard closed-form
+        # relation is valid when it is mathematically appropriate; connectedness
+        # and target correctness are enforced by the prompt and the checks below.
 
         # The UI should not inherit the model's positional bias. Shuffle the
         # four options while keeping exactly one correct answer and deliberately
