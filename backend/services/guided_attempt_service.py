@@ -155,7 +155,12 @@ The response is constrained by a JSON schema. Return only the schema object.
         generation_response = self.router.generate(
             prompt=generation_prompt,
             system_prompt=generation_system,
-            max_tokens=None,
+            max_tokens=(
+                min(
+                    guided_answer_tokens or 400,
+                    (step_count * 72) + 40,
+                )
+            ),
             temperature=0,
             enable_thinking=False,
             response_format=self._guided_response_format(
