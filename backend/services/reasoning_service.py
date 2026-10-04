@@ -671,11 +671,12 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         # DIFFERENTIATE
         match = re.match(
-            r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?|the\s+derivative\s+of\s+)(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
             expression = match.group(1).strip()
+            expression = expression.strip("`").strip()
             expression = re.sub(
                 r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
                 "",
