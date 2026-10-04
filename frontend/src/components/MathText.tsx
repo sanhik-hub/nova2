@@ -508,7 +508,7 @@ export default function MathText({
               key={`${index}-${segment.value}`}
               value={segment.value}
               display={segment.display}
-              convert={!hasDelimitedMath}
+              convert={!hasDelimitedMath && !looksLikeChemistryExpression(segment.value)}
             />
           );
         }
