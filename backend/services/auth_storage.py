@@ -52,6 +52,7 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id INTEGER PRIMARY KEY,
                 save_by_default INTEGER NOT NULL DEFAULT 0,
+                save_followups_by_default INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
@@ -72,6 +73,9 @@ def initialize_database() -> None:
                 ON saved_items(user_id, created_at DESC);
             """
         )
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(user_settings)").fetchall()}
+        if "save_followups_by_default" not in columns:
+            db.execute("ALTER TABLE user_settings ADD COLUMN save_followups_by_default INTEGER NOT NULL DEFAULT 0")
 
 
 def _now() -> datetime:
@@ -205,7 +209,7 @@ def delete_session(token: str | None) -> None:
 def get_settings(user_id: int) -> dict[str, Any]:
     with _connect() as db:
         row = db.execute(
-            "SELECT save_by_default FROM user_settings WHERE user_id = ?",
+            "SELECT save_by_default, save_followups_by_default FROM user_settings WHERE user_id = ?",
             (user_id,),
         ).fetchone()
 
@@ -214,23 +218,35 @@ def get_settings(user_id: int) -> dict[str, Any]:
                 "INSERT INTO user_settings(user_id, save_by_default) VALUES (?, 0)",
                 (user_id,),
             )
-            return {"save_by_default": False}
+            return {"save_by_default": False, "save_followups_by_default": False}
 
-    return {"save_by_default": bool(row["save_by_default"])}
+    return {
+        "save_by_default": bool(row["save_by_default"]),
+        "save_followups_by_default": bool(row["save_followups_by_default"]),
+    }
 
 
-def update_settings(user_id: int, *, save_by_default: bool) -> dict[str, Any]:
+def update_settings(
+    user_id: int,
+    *,
+    save_by_default: bool,
+    save_followups_by_default: bool = False,
+) -> dict[str, Any]:
     with _connect() as db:
         db.execute(
             """
-            INSERT INTO user_settings(user_id, save_by_default)
-            VALUES (?, ?)
+            INSERT INTO user_settings(user_id, save_by_default, save_followups_by_default)
+            VALUES (?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
-                save_by_default = excluded.save_by_default
+                save_by_default = excluded.save_by_default,
+                save_followups_by_default = excluded.save_followups_by_default
             """,
-            (user_id, int(save_by_default)),
+            (user_id, int(save_by_default), int(save_followups_by_default)),
         )
-    return {"save_by_default": bool(save_by_default)}
+    return {
+        "save_by_default": bool(save_by_default),
+        "save_followups_by_default": bool(save_followups_by_default),
+    }
 
 
 def save_item(
@@ -272,6 +288,48 @@ def save_item(
         "created_at": created_at,
     }
 
+
+
+
+def update_item(
+    user_id: int,
+    item_id: int,
+    *,
+    title: str,
+    question: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    import json
+
+    title = title.strip() or question.strip()[:120] or "Saved question"
+    question = question.strip()
+    if not question:
+        raise ValueError("A saved item must contain the original question.")
+
+    with _connect() as db:
+        row = db.execute(
+            "SELECT id, kind, created_at FROM saved_items WHERE id = ? AND user_id = ?",
+            (item_id, user_id),
+        ).fetchone()
+        if row is None:
+            raise ValueError("Saved item was not found.")
+        db.execute(
+            """
+            UPDATE saved_items
+            SET title = ?, question = ?, payload_json = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (title, question, json.dumps(payload, ensure_ascii=False), item_id, user_id),
+        )
+
+    return {
+        "id": item_id,
+        "kind": row["kind"],
+        "title": title,
+        "question": question,
+        "payload": payload,
+        "created_at": row["created_at"],
+    }
 
 def list_items(user_id: int, limit: int = 100) -> list[dict[str, Any]]:
     import json
