@@ -209,6 +209,7 @@ export type LocalUser = {
 
 export type LocalSettings = {
   save_by_default: boolean;
+  save_followups_by_default: boolean;
 };
 
 export type SavedItem = {
@@ -310,9 +311,57 @@ export async function saveLocalItem(
   return result.item;
 }
 
+export type FollowUpTurn = {
+  question: string;
+  answer: string;
+};
+
+export type FollowUpResponse = ReasonResponse & {
+  follow_up?: boolean;
+};
+
+export async function answerFollowUp(
+  originalQuestion: string,
+  originalAnswer: string,
+  history: FollowUpTurn[],
+  followUp: string,
+): Promise<FollowUpResponse> {
+  const response = await fetch("/api/follow-up", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      original_question: originalQuestion,
+      original_answer: originalAnswer,
+      history,
+      follow_up: followUp,
+    }),
+  });
+
+  return parseResponse<FollowUpResponse>(response);
+}
+
 export async function listLocalItems(): Promise<SavedItem[]> {
   const result = await authRequest<{ success: boolean; items: SavedItem[] }>("/api/storage");
   return result.items;
+}
+
+export async function updateLocalItem(
+  id: number,
+  title: string,
+  question: string,
+  payload: Record<string, unknown>,
+): Promise<SavedItem> {
+  const result = await authRequest<{ success: boolean; item: SavedItem }>(
+    `/api/storage/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, question, payload }),
+    },
+  );
+  return result.item;
 }
 
 export async function deleteLocalItem(id: number): Promise<void> {
