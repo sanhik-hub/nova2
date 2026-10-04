@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class GuidedAttemptRequest(BaseModel):
     query: str = Field(..., min_length=1)
     include_hints: bool = False
-    include_full_solution: bool = True
+    include_full_solution: bool = False
     step_count: int | None = Field(default=None, ge=3, le=8)
 
 
