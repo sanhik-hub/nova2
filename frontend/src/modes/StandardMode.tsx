@@ -363,7 +363,7 @@ export function StandardMode() {
           ? result.answer
           : String(result.answer ?? "");
 
-      const nextHistory = [...followUps, { question: trimmed, answer }];
+      const nextHistory = [...followUps, { question: trimmed, answer, elapsed_ms: result.elapsed_ms ?? 0 }];
       setFollowUps(nextHistory);
       setFollowUpText("");
 
@@ -455,7 +455,7 @@ export function StandardMode() {
           <div className="eyebrow">STANDARD MODE</div>
           <h1>Ask a question or solve a problem</h1>
           <p>
-            Ask a question or solve a problem in mathematics, physics, chemistry, or science. Choose a complete solution or a guided step-by-step attempt.
+            Solve a problem or ask a question. Choose a complete solution or a guided step-by-step attempt.
           </p>
         </div>
       </div>
@@ -482,7 +482,7 @@ export function StandardMode() {
                     else void beginGuidedAttempt();
                   }
                 }}
-                placeholder="For example: What is Newton's second law?"
+                placeholder="Enter your question or problem..."
                 rows={7}
               />
 
@@ -581,7 +581,7 @@ export function StandardMode() {
                             {value === "off"
                               ? "Return the result without an explanation."
                               : value === "concise"
-                                ? "Short explanation with the important mathematics."
+                                ? "Short explanation with the essential working."
                                 : "Complete explanation and derivation."}
                           </small>
                         </span>
@@ -909,9 +909,18 @@ export function StandardMode() {
                         <div className="eyebrow">FOLLOW-UP {index + 1}</div>
                         <MathText>{turn.question}</MathText>
                       </div>
-                      <div className="follow-up-answer">
-                        <div className="answer-label">Answer</div>
-                        <WorkspaceSolutionText>{turn.answer}</WorkspaceSolutionText>
+                      <div className="follow-up-result">
+                        <ReasonResult
+                          response={{
+                            success: true,
+                            answer: turn.answer,
+                            engine: "local_llm",
+                            tool_calls: [],
+                            cached: false,
+                            elapsed_ms: turn.elapsed_ms ?? 0,
+                            follow_up: true,
+                          }}
+                        />
                       </div>
                     </article>
                   ))}
