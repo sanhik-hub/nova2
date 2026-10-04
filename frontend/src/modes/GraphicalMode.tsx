@@ -9,10 +9,12 @@ type Coordinate = [number, number];
 function GraphCanvas({
   coordinates,
   curve,
+  solutionPoints,
   onChange,
 }: {
   coordinates: Coordinate[];
   curve: PlotPoint[];
+  solutionPoints: Coordinate[];
   onChange: (points: Coordinate[]) => void;
 }) {
   const size = 540;
@@ -98,8 +100,6 @@ function GraphCanvas({
         </g>
       ))}
 
-      {solutionPointSvg.map(([x, y], index) => (<g key={`solution-${index}`}><circle cx={x} cy={y} r="7" className="graphical-solution-point" /><text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text></g>))}
-
       {coordinates.map((point, index) => {
         const [x, y] = toSvg(point);
         return (
@@ -151,6 +151,8 @@ export function GraphicalMode() {
 
       if (!result.success) {
         setCurve([]);
+        setSolutionPoints([]);
+        setSolutionText("");
         setError(result.error || "Unable to generate the graph.");
         return;
       }
@@ -158,6 +160,8 @@ export function GraphicalMode() {
       const points = result.plots?.[0]?.points;
       if (!Array.isArray(points)) {
         setCurve([]);
+        setSolutionPoints([]);
+        setSolutionText("");
         setError("The graph engine returned no plot data.");
         return;
       }
@@ -238,7 +242,7 @@ export function GraphicalMode() {
         </div>
 
         <div className="card graphical-plot-card">
-          <GraphCanvas coordinates={coordinates} curve={curve} onChange={setCoordinates} />
+          <GraphCanvas coordinates={coordinates} curve={curve} solutionPoints={solutionPoints} onChange={setCoordinates} />
           <p className="graph-help">The curve is sampled by the local exact computation engine.</p>
           {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
           {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
