@@ -10,11 +10,11 @@ from backend.services.reasoning_service import ReasoningService
 
 
 class GuidedAttemptService:
-    """Generate a guided attempt with one main LLM generation call.
+    """Build reliable Guided Attempts from an authoritative solution.
 
-    The lightweight planner supplies only coarse complexity metadata. It is
-    deliberately not trusted with semantic stage planning because its small
-    model can produce plausible-looking but incorrect STEM decompositions.
+    The solver establishes the STEM result first. A separate generation pass
+    then turns that result into progressive MCQs. Hints are opt-in and the full
+    worked solution is lazy, so neither is generated during the default start.
     """
 
     def __init__(self, router: ProviderRouter | None = None):
