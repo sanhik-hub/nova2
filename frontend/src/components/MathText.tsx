@@ -144,6 +144,49 @@ const KNOWN_MATH_WORDS = new Set([
   "sqrt", "pi", "infinity",
 ]);
 
+function looksLikeChemistryExpression(value: string): boolean {
+  const text = value.trim();
+  if (!text || text.includes("$")) return false;
+  const hasReaction = /(?:<=>|<->|->|=>|→|⇌|⇄)/.test(text);
+  const hasBond = /[A-Z][a-z]?\s*(?:-|=|#)\s*[A-Z][a-z]?/.test(text);
+  const hasCharge = /(?:\^\{?\d*[+-]\}?|\d*[+-])\s*$/.test(text);
+  const elementCount = (text.match(/\b[A-Z][a-z]?\b/g) ?? []).length;
+  return hasReaction || hasBond || hasCharge || elementCount >= 2;
+}
+
+function convertChemistryToLatex(value: string): string {
+  let latex = value
+    .replace(/<=>|<->|⇌|⇄/g, "\\rightleftharpoons")
+    .replace(/->|=>|→|⇒/g, "\\rightarrow")
+    .replace(/#/g, "\\equiv")
+    .replace(/−/g, "-");
+
+  latex = latex.replace(
+    /([A-Za-z0-9)\\]}]+?)(?:\^\{?(\d*[+-])\}?|(\d*[+-]))(?=\s|$)/g,
+    (_match, body: string, braced?: string, plain?: string) =>
+      body + "^{" + (braced ?? plain) + "}",
+  );
+
+  latex = latex.replace(
+    /([A-Z][a-z]?)(\d+)/g,
+    (_match, element: string, count: string) =>
+      "\\mathrm{" + element + "}_{" + count + "}",
+  );
+
+  latex = latex.replace(
+    /([A-Z][a-z]?)(?=\s*(?:-|=|\\equiv|\\rightarrow|\\rightleftharpoons|\\^|$))/g,
+    "\\mathrm{$1}",
+  );
+
+  latex = latex.replace(
+    /:([A-Z][a-z]?):/g,
+    (_match, element: string) =>
+      "\\overset{\\cdot\\,\\cdot}{\\mathrm{" + element + "}}",
+  );
+
+  return latex;
+}
+
 function looksLikeWholeMathExpression(value: string): boolean {
   const text = value.trim();
 
@@ -442,13 +485,19 @@ export default function MathText({
 
   const segments = hasDelimitedMath
     ? delimited
-    : looksLikeWholeMathExpression(normalized)
+    : looksLikeChemistryExpression(normalized)
       ? [{
-          value: normalized,
+          value: convertChemistryToLatex(normalized),
           math: true,
           display: false,
         }]
-      : splitLegacyMath(normalized);
+      : looksLikeWholeMathExpression(normalized)
+        ? [{
+            value: normalized,
+            math: true,
+            display: false,
+          }]
+        : splitLegacyMath(normalized);
 
   return (
     <span className={className ?? "math-text"}>
