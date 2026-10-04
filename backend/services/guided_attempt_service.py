@@ -67,7 +67,7 @@ class GuidedAttemptService:
                 # adjustments, but reject implausible jumps from the deterministic
                 # local estimate rather than letting one bad completion distort
                 # the guided path.
-                if abs(planned_steps - fallback_step_count) <= 2:
+                if abs(planned_steps - fallback_step_count) <= 1:
                     step_count, guided_answer_tokens = planned_steps, planned_tokens
                 else:
                     step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
@@ -101,10 +101,20 @@ HARD RULES:
 - Never ask for a quantity explicitly supplied in the original problem.
 - The first question must derive the first useful quantity/relation from the
   givens, not jump to the final closed form.
-- For continuous/distributed systems, form the local/differential contribution
-  and required sum/integral before the closed form whenever applicable.
+- For continuous/distributed systems, derive the local/differential contribution
+  from the distribution (for example dm, dq, or dL) and perform the required
+  sum/integral before any closed form whenever applicable.
+- Do not use a memorized closed-form result such as I=(1/3)ML^2 as an intermediate
+  question when the problem gives a continuous/distributed object; make the
+  intermediate question derive it from the differential contribution instead.
+- Never ask a generic law/formula question such as "what is angular momentum
+  of a rigid body?" or "what formula applies?". The law must be used inside
+  an actual computational step.
+- Never ask for a quantity that is explicitly given, including quantities stated
+  with "with", "having", "rotating at", "moving at", "of", or "where".
 - Use the actual data, symbols, conditions, and transformations from the problem.
-- Each correct answer must be new and needed by a later step.
+- Each correct answer must be new, not previously established, and needed by a
+  later step. Do not repeat an intermediate quantity in a later question.
 - The final question is the only place where the requested final quantity should
   be established.
 - Exactly four distinct options and exactly one correct answer per question.
@@ -124,6 +134,9 @@ Never ask meta-questions, never ask for supplied quantities, and never jump
 straight to the final result. For continuous systems, form the local/differential
 contribution and required integral before the closed form when applicable.
 Exactly four distinct options and one correct answer per question.
+For continuous/distributed systems, use the differential contribution and its
+integral as the real intermediate path; do not ask memorized closed-form inertia
+or generic law/formula questions.
 
 The response is constrained by a JSON schema. Return only the schema object.
 """.strip()
@@ -313,9 +326,14 @@ The response is constrained by a JSON schema. Return only the schema object.
             if new_bad >= bad:
                 break
             text = repaired
-        # The local model can truncate the mojibake form of omega to Ï.
+        # Some local model/runtime paths produce partially decoded UTF-8,
+        # e.g. IÏÂ² instead of Iω². Normalize the stable fragments explicitly
+        # before applying the contextual omega replacements.
+        text = text.replace("Â²", "²").replace("Â³", "³")
+        text = text.replace("Â¹", "¹").replace("Â°", "°")
+        text = re.sub(r"IÏ(?=\s*(?:²|³|\^|$))", "Iω", text)
         text = re.sub(r"(?<=[=+\-*/(])\s*Ï(?=\s*(?:$|[+\-*/),]))", "ω", text)
-        text = re.sub(r"\bÏ\s*(?=[²2\^*/,)\s]|$)", "ω", text)
+        text = re.sub(r"\bÏ\s*(?=[²2³3\^*/,)\s]|$)", "ω", text)
         return text
 
     @staticmethod
@@ -1015,26 +1033,85 @@ Using those verified intermediate choices, write the complete final solution.
         # best matching final-result question to the end without another LLM call.
 
         # Reject steps that merely ask the student to identify a quantity
-        # explicitly supplied by the original problem.
-        given_quantities = set()
-        for match in re.finditer(
+        # explicitly supplied by the original problem. This recognizes both
+        # "angular velocity is ω" and "rotating with angular velocity ω".
+        supplied_terms = set()
+        supplied_patterns = (
             r"\b(?:length|mass|radius|time|speed|velocity|acceleration|"
             r"angular velocity|frequency|charge|voltage|current|pressure|"
-            r"temperature|density)\s+(?:is|=)\s+([A-Za-z0-9_\\.]+)",
-            problem,
-            flags=re.IGNORECASE,
-        ):
-            given_quantities.add(match.group(0).lower().split()[0])
-        if given_quantities:
-            for earlier_step in normalized[:-1]:
-                q = earlier_step["question"].lower()
-                if "what is" in q and any(
-                    quantity in q for quantity in given_quantities
+            r"temperature|density)\s+(?:is|=|of)\b",
+            r"\b(?:with|having|at)\s+(?:a\s+)?(?:length|mass|radius|time|speed|"
+            r"velocity|acceleration|angular velocity|frequency|charge|voltage|"
+            r"current|pressure|temperature|density)\b",
+        )
+        for pattern in supplied_patterns:
+            for match in re.finditer(pattern, problem, flags=re.IGNORECASE):
+                phrase = match.group(0).lower()
+                for quantity in (
+                    "angular velocity", "acceleration", "velocity", "frequency",
+                    "length", "mass", "radius", "time", "speed", "charge",
+                    "voltage", "current", "pressure", "temperature", "density",
                 ):
-                    return False, (
-                        "Guided attempt asks the student to identify a quantity "
-                        "that is already provided by the problem."
-                    )
+                    if quantity in phrase:
+                        supplied_terms.add(quantity)
+        for earlier_step in normalized[:-1]:
+            q = earlier_step["question"].lower()
+            if "what is" in q and any(quantity in q for quantity in supplied_terms):
+                return False, (
+                    "Guided attempt asks the student to identify a quantity "
+                    "that is already provided by the problem."
+                )
+
+        # Reject generic law/formula questions and repeated intermediate targets.
+        forbidden_generic = (
+            "what is the formula",
+            "what formula",
+            "which formula",
+            "what is the relationship",
+            "what is the angular momentum of a rigid body",
+            "what is the moment of inertia of a uniform rod",
+        )
+        for earlier_step in normalized[:-1]:
+            q = re.sub(r"\s+", " ", earlier_step["question"].lower()).strip()
+            if any(phrase in q for phrase in forbidden_generic):
+                return False, "Guided attempt contains a generic law/formula question."
+
+        def target_key(question: str) -> str:
+            q = question.lower()
+            q = re.sub(r"\b(?:what is|find|determine|calculate|derive|evaluate)\b", "", q)
+            q = re.sub(r"[^a-z0-9]+", " ", q)
+            stop = {
+                "the", "a", "an", "of", "for", "to", "from", "in", "on",
+                "about", "using", "with", "given", "its", "is", "are",
+                "and", "by", "as", "value", "terms", "express",
+            }
+            return " ".join(word for word in q.split() if word not in stop)
+
+        seen_targets: set[str] = set()
+        for earlier_step in normalized[:-1]:
+            key = target_key(earlier_step["question"])
+            if key and key in seen_targets:
+                return False, "Guided attempt repeats the same intermediate target."
+            seen_targets.add(key)
+
+        # Continuous-object problems must expose a differential/integral path
+        # rather than relying on a memorized closed-form inertia question.
+        problem_lower = problem.lower()
+        if any(token in problem_lower for token in (
+            "uniform rod", "rod of length", "uniform wire", "thin rod",
+            "disc", "disk", "ring", "lamina", "continuous", "distributed",
+        )):
+            early_text = " ".join(step["question"].lower() for step in normalized[:-1])
+            if "moment of inertia" in early_text and not any(
+                token in early_text for token in (
+                    "dm", "d m", "dx", "integral", "integrate", "differential",
+                    "small element", "linear density",
+                )
+            ):
+                return False, (
+                    "Guided attempt uses a memorized closed-form result instead "
+                    "of deriving the continuous-system contribution."
+                )
 
         # The UI should not inherit the model's positional bias. Shuffle the
         # four options while keeping exactly one correct answer and deliberately
