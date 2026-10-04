@@ -56,6 +56,59 @@ class LocalLLMRuntime:
                 "Start llama-server first."
             ) from exc
 
+    @staticmethod
+    def _repair_mojibake(value: str) -> str:
+        """Repair text that was accidentally decoded as Latin-1/CP1252.
+
+        Correct UTF-8 scientific text is returned unchanged. Repair is attempted
+        only when characteristic mojibake markers are present.
+        """
+        if not isinstance(value, str):
+            return value
+
+        text = value
+        markers = ("Ã", "Â", "â", "Î", "Ï")
+
+        for _ in range(2):
+            if not any(marker in text for marker in markers):
+                break
+
+            repaired = None
+            bad_before = sum(text.count(marker) for marker in markers)
+
+            for encoding in ("cp1252", "latin1"):
+                try:
+                    candidate = text.encode(encoding).decode("utf-8")
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    continue
+
+                bad_after = sum(candidate.count(marker) for marker in markers)
+                if bad_after < bad_before:
+                    repaired = candidate
+                    break
+
+            if repaired is None or repaired == text:
+                break
+            text = repaired
+
+        replacements = {
+            "â†’": "→",
+            "â†": "←",
+            "â‡’": "⇒",
+            "â‰ˆ": "≈",
+            "âˆž": "∞",
+            "Â·": "·",
+            "Â²": "²",
+            "Â³": "³",
+            "Â¹": "¹",
+            "â‰¤": "≤",
+            "â‰¥": "≥",
+        }
+        for broken, correct in replacements.items():
+            text = text.replace(broken, correct)
+
+        return text
+
     def generate(
         self,
         prompt: str,
@@ -160,7 +213,7 @@ class LocalLLMRuntime:
         if content is None:
             content = ""
 
-        content = content.strip()
+        content = self._repair_mojibake(content).strip()
 
         if not content:
             raise RuntimeError(
