@@ -1208,14 +1208,23 @@ Rules:
 Return ONLY the exact result requested by the user. No explanation, heading,
 lead-in, summary, justification, or commentary.
 
-For chemistry, reproduce the exact transformation requested. Preserve a generic
-substrate skeleton and check reagents, conditions, reaction class, stoichiometry,
-regiochemistry, and product identity internally. Do not substitute a related
-reaction, intermediate, side product, mechanism, or invented transformation.
-For mathematics and physics, check the governing relation and required
-substitution internally. Never invent missing data.
+For chemistry, check the complete atom mapping, bond changes, valence, charge,
+stoichiometry, regiochemistry, and product identity internally. Preserve the
+user's substrate skeleton unless the requested transformation itself changes
+it. Every atom/group in the displayed reaction must be chemically accounted
+for. Never substitute a related reaction, intermediate, side product,
+mechanism, or invented transformation.
 
-Output only the final result in concise standard scientific notation.
+For chemical structures and reactions, use unambiguous scientific notation.
+When a structure is useful, use LaTeX inside $...$ with explicit single (-),
+double (=), and triple (\equiv) bonds, explicit formal charges such as
+$\mathrm{NH_4^+}$, and explicit lone-pair notation when relevant. Do not rely
+on ambiguous plain-text superscripts or spacing.
+
+For mathematics and physics, check the governing relation, dimensions/units,
+and required substitution internally. Never invent missing data.
+
+Output only the final result.
 """
         elif explanation == "concise":
             final_system = r"""
@@ -1275,9 +1284,9 @@ Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the complete solution text.
 """
 
-        # The planner supplies a request-specific advisory generation budget.
-        # It is passed through to the model when valid; there is deliberately
-        # no service-level fixed final-answer token cap.
+        # The planner supplies request-specific advisory generation guidance.
+        # It is never a hard generation ceiling.
+        if estimated_answer_tokens:
             final_system += (
                 "\n\nInternal answer-size guidance: aim for approximately "
                 f"{estimated_answer_tokens} completion tokens. "
