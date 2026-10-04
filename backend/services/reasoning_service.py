@@ -15,6 +15,11 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
+    # This is only the small planner's own JSON-generation budget. It is NOT
+    # the final answer budget. The planner's answer_tokens field remains
+    # advisory and is never passed as max_tokens to the main LLM.
+    PLANNER_TOKENS = 220
+
     # Small in-memory cache for repeated CAS requests.
     CACHE_SIZE = 256
 
@@ -63,29 +68,6 @@ class ReasoningService:
             )
             return cached
 
-
-        # -----------------------------------------------------
-        # 1. FAST EXACT OPERATION PATH
-        # -----------------------------------------------------
-        #
-        # Result-only mode should not spend planner/final-writer time on an
-        # unambiguous exact symbolic operation. This uses the same validated
-        # Wolfram execution path as the normal solver; only the routing step
-        # is skipped because the user's requested operation is explicit.
-        # -----------------------------------------------------
-        if explanation == "off":
-            direct_operation = self._detect_explicit_operation(problem)
-            if direct_operation is not None:
-                response = self._solve_direct_operation(
-                    problem=problem,
-                    operation=direct_operation,
-                    explanation=explanation,
-                )
-                response["elapsed_ms"] = round(
-                    (time.perf_counter() - started) * 1000,
-                    2,
-                )
-                return response
 
         # -----------------------------------------------------
         # 2. MODEL-DRIVEN SEMANTIC PLANNING
@@ -386,6 +368,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 ensure_ascii=False,
             ),
             system_prompt=planner_system,
+            max_tokens=self.PLANNER_TOKENS,
         )
 
         planner_ms = round(
