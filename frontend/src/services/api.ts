@@ -115,9 +115,11 @@ export type GuidedAttemptResponse = {
   include_hints?: boolean;
   include_full_solution?: boolean;
   full_solution?: string | null;
+  solution_generation_elapsed_ms?: number;
   elapsed_ms?: number;
   mcq_elapsed_ms?: number;
   hint_elapsed_ms?: number;
+  solution_generation_elapsed_ms?: number;
   full_solution?: string | null;
   error?: string | null;
 };
