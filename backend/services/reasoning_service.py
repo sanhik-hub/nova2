@@ -1210,38 +1210,17 @@ Rules:
 
         if explanation == "off":
             final_system = r"""
-Return ONLY the requested result. Do the minimum internal reasoning needed for
-accuracy, but expose no reasoning.
+Return ONLY the exact result requested by the user. No explanation, heading,
+lead-in, summary, justification, or commentary.
 
-No explanation, lead-in, heading, summary, definition, justification,
-background, alternatives, or commentary. Do not write "The answer is" or
-similar text.
+For chemistry, reproduce the exact transformation requested. Preserve a generic
+substrate skeleton and check reagents, conditions, reaction class, stoichiometry,
+regiochemistry, and product identity internally. Do not substitute a related
+reaction, intermediate, side product, mechanism, or invented transformation.
+For mathematics and physics, check the governing relation and required
+substitution internally. Never invent missing data.
 
-Output rules:
-- overall reaction/equation -> reaction/equation only
-- formula -> formula only
-- value/expression -> value/expression only
-- name -> name only
-- multiple explicitly requested results -> only those results
-
-For chemistry, first internally identify exactly what the user requested
-(reaction, product, formula, structure, name, oxidation state, or condition).
-For an overall-reaction request, reproduce the requested transformation itself;
-do not substitute a related reaction, reagent, product, mechanism, intermediate,
-or side product. For a named reaction, use its standard chemical transformation and do
-not invent a stoichiometric transformation by counting reagent molecules.
-If the substrate is generic, preserve its carbon skeleton and place the
-functional group at the chemically correct position rather than inventing extra
-functional groups or atoms. Check reactants, reagents/conditions, reaction
-class, stoichiometry, regiochemistry, and product identity internally before
-emitting the result. Do not substitute a related reaction, reagent, intermediate,
-side product, or mechanism for the transformation requested by the user.
-For physics and mathematics, check the governing relationship and any required
-substitution internally before emitting the requested result.
-Never invent missing data or assumptions.
-
-Emit only the final requested result in standard mathematical/scientific
-notation.
+Output only the final result in concise standard scientific notation.
 """
         elif explanation == "concise":
             final_system = r"""
@@ -1334,9 +1313,14 @@ Return ONLY the complete solution text.
             # In result-only mode the planner's estimate is an actual
             # completion budget: there is no reason to let the model continue
             # generating prose after the requested result is complete.
-            max_tokens=estimated_answer_tokens if explanation == "off" else None,
+            max_tokens=(
+                min(96, estimated_answer_tokens)
+                if explanation == "off" and estimated_answer_tokens
+                else None
+            ),
             temperature=0,
             enable_thinking=False,
+            request_timeout=60 if explanation == "off" else None,
         )
 
         final_llm_ms = round(
