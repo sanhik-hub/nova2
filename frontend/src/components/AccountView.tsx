@@ -16,7 +16,7 @@ type AccountViewProps = {
 };
 
 export function AccountView({ user, onLogout }: AccountViewProps) {
-  const [settings, setSettings] = useState<LocalSettings>({ save_by_default: false });
+  const [settings, setSettings] = useState<LocalSettings>({ save_by_default: false, save_followups_by_default: false });
   const [items, setItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,8 +42,10 @@ export function AccountView({ user, onLogout }: AccountViewProps) {
     void refresh();
   }, []);
 
-  async function toggleDefaultSave() {
-    const next = { save_by_default: !settings.save_by_default };
+  async function updateStorageSetting(
+    changes: Partial<LocalSettings>,
+  ) {
+    const next = { ...settings, ...changes };
     setSettings(next);
     try {
       const saved = await updateLocalSettings(next);
@@ -52,6 +54,18 @@ export function AccountView({ user, onLogout }: AccountViewProps) {
       setSettings(settings);
       setError(err instanceof Error ? err.message : "Could not update settings.");
     }
+  }
+
+  async function toggleDefaultSave() {
+    await updateStorageSetting({
+      save_by_default: !settings.save_by_default,
+    });
+  }
+
+  async function toggleFollowupSave() {
+    await updateStorageSetting({
+      save_followups_by_default: !settings.save_followups_by_default,
+    });
   }
 
   async function remove(id: number) {
@@ -89,6 +103,20 @@ export function AccountView({ user, onLogout }: AccountViewProps) {
               <small>
                 Automatically save complete solutions and finished Guided Attempts,
                 including questions, options, answers, score, and full solution.
+              </small>
+            </span>
+          </button>
+
+          <button
+            className={settings.save_followups_by_default ? "choice-button selected" : "choice-button"}
+            type="button"
+            onClick={() => void toggleFollowupSave()}
+          >
+            <span className="choice-radio">{settings.save_followups_by_default ? "●" : "○"}</span>
+            <span>
+              <strong>Save follow-ups by default</strong>
+              <small>
+                Keep every follow-up question and answer inside the saved original question session.
               </small>
             </span>
           </button>
@@ -134,6 +162,22 @@ export function AccountView({ user, onLogout }: AccountViewProps) {
                   <div className="saved-question"><MathText>{item.question}</MathText></div>
                   {item.kind === "solution" && typeof item.payload.answer === "string" && (
                     <div className="saved-answer"><MathText>{item.payload.answer}</MathText></div>
+                  )}
+                  {item.kind === "solution" && Array.isArray(item.payload.follow_ups) && item.payload.follow_ups.length > 0 && (
+                    <div className="saved-follow-ups">
+                      <div className="answer-label">Follow-ups</div>
+                      {item.payload.follow_ups.map((turn, index) => {
+                        if (!turn || typeof turn !== "object") return null;
+                        const entry = turn as { question?: unknown; answer?: unknown };
+                        return (
+                          <div className="saved-follow-up" key={index}>
+                            <strong>Follow-up {index + 1}</strong>
+                            {typeof entry.question === "string" && <div><MathText>{entry.question}</MathText></div>}
+                            {typeof entry.answer === "string" && <div className="saved-answer"><MathText>{entry.answer}</MathText></div>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                   {item.kind === "guided_attempt" && (
                     <div className="saved-guided-summary">
