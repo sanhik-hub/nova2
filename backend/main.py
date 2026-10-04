@@ -185,10 +185,20 @@ def remove_saved_item(item_id: int, authorization: str | None = Header(default=N
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
-    return reasoning.solve(
-        request.query,
-        explanation=request.explanation,
-    )
+    try:
+        return reasoning.solve(
+            request.query,
+            explanation=request.explanation,
+        )
+    except Exception as exc:
+        return {
+            "success": False,
+            "answer": None,
+            "error": f"Reasoning request failed: {type(exc).__name__}: {exc}",
+            "engine": None,
+            "tool_calls": [],
+            "cached": False,
+        }
 
 
 @app.post("/api/guided/start")
