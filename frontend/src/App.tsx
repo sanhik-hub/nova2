@@ -17,7 +17,7 @@ function App() {
           <div>
             <div className="brand-name">PrismOffline</div>
             <div className="brand-subtitle">
-              Mathematical problem solving
+              STEM problem solving
             </div>
           </div>
         </div>
@@ -45,7 +45,7 @@ function App() {
 
       <footer className="footer">
         <span>PrismOffline</span>
-        <span>Offline mathematical workspace</span>
+        <span>Offline STEM workspace</span>
       </footer>
     </div>
   );
