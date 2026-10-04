@@ -1197,8 +1197,12 @@ Using those verified intermediate choices, write the complete final solution.
             )
             if len(set(option_set)) != 4:
                 return False, "Guided attempt contains duplicate options in a question."
-            if option_set in seen_option_sets and not rebuilt_from_stage_answers:
-                return False, "Guided attempt reused the same option pool across questions."
+            # The same four candidate answers may legitimately be reused
+            # across connected questions. The previous hard rejection caused
+            # valid path-first generations (especially deterministic fallback
+            # generations with exactly four stage answers) to fail despite each
+            # question having four distinct options and its own correct index.
+            # Do not spend another LLM call trying to repair this.
             seen_option_sets.add(option_set)
 
         seen_targets: set[str] = set()
