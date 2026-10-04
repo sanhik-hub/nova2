@@ -7,10 +7,14 @@ import {
   type ReasonResponse,
   getLocalSettings,
   saveLocalItem,
+  updateLocalItem,
+  answerFollowUp,
+  type FollowUpTurn,
 } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
 import MathText from "../components/MathText";
+import WorkspaceSolutionText from "../components/WorkspaceSolutionText";
 
 type TaskMode = "solution" | "guided";
 
@@ -41,7 +45,13 @@ export function StandardMode() {
   const [loading, setLoading] = useState(false);
   const [guidedLoading, setGuidedLoading] = useState(false);
   const [saveByDefault, setSaveByDefault] = useState(false);
+  const [saveFollowupsByDefault, setSaveFollowupsByDefault] = useState(false);
   const [savedSolution, setSavedSolution] = useState(false);
+  const [savedSolutionId, setSavedSolutionId] = useState<number | null>(null);
+  const [followUpText, setFollowUpText] = useState("");
+  const [followUps, setFollowUps] = useState<FollowUpTurn[]>([]);
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+
   const [savedGuided, setSavedGuided] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [cachedGuided, setCachedGuided] = useState<{
@@ -56,7 +66,10 @@ export function StandardMode() {
 
   useEffect(() => {
     void getLocalSettings()
-      .then((settings) => setSaveByDefault(settings.save_by_default))
+       .then((settings) => {
+        setSaveByDefault(settings.save_by_default);
+        setSaveFollowupsByDefault(settings.save_followups_by_default);
+      })
       .catch(() => setSaveByDefault(false));
 
     try {
@@ -83,6 +96,9 @@ export function StandardMode() {
     setLoading(true);
     setResponse(null);
     setGuided(null);
+    setFollowUpText("");
+    setFollowUps([]);
+    setSavedSolutionId(null);
 
     try {
       const result = await reasonQuestion(trimmed, explanation);
@@ -92,7 +108,7 @@ export function StandardMode() {
 
       if (result.success && saveByDefault) {
         try {
-          await saveLocalItem(
+          const saved = await saveLocalItem(
             "solution",
             trimmed.slice(0, 120),
             trimmed,
@@ -100,9 +116,11 @@ export function StandardMode() {
               answer: typeof result.answer === "string" ? result.answer : String(result.answer ?? ""),
               response: result,
               explanation,
+              follow_ups: [],
             },
           );
           setSavedSolution(true);
+          setSavedSolutionId(saved.id);
         } catch (error) {
           setSaveError(error instanceof Error ? error.message : "Could not save the result.");
         }
@@ -270,7 +288,7 @@ export function StandardMode() {
     if (!response?.success || savedSolution) return;
     setSaveError("");
     try {
-      await saveLocalItem(
+      const saved = await saveLocalItem(
         "solution",
         question.trim().slice(0, 120),
         question.trim(),
@@ -278,9 +296,11 @@ export function StandardMode() {
           answer: typeof response.answer === "string" ? response.answer : String(response.answer ?? ""),
           response,
           explanation,
+          follow_ups: followUps,
         },
       );
       setSavedSolution(true);
+      setSavedSolutionId(saved.id);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save the result.");
     }
@@ -310,6 +330,104 @@ export function StandardMode() {
       setSavedGuided(true);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save the attempt.");
+    }
+  }
+
+  async function submitFollowUp() {
+    const trimmed = followUpText.trim();
+    if (!response?.success || !trimmed || followUpLoading) return;
+
+    const originalAnswer =
+      typeof response.answer === "string"
+        ? response.answer
+        : String(response.answer ?? "");
+
+    setFollowUpLoading(true);
+    setSaveError("");
+
+    try {
+      const result = await answerFollowUp(
+        question.trim(),
+        originalAnswer,
+        followUps,
+        trimmed,
+      );
+
+      if (!result.success) {
+        setSaveError(result.error || "Could not answer the follow-up.");
+        return;
+      }
+
+      const answer =
+        typeof result.answer === "string"
+          ? result.answer
+          : String(result.answer ?? "");
+
+      const nextHistory = [...followUps, { question: trimmed, answer }];
+      setFollowUps(nextHistory);
+      setFollowUpText("");
+
+      if (saveFollowupsByDefault) {
+        const payload = {
+          answer: originalAnswer,
+          response,
+          explanation,
+          follow_ups: nextHistory,
+        };
+
+        try {
+          if (savedSolutionId !== null) {
+            await updateLocalItem(
+              savedSolutionId,
+              question.trim().slice(0, 120),
+              question.trim(),
+              payload,
+            );
+          } else {
+            const saved = await saveLocalItem(
+              "solution",
+              question.trim().slice(0, 120),
+              question.trim(),
+              payload,
+            );
+            setSavedSolutionId(saved.id);
+          }
+          setSavedSolution(true);
+        } catch (error) {
+          setSaveError(
+            error instanceof Error
+              ? error.message
+              : "The follow-up was answered but could not be saved.",
+          );
+        }
+      } else if (savedSolutionId !== null) {
+        try {
+          const saved = await updateLocalItem(
+            savedSolutionId,
+            question.trim().slice(0, 120),
+            question.trim(),
+            {
+              answer: originalAnswer,
+              response,
+              explanation,
+              follow_ups: nextHistory,
+            },
+          );
+          setSavedSolution(true);
+          setSavedSolutionId(saved.id);
+        } catch {
+          // Keep the live session usable even if a previously saved item
+          // cannot be updated.
+        }
+      }
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Could not answer the follow-up.",
+      );
+    } finally {
+      setFollowUpLoading(false);
     }
   }
 
@@ -790,7 +908,63 @@ export function StandardMode() {
       )}
 
       {!guided && !loading && !guidedLoading && response && (
-        <ReasonResult response={response} />
+        <>
+          <ReasonResult response={response} />
+
+          {response.success && (
+            <section className="card follow-up-card">
+              <div className="eyebrow">FOLLOW UP</div>
+              <h2>Continue this question</h2>
+              <p>
+                Ask as many consecutive follow-up questions as you need. Previous
+                answers in this question session are kept as context.
+              </p>
+
+              {followUps.length > 0 && (
+                <div className="follow-up-history">
+                  {followUps.map((turn, index) => (
+                    <article className="follow-up-entry" key={index}>
+                      <div className="follow-up-question">
+                        <div className="eyebrow">FOLLOW-UP {index + 1}</div>
+                        <MathText>{turn.question}</MathText>
+                      </div>
+                      <div className="follow-up-answer">
+                        <div className="answer-label">Answer</div>
+                        <WorkspaceSolutionText>{turn.answer}</WorkspaceSolutionText>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <textarea
+                className="question-input follow-up-input"
+                value={followUpText}
+                onChange={(event) => setFollowUpText(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                    void submitFollowUp();
+                  }
+                }}
+                placeholder="Ask a follow-up about this question..."
+                rows={4}
+                disabled={followUpLoading}
+              />
+
+              <div className="input-footer">
+                <span className="shortcut">Ctrl + Enter to continue</span>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => void submitFollowUp()}
+                  disabled={!followUpText.trim() || followUpLoading}
+                >
+                  {followUpLoading ? "Working..." : "Ask Follow-up"}
+                </button>
+              </div>
+            </section>
+          )}
+        </>
       )}
     </section>
   );
