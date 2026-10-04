@@ -341,6 +341,8 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
     }
   }
 
+  void requestFullGuidedSolution;
+
   function guidedOriginalAnswer(): string {
     if (guided?.fullSolution?.answer) return String(guided.fullSolution.answer);
     if (!guided) return "";
