@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMemo, useState } from "react";
 import { plotExpression, type PlotPoint } from "../services/api";
-import { LoadingState } from "../components/LoadingState";
+import { LoadingState } from "../components/LoadingState";\nimport WorkspaceSolutionText from "../components/WorkspaceSolutionText";
 
 type Coordinate = [number, number];
 
@@ -52,7 +52,7 @@ function GraphCanvas({
     window.addEventListener("pointerup", stop, { once: true });
   }
 
-  const curvePoints = curve
+  const solutionPointSvg = solutionPoints.map(toSvg);\n\n  const curvePoints = curve
     .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
     .map(toSvg)
     .map(([x, y]) => `${x},${y}`)
@@ -88,7 +88,7 @@ function GraphCanvas({
 
       {curvePoints && <polyline points={curvePoints} className="graphical-curve" />}
 
-      {coordinates.map((point, index) => {
+      {solutionPointSvg.map(([x, y], index) => (\n        <g key={`solution-${index}`}>\n          <circle cx={x} cy={y} r="7" className="graphical-solution-point" />\n          <text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text>\n        </g>\n      ))}\n\n      {coordinates.map((point, index) => {
         const [x, y] = toSvg(point);
         return (
           <g key={index}>
@@ -115,7 +115,7 @@ export function GraphicalMode() {
   const [xmin, setXmin] = useState("-10");
   const [xmax, setXmax] = useState("10");
   const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
-  const [curve, setCurve] = useState<PlotPoint[]>([]);
+  const [curve, setCurve] = useState<PlotPoint[]>([]);\n  const [solutionPoints, setSolutionPoints] = useState<Coordinate[]>([]);\n  const [solutionText, setSolutionText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -148,7 +148,7 @@ export function GraphicalMode() {
         return;
       }
 
-      setCurve(points);
+      setCurve(points);\n      setSolutionPoints((result.solution_points ?? []).map((point) => [Number(point[0]), Number(point[1])] as Coordinate));\n      setSolutionText(result.result ?? "");
     } catch (err) {
       setCurve([]);
       setError(err instanceof Error ? err.message : "Unable to generate the graph.");
@@ -167,14 +167,14 @@ export function GraphicalMode() {
       <div className="page-heading">
         <div>
           <div className="eyebrow">GRAPHICAL MODE</div>
-          <h1>Explore a mathematical graph</h1>
-          <p>Plot an expression and work with up to four draggable points on the coordinate plane.</p>
+          <h1>Explore a graph</h1>
+          <p>Enter an equation or expression, plot it, and inspect its solution points.</p>
         </div>
       </div>
 
       <div className="graphical-grid">
         <div className="card graphical-controls">
-          <label className="field-label" htmlFor="graph-expression">Expression</label>
+          <label className="field-label" htmlFor="graph-expression">Equation or expression</label>
           <input
             id="graph-expression"
             className="question-input graphical-expression-input"
@@ -215,7 +215,7 @@ export function GraphicalMode() {
           <p className="graph-help">Drag points on the 20 × 20 grid. Points snap to 0.5-unit increments.</p>
 
           <button className="primary-button" type="button" onClick={() => void plot()} disabled={!canPlot}>
-            {loading ? "Plotting..." : "Plot Graph"}
+            {loading ? "Plotting..." : "Solve & Plot"}
           </button>
 
           {error && <p className="error-message">{error}</p>}
@@ -223,7 +223,7 @@ export function GraphicalMode() {
 
         <div className="card graphical-plot-card">
           <GraphCanvas coordinates={coordinates} curve={curve} onChange={setCoordinates} />
-          <p className="graph-help">The curve is sampled by the local exact computation engine.</p>
+          <p className="graph-help">The curve is sampled by the local exact computation engine.</p>\n          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
         </div>
       </div>
 
