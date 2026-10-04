@@ -230,6 +230,12 @@ related result. Do not expose internal reasoning.
             if include_hints and not hint:
                 continue
 
+            # Reject literal schema placeholders emitted by the local model.
+            placeholders = {"question", "correct_answer", "correct answer", "wrong1", "wrong2", "wrong3", "solution_step", "solution step", "hint"}
+            values = {solution.lower(), question.lower(), correct.lower(), *(value.lower() for value in wrong)}
+            if values & placeholders:
+                continue
+
             records.append({
                 "solution": GuidedAttemptService._normalize_generated_text(solution),
                 "question": GuidedAttemptService._normalize_generated_text(question),
