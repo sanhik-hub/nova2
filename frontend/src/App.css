@@ -969,3 +969,41 @@ body{background:#0b0912;color:#e9e7ff}
   border-radius: 10px;
   border: 1px solid var(--border, #d9dee7);
 }
+
+
+/* Follow-up results use the same result surface as the primary answer. */
+.follow-up-history {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.follow-up-entry {
+  display: grid;
+  gap: 8px;
+}
+
+.follow-up-question {
+  padding: 14px 16px;
+  border: 1px solid #3a2c4e;
+  border-radius: 10px;
+  background: #120d19;
+  color: #eeeaff;
+  line-height: 1.55;
+}
+
+.follow-up-result .result-card {
+  margin-top: 0;
+}
+
+.follow-up-result .result-heading h2 {
+  font-size: 17px;
+}
+
+.follow-up-result .answer-block {
+  margin-top: 18px;
+}
+
+.follow-up-result .result-meta {
+  margin-bottom: 0;
+}
