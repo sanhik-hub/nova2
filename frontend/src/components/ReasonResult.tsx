@@ -56,6 +56,16 @@ export function ReasonResult({
 
   const answer = extractText(response.answer);
 
+  if (response.result_only) {
+    return (
+      <section className="result-card card result-only-card">
+        <div className="answer-content">
+          {answer || "No result returned."}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="result-card card">
       <div className="result-heading">
