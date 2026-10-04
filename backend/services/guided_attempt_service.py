@@ -1064,6 +1064,10 @@ Using those verified intermediate choices, write the complete final solution.
                         supplied_terms.add(quantity)
 
         def question_target(question: str) -> str:
+            # Extract the quantity actually being requested, not every quantity
+            # mentioned in the question's context. For example:
+            # "What is the moment of inertia ... with angular velocity omega?"
+            # targets "moment of inertia", not "angular velocity".
             match = re.search(
                 r"\b(?:what is|find|determine|calculate|evaluate)\s+"
                 r"(?:the\s+)?(.+?)(?:\?|$)",
@@ -1071,10 +1075,18 @@ Using those verified intermediate choices, write the complete final solution.
             )
             if not match:
                 return ""
+
             target = match.group(1)
+            # Context normally begins at these boundaries. Keep the first
+            # quantity phrase rather than treating later givens as the target.
+            target = re.split(
+                r"\s+(?:of|for|about|using|with|where|when|given|from|"
+                r"in terms of|in)\s+",
+                target,
+                maxsplit=1,
+            )[0]
             target = re.sub(
-                r"\b(?:the|a|an|value|expression|result|of|for|in|terms|"
-                r"using|with|where|given|when|from|about)\b",
+                r"\b(?:the|a|an|value|expression|result)\b",
                 " ",
                 target,
             )
