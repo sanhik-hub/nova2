@@ -36,7 +36,10 @@ class GuidedAttemptService:
         else:
             guided_answer_tokens = max(300, min(900, 70 * step_count))
 
-        step_count = max(3, min(6, int(step_count)))
+        # Keep the one-pass record compact. More records make the 4B local
+        # model spend most of its generation budget on distractors instead of
+        # the actual STEM derivation.
+        step_count = max(3, min(5, int(step_count)))
         hint_field = "|||HINT" if include_hints else ""
 
         prompt = f"""Problem:
@@ -58,8 +61,10 @@ Rules:
 - Prefer the shortest valid derivation; avoid artificial stages.
 - The final step must establish the requested result.
 - If hints are requested, add a short hint without revealing the answer.
-- Keep every field concise. Use standard scientific notation; ASCII is fine where
-  it avoids encoding ambiguity.
+- Keep every field very concise. Prefer ASCII notation in generated fields:
+  use omega instead of the Greek omega character, ^2 instead of superscript 2,
+  and * for multiplication. Do not emit UTF-8/Latin-1 mojibake such as Ã, Â, Î,
+  or Ï.
 - Output exactly one STEP line per solution step.
 - No JSON, Markdown, headings, commentary, or blank lines.
 """.strip()
@@ -419,8 +424,8 @@ related result. Do not expose internal reasoning.
         # Some local model/runtime paths produce partially decoded UTF-8,
         # e.g. IÏÂ² instead of Iω². Normalize the stable fragments explicitly
         # before applying the contextual omega replacements.
-        text = text.replace("Â²", "²").replace("Â³", "³")
-        text = text.replace("Â¹", "¹").replace("Â°", "°")
+        text = text.replace("Â²", "^2").replace("Â³", "^3")
+        text = text.replace("Â¹", "^1").replace("Â°", " deg ")
         text = re.sub(r"IÏ(?=\s*(?:²|³|\^|$))", "Iω", text)
         text = re.sub(r"(?<=[=+\-*/(])\s*Ï(?=\s*(?:$|[+\-*/),]))", "ω", text)
         text = re.sub(r"\bÏ\s*(?=[²2³3\^*/,)\s]|$)", "ω", text)
@@ -428,7 +433,10 @@ related result. Do not expose internal reasoning.
         # the Latin-1 repair fails. In guided mathematical output, Ï is the
         # known mojibake form of ω; normalize it directly rather than exposing
         # corrupted symbols to the UI.
-        text = text.replace("Ï", "ω")
+        text = text.replace("Ï", "omega")
+        # Keep guided output transport-safe and deterministic. The frontend can
+        # render ASCII scientific notation without relying on a broken model
+        # encoding boundary.
         return text
 
     @staticmethod
