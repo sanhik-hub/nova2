@@ -1,12 +1,56 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import "./App.css";
 import { StandardMode } from "./modes/StandardMode";
 import { GraphicalMode } from "./modes/GraphicalMode";
+import { AuthView } from "./components/AuthView";
+import { AccountView } from "./components/AccountView";
+import { getCurrentLocalUser, logoutLocalAccount, type LocalUser } from "./services/api";
 
-type Mode = "standard" | "graphical";
+type Mode = "standard" | "graphical" | "account";
 
 function App() {
   const [mode, setMode] = useState<Mode>("standard");
+  const [user, setUser] = useState<LocalUser | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("prismoffline_auth_token");
+    if (!token) {
+      setAuthChecking(false);
+      return;
+    }
+
+    getCurrentLocalUser()
+      .then(setUser)
+      .catch(() => localStorage.removeItem("prismoffline_auth_token"))
+      .finally(() => setAuthChecking(false));
+  }, []);
+
+  async function logout() {
+    await logoutLocalAccount();
+    setUser(null);
+    setMode("standard");
+  }
+
+  if (authChecking) {
+    return (
+      <div className="app-shell">
+        <main className="main-content">
+          <section className="card auth-loading">Loading local account...</section>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="app-shell">
+        <main className="main-content">
+          <AuthView onAuthenticated={(nextUser) => setUser(nextUser)} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -37,10 +81,30 @@ function App() {
           >
             Graphical
           </button>
-        </div>     </header>
+          <button
+            className={mode === "account" ? "mode-button active" : "mode-button"}
+            onClick={() => setMode("account")}
+            type="button"
+          >
+            Account
+          </button>
+        </div>
+        <div className="account-chip">
+          <span>{user.username}</span>
+          <button className="account-logout-button" type="button" onClick={() => void logout()}>
+            Log Out
+          </button>
+        </div>
+      </header>
 
       <main className="main-content">
-        {mode === "standard" ? <StandardMode /> : <GraphicalMode />}
+        {mode === "standard" ? (
+          <StandardMode />
+        ) : mode === "graphical" ? (
+          <GraphicalMode />
+        ) : (
+          <AccountView user={user} onLogout={() => void logout()} />
+        )}
       </main>
 
       <footer className="footer">
