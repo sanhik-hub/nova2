@@ -81,6 +81,10 @@ class ReasoningService:
 
         explicit_operation = self._detect_explicit_operation(problem)
 
+        # Result-only mode may also use the exact CAS path for clear natural-language calculus requests.
+        if explanation == "off" and explicit_operation is None:
+            explicit_operation = self._detect_result_only_operation(problem)
+
         if explicit_operation is not None:
             operation, arguments = explicit_operation
             tool_result = self._execute_tool(operation, arguments)
@@ -664,6 +668,23 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         }
         return response
 
+    def _detect_result_only_operation(self, problem: str):
+        text = problem.strip()
+        patterns = [
+            (r"^(?:the )?derivative of\\s+(.+?)(?:\\s+with respect to\\s+([A-Za-z]))?\\s*\\.?$", "differentiate"),
+            (r"^find (?:the )?derivative of\\s+(.+?)(?:\\s+with respect to\\s+([A-Za-z]))?\\s*\\.?$", "differentiate"),
+            (r"^(?:the )?integral of\\s+(.+?)(?:\\s+(?:with respect to|wrt)\\s+([A-Za-z]))?\\s*\\.?$", "integrate"),
+            (r"^integrate\\s+(.+?)(?:\\s+(?:with respect to|wrt)\\s+([A-Za-z]))?\\s*\\.?$", "integrate"),
+        ]
+        for pattern, operation in patterns:
+            match = re.match(pattern, text, re.IGNORECASE)
+            if not match:
+                continue
+            expression = normalize_expression(match.group(1).strip().strip(chr(96)))
+            variable = (match.group(2) or "x").strip()
+            if expression and re.search(r"[A-Za-z]", expression):
+                return operation, {"expression": expression, "variable": variable}
+        return None
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
 
