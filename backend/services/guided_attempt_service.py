@@ -31,15 +31,51 @@ class GuidedAttemptService:
             return {"success": False, "error": "Question is empty."}
 
         started = perf_counter()
+        planner_elapsed_ms = 0.0
+        planner_step_count_advisory = None
+
         if step_count is None:
-            step_count, guided_answer_tokens = self._estimate_guided_complexity(problem)
+            fallback_step_count, fallback_tokens = self._estimate_guided_complexity(problem)
+
+            planner_started = perf_counter()
+            planner_response = self.router.plan(
+                prompt=(
+                    "Estimate a guided STEM solution path. Return ONLY two integers "
+                    "in this exact format: STEP_COUNT|ANSWER_TOKENS. "
+                    "STEP_COUNT should be between 2 and 8. ANSWER_TOKENS is only "
+                    "an advisory estimate for the complete guided response and "
+                    "does not cap generation.\n\n"
+                    f"Problem: {problem}"
+                ),
+                system_prompt=(
+                    "You are a fast planning model. Do not solve the problem. "
+                    "Estimate only useful guided MCQ stages and a reasonable "
+                    "completion-size advisory. Return only N|T."
+                ),
+                max_tokens=48,
+                compact=True,
+            )
+            planner_elapsed_ms = (perf_counter() - planner_started) * 1000
+
+            planned = self._parse_compact_plan(planner_response.get("result"))
+            if planned is not None:
+                planned_steps, planned_tokens = planned
+                step_count = max(2, min(8, planned_steps))
+                guided_answer_tokens = planned_tokens
+                planner_step_count_advisory = planned_steps
+            else:
+                # Invalid/unavailable planner output is never a failure.
+                step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
+                planner_step_count_advisory = step_count
         else:
-            guided_answer_tokens = max(300, min(900, 70 * step_count))
+            step_count = max(2, min(8, int(step_count)))
+            guided_answer_tokens = max(300, 70 * step_count)
+            planner_step_count_advisory = step_count
 
         # Keep the one-pass record compact. More records make the 4B local
         # model spend most of its generation budget on distractors instead of
         # the actual STEM derivation.
-        step_count = max(3, min(5, int(step_count)))
+        step_count = max(2, min(8, int(step_count)))
         hint_field = "|||HINT" if include_hints else ""
 
         prompt = f"""Problem:
@@ -194,7 +230,8 @@ related result. Do not expose internal reasoning.
             "include_hints": include_hints,
             "include_full_solution": True,
             "full_solution": full_solution,
-            "planner_elapsed_ms": 0.0,
+            "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+            "planner_step_count_advisory": planner_step_count_advisory,
             "solution_generation_elapsed_ms": round(generation_elapsed_ms, 2),
             "mcq_generation_elapsed_ms": 0.0,
             "answer_tokens_advisory": guided_answer_tokens,
@@ -271,12 +308,12 @@ related result. Do not expose internal reasoning.
                 "hint": normalized_hint,
             })
 
-        if len(records) < 3:
+        if len(records) < 2:
             raise ValueError(
-                "Guided generator returned fewer than three valid step records."
+                "Guided generator returned fewer than two valid step records."
             )
 
-        return records[:6]
+        return records[:8]
 
     @staticmethod
     def _is_schema_placeholder(value: Any) -> bool:
@@ -427,7 +464,7 @@ related result. Do not expose internal reasoning.
         # Start with a useful minimum for a guided STEM solution, then add
         # stages only for concrete signs of multi-step work. This is metadata
         # only; it never limits the main MCQ generation call.
-        steps = 3
+        steps = 4
 
         complexity_markers = (
             # Count operations that genuinely add a solution stage. Do not
@@ -459,7 +496,7 @@ related result. Do not expose internal reasoning.
         if len(re.findall(r"\\b(?:x|y|z|t|m|M|L|r|R|v|u|a|q|p|V|T|P|I|omega|\\u03c9)\\b", problem)) >= 4:
             steps += 1
 
-        steps = max(3, min(8, steps))
+        steps = max(2, min(8, steps))
 
         # Advisory completion size scales with the number of generated MCQs.
         # It is telemetry/UI guidance only and is deliberately not passed as
@@ -1173,7 +1210,7 @@ Using those verified intermediate choices, write the complete final solution.
             return False, "Guided attempt generator returned an invalid structure."
 
         steps = payload.get("steps")
-        if not isinstance(steps, list) or not 3 <= len(steps) <= 15:
+        if not isinstance(steps, list) or not 2 <= len(steps) <= 8:
             return False, "Guided attempt generator returned the wrong number of steps."
 
         normalized = []
@@ -1336,7 +1373,7 @@ Using those verified intermediate choices, write the complete final solution.
                 for index, step in enumerate(normalized)
                 if index not in redundant_supplied_indices
             ]
-            if len(normalized) < 3:
+            if len(normalized) < 2:
                 return False, (
                     "Guided attempt did not retain enough meaningful solution stages."
                 )
