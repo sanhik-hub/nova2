@@ -127,7 +127,7 @@ class ReasoningService:
 
         if self._is_simple_expression(problem):
             calculation = self.router.calculate(
-                expression=problem,
+                expression=normalize_expression(problem),
                 provider="wolfram",
             )
 
