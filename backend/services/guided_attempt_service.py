@@ -113,10 +113,17 @@ HARD RULES:
 - Do not repeat an intermediate target.
 - For continuous/distributed systems, use either an appropriate standard
   closed-form relation or a differential/integral derivation when natural.
+- For EACH MCQ, first identify its own correct answer from the corresponding
+  path item, then write exactly three plausible distractors for THAT QUESTION.
+- Every option must be a short candidate answer to that question, not an
+  instruction, not a solution step, and not a question.
+- Never reuse an option text from another MCQ. Each MCQ needs its own four
+  answer choices.
 - Exactly four distinct options and exactly one correct answer per question.
 - Return exactly {step_count} path items and exactly {step_count} MCQs.
 - The path item and its corresponding MCQ must represent the SAME solution step.
 - Do not place the final requested result in an earlier option as a distractor.
+- Do not put the wording of a later solution step into an earlier option.
 
 The response is constrained by a JSON schema. Output only the JSON object.
 """.strip()
@@ -133,8 +140,13 @@ laws are allowed when directly applicable to the stated problem. Do not ask
 generic/disconnected law questions. Do not ask for values explicitly supplied
 by the problem, although supplied values may be used in substitutions. Every
 stage must produce a result useful to the next stage, and the final stage must
-establish the requested quantity. Exactly four distinct options and one correct
-answer per question.
+establish the requested quantity.
+
+For every MCQ, generate its four answer choices locally to that MCQ: one
+correct candidate answer plus three plausible but incorrect alternatives.
+Options must be short answer choices, never instructions or copies of another
+stage. Never reuse an option text across different MCQs. Exactly four distinct
+options and one correct answer per question.
 
 The response is constrained by a JSON schema. Return only the schema object.
 """.strip()
@@ -271,8 +283,10 @@ The response is constrained by a JSON schema. Return only the schema object.
         steps = 4
 
         complexity_markers = (
+            # Count operations that genuinely add a solution stage. Do not
+            # count verbs such as "determine", "find", or "calculate" because
+            # those commonly describe the single requested result itself.
             "derive", "derivation", "prove", "proof", "show that",
-            "calculate", "determine", "evaluate", "find",
             "integrate", "integration", "differentiate", "differentiation",
             "solve", "equation", "equations", "substitute", "substitution",
             "simplify", "simplification", "limit", "series",
@@ -375,6 +389,9 @@ The response is constrained by a JSON schema. Return only the schema object.
             return None
 
         question = payload.get("question")
+        stage_answer = payload.get("stage_answer")
+        if not isinstance(stage_answer, str) or not stage_answer.strip():
+            return None
         if not isinstance(question, str):
             return None
         question = GuidedAttemptService._normalize_generated_text(question)
@@ -661,6 +678,7 @@ Using those verified intermediate choices, write the complete final solution.
         """Return a strict JSON schema for the single guided generation call."""
         step_properties: dict[str, Any] = {
             "question": {"type": "string", "minLength": 1},
+            "stage_answer": {"type": "string", "minLength": 1},
             "options": {
                 "type": "array",
                 "minItems": 4,
@@ -673,7 +691,7 @@ Using those verified intermediate choices, write the complete final solution.
                 "maximum": 3,
             },
         }
-        required = ["question", "options", "correct_index"]
+        required = ["question", "stage_answer", "options", "correct_index"]
         if include_hints:
             step_properties["hint"] = {"type": "string", "minLength": 1}
             required.append("hint")
@@ -1133,6 +1151,20 @@ Using those verified intermediate choices, write the complete final solution.
                 "and", "by", "as", "value", "terms", "express",
             }
             return " ".join(word for word in q.split() if word not in stop)
+
+        seen_option_sets: set[tuple[str, ...]] = set()
+        for step in normalized:
+            option_set = tuple(
+                sorted(
+                    re.sub(r"\s+", " ", option["text"].lower()).strip()
+                    for option in step["options"]
+                )
+            )
+            if len(set(option_set)) != 4:
+                return False, "Guided attempt contains duplicate options in a question."
+            if option_set in seen_option_sets:
+                return False, "Guided attempt reused the same option pool across questions."
+            seen_option_sets.add(option_set)
 
         seen_targets: set[str] = set()
         for earlier_step in normalized[:-1]:
