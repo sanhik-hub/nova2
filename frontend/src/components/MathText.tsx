@@ -144,9 +144,21 @@ const KNOWN_MATH_WORDS = new Set([
   "sqrt", "pi", "infinity",
 ]);
 
+function looksLikeWolframRuleResult(value: string): boolean {
+  const text = value.trim();
+
+  // Wolfram uses -> for replacement rules. A solved result such as
+  // {{x -> 1.709976...}} or {{x -> Root[...]}} is mathematics, not a
+  // chemical reaction. Keep it out of the chemistry renderer so the
+  // chemistry # -> equiv conversion cannot corrupt Root pure functions.
+  return /^\s*\{\{[\\s\\S]*->/.test(text);
+}
+
 function looksLikeChemistryExpression(value: string): boolean {
   const text = value.trim();
   if (!text || text.includes("$")) return false;
+  if (looksLikeWolframRuleResult(text)) return false;
+
   const hasReaction = /(?:<=>|<->|->|=>|→|⇌|⇄)/.test(text);
   const hasBond = /[A-Z][a-z]?\s*(?:-|=|#)\s*[A-Z][a-z]?/.test(text);
   const hasCharge = /(?:\^\{?\d*[+-]\}?|\d*[+-])\s*$/.test(text);
