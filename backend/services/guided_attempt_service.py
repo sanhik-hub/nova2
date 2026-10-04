@@ -74,6 +74,15 @@ Rules:
   O with an explicit lone-pair marker).
   Do not emit UTF-8/Latin-1 mojibake such as Ã, Â, Î, or Ï.
 - Output exactly one STEP line per solution step.
+- Never output the literal field names or schema placeholders as values:
+  STEP, SOLUTION_STEP, QUESTION, CORRECT_ANSWER, WRONG1, WRONG2, WRONG3, HINT.
+- Never emit a solution field that is only an instruction such as "calculate",
+  "use the formula", "substitute", "check units", or "therefore". Replace it
+  with the actual equation, substitution, transformation, or scientific
+  statement that performs that step.
+- For numerical or algebraic problems, put the actual intermediate expression
+  or result in each relevant solution step. The final step must show the actual
+  requested result.
 - No JSON, Markdown, headings, commentary, or blank lines.
 """.strip()
 
