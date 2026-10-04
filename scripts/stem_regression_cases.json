@@ -1,0 +1,102 @@
+[
+  {
+    "id": "math_derivative",
+    "domain": "math",
+    "question": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x."
+  },
+  {
+    "id": "math_equation",
+    "domain": "math",
+    "question": "Solve x^2 - 5x + 6 = 0."
+  },
+  {
+    "id": "math_integral",
+    "domain": "math",
+    "question": "Integrate 3x^2 + 4x - 1 with respect to x."
+  },
+  {
+    "id": "math_limit",
+    "domain": "math",
+    "question": "Evaluate the limit of (sin(x))/x as x approaches 0."
+  },
+  {
+    "id": "math_simplify",
+    "domain": "math",
+    "question": "Simplify (x^2 - 1)/(x - 1)."
+  },
+  {
+    "id": "math_expression",
+    "domain": "math",
+    "question": "(3 + 5)^2 / 4"
+  },
+  {
+    "id": "physics_emf_rotation",
+    "domain": "physics",
+    "question": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field."
+  },
+  {
+    "id": "physics_projectile",
+    "domain": "physics",
+    "question": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height."
+  },
+  {
+    "id": "physics_ohm",
+    "domain": "physics",
+    "question": "State Ohm's law and explain the meaning of resistance."
+  },
+  {
+    "id": "physics_work",
+    "domain": "physics",
+    "question": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done."
+  },
+  {
+    "id": "physics_coulomb",
+    "domain": "physics",
+    "question": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2."
+  },
+  {
+    "id": "chem_nitrobenzene",
+    "domain": "chemistry",
+    "question": "What is the molecular formula of nitrobenzene?"
+  },
+  {
+    "id": "chem_moles",
+    "domain": "chemistry",
+    "question": "How many moles are present in 18 g of water? Use molar mass 18 g/mol."
+  },
+  {
+    "id": "chem_ideal_gas",
+    "domain": "chemistry",
+    "question": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles."
+  },
+  {
+    "id": "chem_balancing",
+    "domain": "chemistry",
+    "question": "Balance the chemical equation Fe + O2 -> Fe2O3."
+  },
+  {
+    "id": "chem_ph",
+    "domain": "chemistry",
+    "question": "Calculate the pH of a 0.001 M strong hydrochloric acid solution."
+  },
+  {
+    "id": "science_newton",
+    "domain": "general_science",
+    "question": "What is Newton's second law of motion?"
+  },
+  {
+    "id": "science_density",
+    "domain": "general_science",
+    "question": "A substance has mass 200 g and volume 50 cm^3. Calculate its density."
+  },
+  {
+    "id": "science_percentage",
+    "domain": "general_science",
+    "question": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?"
+  },
+  {
+    "id": "physics_circular",
+    "domain": "physics",
+    "question": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration."
+  }
+]
