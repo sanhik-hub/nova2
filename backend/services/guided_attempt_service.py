@@ -52,6 +52,11 @@ STEP|||SOLUTION_STEP|||QUESTION|||CORRECT_ANSWER|||WRONG1|||WRONG2|||WRONG3{hint
 
 Rules:
 - SOLUTION_STEP is one necessary mathematical or scientific action.
+- For quantitative problems, include the governing equation, substitution, or
+  algebra in the relevant SOLUTION_STEP. Do not create a step that only says
+  "calculate", "use the formula", "check units", or "finalize".
+- For physics, chemistry, and mathematics, the final SOLUTION_STEP must contain
+  the actual requested result, not merely a statement that it was obtained.
 - All solution steps together must be a complete, connected solution.
 - QUESTION must test that exact step, not a generic definition.
 - CORRECT_ANSWER must answer QUESTION and agree with SOLUTION_STEP.
@@ -346,7 +351,7 @@ related result. Do not expose internal reasoning.
         # Start with a useful minimum for a guided STEM solution, then add
         # stages only for concrete signs of multi-step work. This is metadata
         # only; it never limits the main MCQ generation call.
-        steps = 4
+        steps = 3
 
         complexity_markers = (
             # Count operations that genuinely add a solution stage. Do not
@@ -363,11 +368,12 @@ related result. Do not expose internal reasoning.
             if marker in text:
                 steps += 1
 
-        # Multi-part or chained conditions usually require an additional
-        # intermediate decision/result.
-        if any(token in text for token in ("then", "after", "next", "given that", "where")):
+        # Multi-part or chained conditions genuinely add an intermediate
+        # decision/result. Do not count ordinary connective words such as
+        # "and" as separate solution stages.
+        if any(token in text for token in (" then ", " after ", " next ", " given that ", " where ")):
             steps += 1
-        if any(token in text for token in ("and", "also", "respectively")):
+        if any(token in text for token in (" respectively", " in addition", " followed by ")):
             steps += 1
 
         # Mathematical/scientific notation and multiple explicit quantities
