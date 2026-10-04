@@ -469,7 +469,7 @@ related result. Do not expose internal reasoning.
             return correct
 
         has_math_content = bool(re.search(
-            r"(?:=|\\^|[+\\-*/()]|\\b(?:sin|cos|tan|log|ln|sqrt|omega)\\b|\\d)",
+            r"(?:=|\^|[+\-*/()]|\b(?:sin|cos|tan|log|ln|sqrt|omega)\b|\d)",
             solution,
             flags=re.IGNORECASE,
         ))
@@ -482,7 +482,7 @@ related result. Do not expose internal reasoning.
         if not isinstance(value, str):
             return value
         text = GuidedAttemptService._clean_mojibake(value)
-        text = text.replace("∗", "×")
+        text = text.replace("∗", "*")
         text = re.sub(r"\bsmallelement\b", "small element", text, flags=re.IGNORECASE)
         return text.strip()
 
