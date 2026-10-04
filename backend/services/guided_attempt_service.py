@@ -163,44 +163,54 @@ MCQ instructions.
             for index, step in enumerate(solution_steps, start=1)
         )
 
-        # PASS 2: convert the fixed solution path into MCQs. The model no longer
-        # has to discover the STEM path, which is the central reliability change.
+        # PASS 2: convert the fixed solution path into concise MCQ records.
+        # The solution path remains authoritative: the LLM supplies only the
+        # question wording and three distractors. Python supplies the correct
+        # answer directly from the corresponding solution step, so the model
+        # cannot change the answer or break the old stage_answer contract.
         mcq_prompt = f"""Original problem:
 {problem}
 
-Authoritative solution path:
+Authoritative solution steps:
 {solution_text}
 
-Convert EACH numbered solution step into exactly one guided MCQ, in the same
-order.
+For EACH numbered solution step, write exactly one concise MCQ record in the
+same order. Do not solve a new problem and do not change the solution path.
+
+Record format:
+STEP|||QUESTION|||DISTRACTOR1|||DISTRACTOR2|||DISTRACTOR3"""
+        if include_hints:
+            mcq_prompt += """|||HINT"""
+        mcq_prompt += """
 
 Rules:
-- Do not invent, reorder, merge, or split solution steps.
-- The question must ask the student to perform or identify the specific action/result in that solution step.
-- The correct option must be the result established by that solution step.
-- Never ask for a quantity that the original problem already gives.
-- Do not repeat the same target in two different questions.
+- One record per solution step, no extra records.
+- QUESTION must ask about the specific action/result of that step.
+- The correct answer is already fixed by the corresponding solution step; do
+  not write the correct answer as a distractor.
+- Never ask for a quantity explicitly supplied by the original problem.
 - Do not ask generic definitions or unrelated formula-recall questions.
-- Each question has exactly four distinct short options and one correct option.
-- Earlier questions must not reveal the final requested result unless that result is genuinely established by that earlier step.
-- If hints are requested, give a short hint that points toward the current step without giving its answer.
-- Return only the required JSON object.
+- Distractors must be short, plausible, and clearly different from the correct
+  answer.
+- Do not repeat the same question target.
+- If hints are requested, give a short hint that helps the student reach the
+  step without stating its answer.
+- Use plain scientific notation. Do not use JSON, Markdown, headings, or prose
+  outside the STEP records.
 """.strip()
 
         mcq_system = """
-You convert an authoritative STEM solution into concise guided MCQs.
+You are a guided-attempt question writer.
 
-The supplied numbered solution is the source of truth. Do NOT solve a different
-problem and do NOT create a new path. Preserve the exact step order and make
-each question test the corresponding step.
+The numbered solution supplied by the user is authoritative. You are NOT the
+solver. Preserve its order and create one useful MCQ around each existing step.
+The correct answer for each record will be inserted by the application from
+that authoritative step, so focus only on concise question wording and three
+plausible wrong alternatives.
 
-For each step, create one useful question, four distinct options, and exactly
-one correct_index. The correct option must match the result of that solution
-step. Use the original problem's supplied data directly rather than asking the
-student to identify it.
-
-Keep questions concise. Avoid duplicate targets, generic definitions, and
-trivial repetition. Output only the requested JSON.
+Never create a new derivation, never change the requested result, never ask for
+data already given in the original problem, and never duplicate a target.
+Output only STEP records.
 """.strip()
 
         generation_started = perf_counter()
@@ -208,15 +218,11 @@ trivial repetition. Output only the requested JSON.
             prompt=mcq_prompt,
             system_prompt=mcq_system,
             max_tokens=min(
-                500,
-                max(300, 70 * len(solution_steps) + (30 if include_hints else 0)),
+                320,
+                max(180, 52 * len(solution_steps) + (18 if include_hints else 0)),
             ),
             temperature=0,
             enable_thinking=False,
-            response_format=self._guided_response_format(
-                step_count=len(solution_steps),
-                include_hints=include_hints,
-            ),
         )
         mcq_generation_elapsed_ms = (perf_counter() - generation_started) * 1000
 
@@ -231,46 +237,20 @@ trivial repetition. Output only the requested JSON.
             }
 
         try:
-            generated_payload = self._parse_json(generation_response.get("result"))
-        except (TypeError, ValueError, json.JSONDecodeError) as exc:
-            detail = str(exc).strip() or "unknown guided MCQ format"
-            return {
-                "success": False,
-                "error": f"Guided MCQ generator returned an unreadable format: {detail}",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                "answer_tokens_advisory": guided_answer_tokens,
-            }
-
-        raw_steps = generated_payload.get("steps") if isinstance(generated_payload, dict) else None
-        if not isinstance(raw_steps, list) or len(raw_steps) != len(solution_steps):
-            return {
-                "success": False,
-                "error": "Guided MCQ generator returned the wrong number of steps.",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                "answer_tokens_advisory": guided_answer_tokens,
-            }
-
-        generated_steps = []
-        for payload in raw_steps:
-            normalized_step = self._validate_single_step(
-                payload,
-                include_hints=include_hints,
-                is_final=False,
+            generated_steps = self._parse_mcq_records(
+                generation_response.get("result"),
+                solution_steps,
+                include_hints,
             )
-            if normalized_step is None:
-                return {
-                    "success": False,
-                    "error": "Guided MCQ generator returned an invalid step contract.",
-                    "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                    "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                    "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                    "answer_tokens_advisory": guided_answer_tokens,
-                }
-            generated_steps.append(normalized_step)
+        except ValueError as exc:
+            return {
+                "success": False,
+                "error": str(exc),
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
 
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
@@ -300,6 +280,71 @@ trivial repetition. Output only the requested JSON.
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
         }
+
+    @staticmethod
+    def _parse_mcq_records(
+        raw: Any,
+        solution_steps: list[str],
+        include_hints: bool,
+    ) -> list[dict[str, Any]]:
+        """Parse compact MCQ records and bind correct answers to solution steps."""
+        if not isinstance(raw, str):
+            raise ValueError("Guided MCQ generator returned no text.")
+
+        text = raw.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:text|txt)?\\s*", "", text, count=1, flags=re.IGNORECASE)
+            text = re.sub(r"\\s*```\\s*$", "", text, count=1)
+
+        records = []
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            marker = line.upper().find("STEP|||")
+            if marker >= 0:
+                line = line[marker:]
+            else:
+                continue
+
+            fields = [part.strip() for part in line.split("|||")]
+            expected = 6 if include_hints else 5
+            if len(fields) != expected or fields[0].upper() != "STEP":
+                continue
+
+            question, distractors = fields[1], fields[2:5]
+            hint = fields[5] if include_hints else None
+            if not question or any(not value for value in distractors):
+                continue
+            if include_hints and not hint:
+                continue
+
+            correct = GuidedAttemptService._normalize_generated_text(solution_steps[len(records)])
+            options = [
+                {"text": correct},
+                *[
+                    {"text": GuidedAttemptService._normalize_generated_text(value)}
+                    for value in distractors
+                ],
+            ]
+
+            normalized = {
+                "question": GuidedAttemptService._normalize_generated_text(question),
+                "stage_answer": correct,
+                "options": options,
+                "correct_index": 0,
+            }
+            if include_hints:
+                normalized["hint"] = GuidedAttemptService._normalize_generated_text(hint)
+            records.append(normalized)
+
+            if len(records) == len(solution_steps):
+                break
+
+        if len(records) != len(solution_steps):
+            raise ValueError("Guided MCQ generator returned an incomplete step contract.")
+
+        return records
 
     @staticmethod
     def _parse_numbered_solution(text: str) -> list[str]:
