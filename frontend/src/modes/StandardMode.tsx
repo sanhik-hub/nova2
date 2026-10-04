@@ -44,7 +44,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   const [explanation, setExplanation] =
     useState<ExplanationPreference>("off");
   const [includeHints, setIncludeHints] = useState(false);
-  const [includeFullSolution, setIncludeFullSolution] = useState(false);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [guided, setGuided] = useState<GuidedState | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -67,7 +66,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   const [cachedGuided, setCachedGuided] = useState<{
     query: string;
     includeHints: boolean;
-    includeFullSolution: boolean;
     steps: GuidedStep[];
     fullSolution?: ReasonResponse | null;
   } | null>(null);
@@ -112,7 +110,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
     setQuestion(savedGuidedAttempt.question);
     setTaskMode("guided");
     setIncludeHints(Boolean(payload.include_hints));
-    setIncludeFullSolution(Boolean(payload.include_full_solution));
     setGuided(restored);
     setGuidedFollowUps(followUps);
     setGuidedFollowUpText("");
