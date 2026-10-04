@@ -235,8 +235,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
       }
 
       const generatedSteps = result.steps;
-      const fullSolution: ReasonResponse | null = null;
-
       if (!cached) {
         const cacheEntry = {
           query: trimmed,
@@ -334,7 +332,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
       score: finished.score,
       total_steps: finished.steps.length,
       include_hints: includeHints,
-      include_full_solution: includeFullSolution,
+      include_full_solution: Boolean(finished.fullSolution),
       full_solution: finished.fullSolution?.answer ?? null,
       mcq_elapsed_ms: finished.mcqElapsedMs,
       hint_elapsed_ms: finished.hintElapsedMs,
@@ -867,16 +865,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                   <small>Generated with the MCQ request</small>
                 </div>
               )}
-              {includeFullSolution && (
-                <div>
-                  <strong>Final solution</strong>
-                  <span>
-                    {guided.finalSolutionElapsedMs === null
-                      ? "Still generating..."
-                      : (guided.finalSolutionElapsedMs / 1000).toFixed(2) + " s"}
-                  </span>
-                </div>
-              )}
             </div>
           </section>
 
@@ -912,13 +900,9 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                     answers: Array(saved.steps.length).fill(null),
                     score: 0,
                     finished: false,
-                    fullSolution: cachedGuided?.fullSolution ?? null,
-                    fullSolutionLoading:
-                      includeFullSolution && !cachedGuided?.fullSolution,
-                    finalSolutionElapsedMs:
-                      cachedGuided?.fullSolution?.final_solution_elapsed_ms ??
-                      cachedGuided?.fullSolution?.elapsed_ms ??
-                      null,
+                    fullSolution: null,
+                    fullSolutionLoading: false,
+                    finalSolutionElapsedMs: null,
                   });
                   setSelectedOption(null);
                 }}
@@ -968,12 +952,29 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
             </div>
           </section>
 
-          {includeFullSolution && guided.fullSolution && (
-            <ReasonResult response={guided.fullSolution} />
+          {!guided.fullSolution && !guided.fullSolutionLoading && (
+            <section className="card">
+              <div className="eyebrow">OPTIONAL</div>
+              <h2>Full Solution</h2>
+              <p>
+                Generate the complete worked solution only when you want to review it.
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void requestFullGuidedSolution()}
+              >
+                Show Full Solution
+              </button>
+            </section>
           )}
 
-          {includeFullSolution && guided.fullSolutionLoading && (
-            <LoadingState text="Finishing the complete solution..." />
+          {guided.fullSolutionLoading && (
+            <LoadingState text="Generating the full solution..." />
+          )}
+
+          {guided.fullSolution && (
+            <ReasonResult response={guided.fullSolution} />
           )}
           <section className="card follow-up-card">
             <div className="eyebrow">FOLLOW UP</div>
