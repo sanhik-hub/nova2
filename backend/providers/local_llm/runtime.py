@@ -64,6 +64,7 @@ class LocalLLMRuntime:
         system_prompt: Optional[str] = None,
         enable_thinking: bool = False,
         response_format: Optional[dict[str, Any]] = None,
+        request_timeout: Optional[int] = None,
     ) -> str:
 
         if not self.loaded:
@@ -123,7 +124,7 @@ class LocalLLMRuntime:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=self.config.request_timeout,
+                timeout=(request_timeout or self.config.request_timeout),
             ) as response:
 
                 raw = response.read().decode("utf-8")
