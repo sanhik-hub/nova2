@@ -886,26 +886,11 @@ givens. Output only the requested STEP records.""".strip()
                 raise ValueError(f"Line {line_number} has an empty question.")
             if any(not option for option in options):
                 raise ValueError(f"Line {line_number} has an empty option.")
-            try:
-                correct_index = int(index_text)
-            except ValueError:
-                numeric = re.fullmatch(r"([0-3])(?:\.0+)?", index_text)
-                if numeric:
-                    correct_index = int(numeric.group(1))
-                else:
-                    label = index_text.upper().strip("[]()")
-                    label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
-                    if label in label_map:
-                        correct_index = label_map[label]
-                    else:
-                        # Also tolerate harmless wrappers such as
-                        # "CORRECT_INDEX=2" from the small local model.
-                        match = re.fullmatch(r"(?:CORRECT_INDEX|INDEX)\s*=\s*([0-3])", label)
-                        if not match:
-                            raise ValueError(
-                                f"Line {line_number} has a non-integer correct_index."
-                            )
-                        correct_index = int(match.group(1))
+            correct_index = GuidedAttemptService._parse_correct_index(index_text)
+            if correct_index is None:
+                raise ValueError(
+                    f"Line {line_number} has an invalid correct_index: {index_text!r}."
+                )
             if not 0 <= correct_index < 4:
                 raise ValueError(f"Line {line_number} has correct_index outside 0-3.")
             step: dict[str, Any] = {
@@ -923,6 +908,66 @@ givens. Output only the requested STEP records.""".strip()
         if not steps:
             raise ValueError("No STEP records found.")
         return {"steps": steps}
+
+    @staticmethod
+    def _parse_correct_index(value: Any) -> int | None:
+        """Normalize the answer-position formats commonly emitted by local models.
+
+        The guided record contract is still exactly one integer in [0, 3].
+        This helper only tolerates harmless textual wrappers around that value;
+        it never guesses from the option contents.
+        """
+        if isinstance(value, bool) or value is None:
+            return None
+
+        text = str(value).strip()
+        if not text:
+            return None
+
+        # Canonical integer and integer-valued decimal forms.
+        numeric = re.fullmatch(r"[+]?([0-3])(?:\\.0+)?", text)
+        if numeric:
+            return int(numeric.group(1))
+
+        label = text.upper().strip()
+        label = re.sub(r"^[\\[\\(\\{\\s]+|[\\]\\)\\}\\s]+$", "", label)
+        label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+        if label in label_map:
+            return label_map[label]
+
+        # Common local-model wrappers:
+        #   CORRECT_INDEX=2
+        #   INDEX: 2
+        #   Option B
+        #   Correct option: C
+        #   The correct answer is D
+        numeric_match = re.fullmatch(
+            r"(?:CORRECT[_ ]?INDEX|INDEX|OPTION|CHOICE|ANSWER|CORRECT(?:[ _-]+OPTION)?|"
+            r"CORRECT[_ ]?ANSWER)\\s*[:=\\-]?\\s*([0-3])(?:\\.0+)?",
+            label,
+        )
+        if numeric_match:
+            return int(numeric_match.group(1))
+
+        letter_match = re.fullmatch(
+            r"(?:OPTION|CHOICE|ANSWER|CORRECT(?:[ _-]+OPTION)?|CORRECT[_ ]?ANSWER)"
+            r"\\s*(?:IS\\s*)?[:=\\-]?\\s*([ABCD])\\.?",
+            label,
+        )
+        if letter_match:
+            return label_map[letter_match.group(1)]
+
+        # Allow a short natural-language wrapper only when it explicitly
+        # identifies the field as the correct answer/index.
+        if re.search(r"\\b(?:correct|index|answer|option|choice)\\b", label):
+            digit_matches = re.findall(r"(?<!\\d)([0-3])(?!\\d)", label)
+            if len(digit_matches) == 1:
+                return int(digit_matches[0])
+            letter_matches = re.findall(r"(?<![A-Z])[ABCD](?![A-Z])", label)
+            if len(letter_matches) == 1:
+                return label_map[letter_matches[0]]
+
+        return None
 
     @staticmethod
     def _parse_json(raw: Any) -> Any:
