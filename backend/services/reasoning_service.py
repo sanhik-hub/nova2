@@ -109,6 +109,91 @@ class ReasoningService:
 
         return response
 
+    def solve_follow_up(
+        self,
+        original_question: str,
+        original_answer: str,
+        history: list[dict[str, str]],
+        follow_up: str,
+    ) -> dict[str, Any]:
+        """Answer a follow-up using the complete local question-session history."""
+        original_question = original_question.strip()
+        original_answer = original_answer.strip()
+        follow_up = follow_up.strip()
+
+        if not original_question or not follow_up:
+            return self._error("Both the original question and follow-up are required.")
+
+        turns: list[str] = [
+            f"Original question:\n{original_question}",
+            f"Original answer:\n{original_answer}",
+        ]
+
+        for index, item in enumerate(history, start=1):
+            if not isinstance(item, dict):
+                continue
+            user_text = str(item.get("question") or "").strip()
+            answer_text = str(item.get("answer") or "").strip()
+            if user_text:
+                turns.append(f"Follow-up {index} question:\n{user_text}")
+            if answer_text:
+                turns.append(f"Follow-up {index} answer:\n{answer_text}")
+
+        turns.append(f"Current follow-up question:\n{follow_up}")
+
+        prompt = """You are answering a follow-up question in an ongoing STEM problem-solving session.
+
+Use the original question, original answer, and every previous follow-up turn below as authoritative local session context. Resolve references such as "this", "that result", "the value above", "what if", or "why" from that context. Do not reset the problem to a new unrelated problem unless the user explicitly asks for one.
+
+You handle mathematics, physics, chemistry, and general science. Preserve all stated quantities, symbols, structures, assumptions, units, atom mappings, and prior results unless the current follow-up explicitly changes them.
+
+For calculations, perform the required reasoning and show the actual equations/substitution needed for the answer. For chemistry, preserve the stated substrate and atom mapping and keep formulas, bonds, valence, formal charge, stoichiometry, and reaction identity consistent. Do not invent missing data.
+
+Return only the answer to the current follow-up. Do not repeat the session transcript or add meta-commentary.
+
+Scientific display contract:
+- Put mathematical expressions in $...$.
+- Put chemical formulas, structures, and reaction equations in $...$.
+- Use explicit bonds (-, =, equiv), reaction arrows (\rightarrow), and formal charges where relevant.
+- Use explicit lone-pair notation when lone pairs matter.
+"""
+
+        prompt = prompt + "\n\n" + "\n\n".join(turns)
+
+        started = time.perf_counter()
+        try:
+            result = self.router.generate(
+                prompt=prompt,
+                temperature=0.0,
+                system_prompt=(
+                    "You are Nova's follow-up STEM solver. "
+                    "Answer the current follow-up using the complete supplied session context. "
+                    "Be correct, direct, and scientifically precise."
+                ),
+                enable_thinking=False,
+                request_timeout=None,
+            )
+        except Exception as exc:
+            return self._error(f"Follow-up processing failed: {exc}")
+
+        if not result.get("success"):
+            return self._error(result.get("error") or "Follow-up processing failed.")
+
+        answer = str(result.get("result") or "").strip()
+        if not answer:
+            return self._error("The follow-up produced no answer.")
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": result.get("engine") or "local_llm",
+            "tool_calls": result.get("tool_calls", []),
+            "cached": False,
+            "result_only": False,
+            "follow_up": True,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+        }
+
     @staticmethod
     def _normalize_explanation_preference(explanation: bool | str) -> str:
         if explanation is True:
