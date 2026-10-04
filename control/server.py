@@ -622,31 +622,17 @@ def health_status():
 
 
 def start_process(args: list[str], cwd: Path):
-    """Start a Windows child process with a safe fallback.
+    """Start a Windows child process in the same way as the standalone runner.
 
-    Some Windows/Python launch contexts reject CREATE_NEW_PROCESS_GROUP
-    with OSError 22. The Control Center must still be able to start Nova,
-    so retry without that optional process-group flag.
+    The Control Center does not need a new process group because termination
+    uses taskkill /T. Avoiding CREATE_NEW_PROCESS_GROUP also removes a
+    Windows-specific launch failure seen with some Python/console hosts.
     """
-    try:
-        return subprocess.Popen(
-            args,
-            cwd=str(cwd),
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-        )
-    except OSError as exc:
-        if getattr(exc, "winerror", None) != 87 and getattr(exc, "errno", None) != 22:
-            raise
-
-        log(
-            "Process-group launch was rejected by Windows; "
-            "retrying without CREATE_NEW_PROCESS_GROUP."
-        )
-
-        return subprocess.Popen(
-            args,
-            cwd=str(cwd),
-        )
+    return subprocess.Popen(
+        args,
+        cwd=str(cwd),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
 
 
 def start_planner():
@@ -690,17 +676,46 @@ def start_backend():
     if port_listener(BACKEND_PORT):
         return {"ok": True, "message": "Backend is already running."}
 
+    if not PYTHON.exists():
+        raise RuntimeError(f"Python executable not found: {PYTHON}")
+
+    if not (NOVA_ROOT / "backend" / "main.py").exists():
+        raise RuntimeError(f"Backend entry point not found: {NOVA_ROOT / 'backend' / 'main.py'}")
+
     log("Starting FastAPI backend...")
-    start_process(
+    process = start_process(
         [
             str(PYTHON),
+            "-u",
             "-m", "uvicorn", "backend.main:app",
             "--host", HOST,
             "--port", str(BACKEND_PORT),
         ],
         NOVA_ROOT,
     )
-    return {"ok": True, "message": "Backend start requested."}
+
+    # Uvicorn can spend time in FastAPI lifespan startup while the persistent
+    # Wolfram session is being initialized. Do not report success merely
+    # because Popen succeeded: verify the actual HTTP endpoint.
+    deadline = time.time() + 45
+    while time.time() < deadline:
+        if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
+            log("Backend is ready.")
+            return {
+                "ok": True,
+                "message": "Backend is running.",
+                "pid": process.pid,
+            }
+        if process.poll() is not None:
+            raise RuntimeError(
+                f"Backend process exited during startup with code {process.returncode}."
+            )
+        time.sleep(0.5)
+
+    raise RuntimeError(
+        "Backend process was launched but did not become ready within 45 seconds. "
+        "Check the Control Center event log and backend dependencies."
+    )
 
 
 def start_wolfram():
