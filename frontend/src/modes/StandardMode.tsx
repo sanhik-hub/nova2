@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   reasonQuestion,
   startGuidedAttempt,
+  generateGuidedSolution,
   type ExplanationPreference,
   type GuidedStep,
   type ReasonResponse,
@@ -43,7 +44,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   const [explanation, setExplanation] =
     useState<ExplanationPreference>("off");
   const [includeHints, setIncludeHints] = useState(false);
-  const [includeFullSolution, setIncludeFullSolution] = useState(true);
+  const [includeFullSolution, setIncludeFullSolution] = useState(false);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [guided, setGuided] = useState<GuidedState | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -208,8 +209,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
     const cached =
       cachedGuided &&
       cachedGuided.query === trimmed &&
-      cachedGuided.includeHints === includeHints &&
-      cachedGuided.includeFullSolution === includeFullSolution
+      cachedGuided.includeHints === includeHints
         ? cachedGuided
         : null;
 
@@ -220,18 +220,14 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
             query: cached.query,
             steps: cached.steps,
             include_hints: cached.includeHints,
-            include_full_solution: cached.includeFullSolution,
-            full_solution:
-              typeof cached.fullSolution?.answer === "string"
-                ? cached.fullSolution.answer
-                : null,
-            solution_generation_elapsed_ms:
-              cached.fullSolution?.elapsed_ms ?? 0,
+            include_full_solution: false,
+            full_solution: null,
+            solution_generation_elapsed_ms: 0,
             elapsed_ms: 0,
             mcq_elapsed_ms: 0,
             hint_elapsed_ms: 0,
           }
-        : await startGuidedAttempt(trimmed, includeHints, includeFullSolution);
+        : await startGuidedAttempt(trimmed, includeHints, false);
 
       if (!result.success || !result.steps?.length) {
         setResponse({
@@ -242,25 +238,15 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
       }
 
       const generatedSteps = result.steps;
-      const fullSolution =
-        typeof result.full_solution === "string" && result.full_solution.trim()
-          ? {
-              success: true,
-              answer: result.full_solution,
-              engine: "local_llm",
-              tool_calls: [],
-              cached: false,
-              elapsed_ms: result.solution_generation_elapsed_ms ?? 0,
-            }
-          : null;
+      const fullSolution: ReasonResponse | null = null;
 
       if (!cached) {
         const cacheEntry = {
           query: trimmed,
           includeHints,
-          includeFullSolution,
+          includeFullSolution: false,
           steps: generatedSteps,
-          fullSolution,
+          fullSolution: null,
         };
         try {
           sessionStorage.setItem(guidedCacheKey, JSON.stringify(cacheEntry));
@@ -278,14 +264,11 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
         answers: Array(result.steps.length).fill(null),
         score: 0,
         finished: false,
-        fullSolution: cached?.fullSolution ?? fullSolution,
+        fullSolution: null,
         fullSolutionLoading: false,
         mcqElapsedMs: result.mcq_elapsed_ms ?? result.elapsed_ms ?? 0,
         hintElapsedMs: result.hint_elapsed_ms ?? 0,
-        finalSolutionElapsedMs:
-          cached?.fullSolution?.elapsed_ms ??
-          result.solution_generation_elapsed_ms ??
-          null,
+        finalSolutionElapsedMs: null,
       });
     } catch (error) {
       setResponse({
@@ -297,6 +280,47 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
       });
     } finally {
       setGuidedLoading(false);
+    }
+  }
+
+  async function requestFullGuidedSolution() {
+    if (!guided?.finished || guided.fullSolution || guided.fullSolutionLoading) return;
+    setGuided({ ...guided, fullSolutionLoading: true });
+    setSaveError("");
+
+    try {
+      const result = await generateGuidedSolution(guided.query, guided.steps);
+      if (!result.success) {
+        setSaveError(result.error || "Could not generate the full solution.");
+        setGuided({ ...guided, fullSolutionLoading: false });
+        return;
+      }
+
+      const answer = typeof result.answer === "string"
+        ? result.answer
+        : String(result.answer ?? "");
+      const nextGuided = {
+        ...guided,
+        fullSolution: {
+          ...result,
+          answer,
+        },
+        fullSolutionLoading: false,
+        finalSolutionElapsedMs: result.elapsed_ms ?? 0,
+      };
+      setGuided(nextGuided);
+
+      if (savedGuidedId !== null) {
+        await updateLocalItem(
+          savedGuidedId,
+          guided.query.slice(0, 120),
+          guided.query,
+          buildGuidedPayload(nextGuided, guidedFollowUps),
+        );
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not generate the full solution.");
+      setGuided({ ...guided, fullSolutionLoading: false });
     }
   }
 
@@ -701,25 +725,6 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                     </span>
                   </button>
 
-                  <button
-                    className={
-                      includeFullSolution
-                        ? "choice-button selected"
-                        : "choice-button"
-                    }
-                    type="button"
-                    onClick={() => setIncludeFullSolution((value) => !value)}
-                  >
-                    <span className="choice-radio">
-                      {includeFullSolution ? "●" : "○"}
-                    </span>
-                    <span>
-                      <strong>Full solution at the end</strong>
-                      <small>
-                        Generate the complete solution after the final step.
-                      </small>
-                    </span>
-                  </button>
                 </>
               )}
             </div>
