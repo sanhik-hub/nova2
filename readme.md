@@ -101,6 +101,82 @@ Default llama.cpp server:
 http://127.0.0.1:8080
 ~~~
 
+## 4. Planner model setup
+
+PrismOffline uses a separate lightweight planner model for semantic routing. The planner determines the request type, whether exact computation is required, and which operation/arguments should be passed onward. It is a router, not the final solver.
+
+### Planner model
+
+The current default planner model is:
+
+~~~text
+Qwen2.5-0.5B-Instruct-Q4_K_M.gguf
+~~~
+
+Official model repository:
+
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF
+
+Place the model at:
+
+~~~text
+nova2/
+└── models/
+    └── local/
+        └── Qwen2.5-0.5B-Instruct-Q4_K_M.gguf
+~~~
+
+Configuration:
+
+~~~text
+backend/providers/planner_llm/config.py
+~~~
+
+Defaults:
+
+~~~text
+PLANNER_LLM_MODEL=models/local/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf
+PLANNER_LLM_SERVER=http://127.0.0.1:8081
+~~~
+
+The planner runs on port 8081, separately from the main Qwen3 reasoning server on port 8080.
+
+Start it manually with the same llama.cpp server binary:
+
+~~~powershell
+.enginesllama.cppllama-server.exe `
+    -m ".modelslocalQwen2.5-0.5B-Instruct-Q4_K_M.gguf" `
+    --host 127.0.0.1 `
+    --port 8081 `
+    --ctx-size 4096 `
+    --threads 6 `
+    --batch-size 128 `
+    --n-gpu-layers 0
+~~~
+
+Verify:
+
+~~~powershell
+Invoke-WebRequest http://127.0.0.1:8081/health
+~~~
+
+You can override the planner location:
+
+~~~powershell
+$env:PLANNER_LLM_MODEL = "D:ModelsQwen2.5-0.5B-Instruct-Q4_K_M.gguf"
+$env:PLANNER_LLM_SERVER = "http://127.0.0.1:8081"
+~~~
+
+Planner generation estimates are advisory metadata only. They are never used as a hard global output-token ceiling for the final answer.
+
+Relevant files:
+
+~~~text
+backend/providers/planner_llm/
+backend/services/provider_router.py
+backend/services/reasoning_service.py
+~~~
+
 ## 4. Install and configure Wolfram Engine
 
 Open Wolfram's official Windows setup guide:
@@ -162,10 +238,12 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 The launcher starts:
 
-1. llama.cpp
+1. the main llama.cpp server on port 8080
 2. FastAPI
 3. Vite
 4. the persistent Wolfram session through the backend
+
+The lightweight planner server on port 8081 is started separately because it uses its own model. See the planner setup above.
 
 Default addresses:
 
