@@ -11,7 +11,8 @@ type Mode = "standard" | "graphical" | "account";
 function App() {
   const [mode, setMode] = useState<Mode>("standard");
   const [user, setUser] = useState<LocalUser | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);\n  const [savedGuidedAttempt, setSavedGuidedAttempt] = useState<import("./services/api").SavedItem | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [savedGuidedAttempt, setSavedGuidedAttempt] = useState<import("./services/api").SavedItem | null>(null);\n  const [savedGuidedAttempt, setSavedGuidedAttempt] = useState<import("./services/api").SavedItem | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("prismoffline_auth_token");
