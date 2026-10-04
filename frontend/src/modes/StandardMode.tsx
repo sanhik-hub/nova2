@@ -32,7 +32,7 @@ export function StandardMode() {
   const [explanation, setExplanation] =
     useState<ExplanationPreference>("detailed");
   const [includeHints, setIncludeHints] = useState(false);
-  const [includeFullSolution, setIncludeFullSolution] = useState(false);
+  const [includeFullSolution, setIncludeFullSolution] = useState(true);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [guided, setGuided] = useState<GuidedState | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -115,6 +115,12 @@ export function StandardMode() {
             steps: cached.steps,
             include_hints: cached.includeHints,
             include_full_solution: cached.includeFullSolution,
+            full_solution:
+              typeof cached.fullSolution?.answer === "string"
+                ? cached.fullSolution.answer
+                : null,
+            solution_generation_elapsed_ms:
+              cached.fullSolution?.elapsed_ms ?? 0,
             elapsed_ms: 0,
             mcq_elapsed_ms: 0,
             hint_elapsed_ms: 0,
@@ -130,12 +136,25 @@ export function StandardMode() {
       }
 
       const generatedSteps = result.steps;
+      const fullSolution =
+        typeof result.full_solution === "string" && result.full_solution.trim()
+          ? {
+              success: true,
+              answer: result.full_solution,
+              engine: "local_llm",
+              tool_calls: [],
+              cached: false,
+              elapsed_ms: result.solution_generation_elapsed_ms ?? 0,
+            }
+          : null;
+
       if (!cached) {
         const cacheEntry = {
           query: trimmed,
           includeHints,
           includeFullSolution,
           steps: generatedSteps,
+          fullSolution,
         };
         try {
           sessionStorage.setItem(guidedCacheKey, JSON.stringify(cacheEntry));
@@ -153,68 +172,15 @@ export function StandardMode() {
         answers: Array(result.steps.length).fill(null),
         score: 0,
         finished: false,
-        fullSolution: cached?.fullSolution ?? null,
-        fullSolutionLoading: includeFullSolution && !cached?.fullSolution,
+        fullSolution: cached?.fullSolution ?? fullSolution,
+        fullSolutionLoading: false,
         mcqElapsedMs: result.mcq_elapsed_ms ?? result.elapsed_ms ?? 0,
         hintElapsedMs: result.hint_elapsed_ms ?? 0,
-        finalSolutionElapsedMs: null,
+        finalSolutionElapsedMs:
+          cached?.fullSolution?.elapsed_ms ??
+          result.solution_generation_elapsed_ms ??
+          null,
       });
-
-      // Start the optional complete solution immediately after the MCQs are
-      // ready. It runs in the background while the student works through the
-      // attempt, using the MCQ path as verified intermediate reasoning.
-      if (includeFullSolution) {
-        void generateGuidedSolution(trimmed, result.steps)
-          .then((solution) => {
-            const updatedCache = {
-              query: trimmed,
-              includeHints,
-              includeFullSolution,
-              steps: generatedSteps,
-              fullSolution: solution,
-            };
-            try {
-              sessionStorage.setItem(
-                guidedCacheKey,
-                JSON.stringify(updatedCache),
-              );
-              setCachedGuided(updatedCache);
-            } catch {
-              // The generated attempt remains usable even without storage.
-            }
-
-            setGuided((current) =>
-              current
-                ? {
-                    ...current,
-                    fullSolution: solution,
-                    fullSolutionLoading: false,
-                    finalSolutionElapsedMs:
-                      solution.final_solution_elapsed_ms ??
-                      solution.elapsed_ms ??
-                      null,
-                  }
-                : current,
-            );
-          })
-          .catch((error) => {
-            setGuided((current) =>
-              current
-                ? {
-                    ...current,
-                    fullSolution: {
-                      success: false,
-                      error:
-                        error instanceof Error
-                          ? error.message
-                          : "Unable to generate the full solution.",
-                    },
-                    fullSolutionLoading: false,
-                  }
-                : current,
-            );
-          });
-      }
     } catch (error) {
       setResponse({
         success: false,
