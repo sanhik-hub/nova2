@@ -114,16 +114,18 @@ export type GuidedAttemptResponse = {
   steps?: GuidedStep[];
   include_hints?: boolean;
   include_full_solution?: boolean;
+  full_solution?: string | null;
   elapsed_ms?: number;
   mcq_elapsed_ms?: number;
   hint_elapsed_ms?: number;
+  full_solution?: string | null;
   error?: string | null;
 };
 
 export async function startGuidedAttempt(
   query: string,
   includeHints = false,
-  includeFullSolution = false,
+  includeFullSolution = true,
 ): Promise<GuidedAttemptResponse> {
   const response = await fetch("/api/guided/start", {
     method: "POST",
