@@ -1007,3 +1007,8 @@ body{background:#0b0912;color:#e9e7ff}
 .follow-up-result .result-meta {
   margin-bottom: 0;
 }
+
+
+.saved-reattempt{margin-top:10px}
+.graphical-solution-card{margin-top:16px;padding:14px;border:1px solid #3a2c4e;border-radius:10px;background:#120d19}
+.graphical-solution-point{fill:#f4f1ff;stroke:#8b5cf6;stroke-width:3;filter:drop-shadow(0 2px 6px rgba(139,92,246,.65))}
