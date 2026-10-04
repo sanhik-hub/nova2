@@ -13,6 +13,7 @@ import MathText from "./MathText";
 type AccountViewProps = {
   user: LocalUser;
   onLogout: () => void;
+  onReattemptGuided: (item: SavedItem) => void;
 };
 
 export function AccountView({ user, onLogout, onReattemptGuided }: AccountViewProps) {
@@ -179,6 +180,20 @@ export function AccountView({ user, onLogout, onReattemptGuided }: AccountViewPr
                       })}
                     </div>
                   )}
+                  {item.kind === "guided_attempt" && Array.isArray(item.payload.follow_ups) && item.payload.follow_ups.length > 0 && (
+                    <div className="saved-follow-ups">
+                      <div className="answer-label">Follow-ups</div>
+                      {item.payload.follow_ups.map((turn, index) => {
+                        if (!turn || typeof turn !== "object") return null;
+                        const entry = turn as { question?: unknown; answer?: unknown };
+                        return <div className="saved-follow-up" key={index}>
+                          <strong>Follow-up {index + 1}</strong>
+                          {typeof entry.question === "string" && <div><MathText>{entry.question}</MathText></div>}
+                          {typeof entry.answer === "string" && <div className="saved-answer"><MathText>{entry.answer}</MathText></div>}
+                        </div>;
+                      })}
+                    </div>
+                  )}
                   {item.kind === "guided_attempt" && (
                     <div className="saved-guided-summary">
                       <strong>
@@ -189,7 +204,8 @@ export function AccountView({ user, onLogout, onReattemptGuided }: AccountViewPr
                       )}
                     </div>
                   )}
-                  {item.kind === "guided_attempt" && <button className="primary-button saved-reattempt" type="button" onClick={() => onReattemptGuided(item)}>Reattempt</button>}\n                  <button className="secondary-button saved-delete" type="button" onClick={() => void remove(item.id)}>
+                  {item.kind === "guided_attempt" && <button className="primary-button saved-reattempt" type="button" onClick={() => onReattemptGuided(item)}>Reattempt</button>}
+                  <button className="secondary-button saved-delete" type="button" onClick={() => void remove(item.id)}>
                     Delete
                   </button>
                 </details>
