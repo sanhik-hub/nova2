@@ -70,6 +70,7 @@ class ReasoningService:
                     "engine": "local_knowledge",
                     "tool_calls": [],
                     "cached": False,
+                    "result_only": True,
                     "elapsed_ms": round(
                         (time.perf_counter() - started) * 1000,
                         2,
@@ -141,6 +142,37 @@ class ReasoningService:
                 "R-CH=CH₂ + H₂O "
                 "→[1. Hg(OAc)₂, H₂O/THF; 2. NaBH₄] "
                 "R-CH(OH)-CH₃"
+            )
+
+        hydro = (
+            ("hydroboration" in text or "hydro boration" in text)
+            and ("oxidation" in text or "oxidation" in text)
+        )
+        if hydro and overall:
+            return (
+                "R-CH=CH₂ "
+                "→[1. BH₃·THF; 2. H₂O₂, OH⁻] "
+                "R-CH₂-CH₂OH"
+            )
+
+        hydrogenation = (
+            "hydrogenation" in text
+            and any(term in text for term in ("alkene", "alkene", "double bond"))
+        )
+        if hydrogenation and overall:
+            return (
+                "R-CH=CH₂ + H₂ "
+                "→[Ni/Pt/Pd] "
+                "R-CH₂-CH₃"
+            )
+
+        halogenation = (
+            "halogenation" in text
+            and any(term in text for term in ("alkene", "double bond"))
+        )
+        if halogenation and overall:
+            return (
+                "R-CH=CH₂ + Br₂ → R-CHBr-CH₂Br"
             )
 
         return None
@@ -1222,6 +1254,7 @@ Rules:
         return {
             "success": True,
             "answer": answer,
+            "result_only": True,
         }
 
     # =========================================================
@@ -1377,6 +1410,7 @@ Return ONLY the complete solution text.
             "engine": "local_llm+wolfram" if tool_results else "local_llm",
             "tool_calls": tool_results,
             "cached": False,
+            "result_only": explanation == "off",
             "_final_llm_ms": final_llm_ms,
         }
 
