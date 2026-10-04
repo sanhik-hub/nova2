@@ -114,7 +114,7 @@ class ReasoningService:
         return response
 
     @staticmethod
-    def _normalize_explanation_preference(self, explanation: bool | str) -> str:
+    def _normalize_explanation_preference(explanation: bool | str) -> str:
         if explanation is True:
             return "detailed"
         if explanation is False:
