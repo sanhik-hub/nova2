@@ -44,6 +44,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   const [explanation, setExplanation] =
     useState<ExplanationPreference>("off");
   const [includeHints, setIncludeHints] = useState(false);
+  const [includeFullSolution, setIncludeFullSolution] = useState(false);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
   const [guided, setGuided] = useState<GuidedState | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -110,6 +111,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
     setQuestion(savedGuidedAttempt.question);
     setTaskMode("guided");
     setIncludeHints(Boolean(payload.include_hints));
+    setIncludeFullSolution(Boolean(payload.full_solution));
     setGuided(restored);
     setGuidedFollowUps(followUps);
     setGuidedFollowUpText("");
@@ -265,6 +267,10 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
         hintElapsedMs: result.hint_elapsed_ms ?? 0,
         finalSolutionElapsedMs: null,
       });
+
+      if (includeFullSolution && !cached) {
+        void prefetchGuidedFullSolution(trimmed, generatedSteps);
+      }
     } catch (error) {
       setResponse({
         success: false,
@@ -278,6 +284,22 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
     }
   }
 
+  async function prefetchGuidedFullSolution(query: string, steps: GuidedStep[]) {
+    setGuided((current) => current ? { ...current, fullSolutionLoading: true } : current);
+    try {
+      const result = await generateGuidedSolution(query, steps);
+      if (!result.success) {
+        setGuided((current) => current ? { ...current, fullSolutionLoading: false } : current);
+        setSaveError(result.error || "Could not generate the full solution.");
+        return;
+      }
+      const answer = typeof result.answer === "string" ? result.answer : String(result.answer ?? "");
+      setGuided((current) => current && current.query === query ? { ...current, fullSolution: { ...result, answer }, fullSolutionLoading: false, finalSolutionElapsedMs: result.elapsed_ms ?? 0 } : current);
+    } catch (error) {
+      setGuided((current) => current ? { ...current, fullSolutionLoading: false } : current);
+      setSaveError(error instanceof Error ? error.message : "Could not generate the full solution.");
+    }
+  }
   async function requestFullGuidedSolution() {
     if (!guided?.finished || guided.fullSolution || guided.fullSolutionLoading) return;
     setGuided({ ...guided, fullSolutionLoading: true });
@@ -720,6 +742,18 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                     </span>
                   </button>
 
+                  <button
+                    className={includeFullSolution ? "choice-button selected" : "choice-button"}
+                    type="button"
+                    onClick={() => setIncludeFullSolution((value) => !value)}
+                  >
+                    <span className="choice-radio">{includeFullSolution ? "●" : "○"}</span>
+                    <span>
+                      <strong>Full solution</strong>
+                      <small>Generate it in the background while you attempt the MCQs.</small>
+                    </span>
+                  </button>
+
                 </>
               )}
             </div>
@@ -952,28 +986,11 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
             </div>
           </section>
 
-          {!guided.fullSolution && !guided.fullSolutionLoading && (
-            <section className="card">
-              <div className="eyebrow">OPTIONAL</div>
-              <h2>Full Solution</h2>
-              <p>
-                Generate the complete worked solution only when you want to review it.
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void requestFullGuidedSolution()}
-              >
-                Show Full Solution
-              </button>
-            </section>
+          {includeFullSolution && guided.fullSolutionLoading && (
+            <LoadingState text="Generating the full solution in the background..." />
           )}
 
-          {guided.fullSolutionLoading && (
-            <LoadingState text="Generating the full solution..." />
-          )}
-
-          {guided.fullSolution && (
+          {includeFullSolution && guided.fullSolution && (
             <ReasonResult response={guided.fullSolution} />
           )}
           <section className="card follow-up-card">
