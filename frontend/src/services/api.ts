@@ -8,6 +8,7 @@
   result_only?: boolean;
   elapsed_ms?: number;
   final_solution_elapsed_ms?: number;
+  follow_up?: boolean;
 };
 
 export type ComputationResponse = {
