@@ -25,247 +25,145 @@ class GuidedAttemptService:
         include_hints: bool = False,
         step_count: int | None = None,
     ) -> dict[str, Any]:
-        """Generate a concise verified solution first, then convert it into MCQs.
-
-        The solution path is the source of truth for the guided attempt. The
-        second model call only turns those already-connected solution steps into
-        questions/options; it is not asked to discover the solution path again.
-        The first response is also returned as the full solution, so no third
-        generation is required at the end of the attempt.
-        """
+        """Generate the complete guided attempt in one compact LLM pass."""
         problem = query.strip()
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
-        planner_elapsed_ms = 0.0
-        solution_generation_elapsed_ms = 0.0
-        mcq_generation_elapsed_ms = 0.0
-        guided_answer_tokens: int | None = None
-
+        started = perf_counter()
         if step_count is None:
-            fallback_step_count, fallback_tokens = self._estimate_guided_complexity(problem)
-            planner_started = perf_counter()
-            planner_response = self.router.plan(
-                prompt=(
-                    "Estimate a useful concise STEM solution length. Return ONLY "
-                    "STEP_COUNT|ANSWER_TOKENS. STEP_COUNT must be 3-8."
-                    f"\n\nProblem: {problem}"
-                ),
-                system_prompt=(
-                    "You are a fast planning model. Do not solve the problem. "
-                    "Return only N|T, where N is the number of useful solution "
-                    "steps and T is a rough completion-size estimate."
-                ),
-                max_tokens=48,
-                compact=True,
-                request_timeout=3,
-            )
-            planner_elapsed_ms = (perf_counter() - planner_started) * 1000
+            step_count, guided_answer_tokens = self._estimate_guided_complexity(problem)
+        else:
+            guided_answer_tokens = max(300, min(900, 70 * step_count))
 
-            planned = self._parse_compact_plan(planner_response.get("result"))
-            if planned is not None:
-                planned_steps, planned_tokens = planned
-                if abs(planned_steps - fallback_step_count) <= 1:
-                    step_count, guided_answer_tokens = planned_steps, planned_tokens
-                else:
-                    step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
-            else:
-                step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
+        step_count = max(3, min(6, int(step_count)))
+        hint_field = "|||HINT" if include_hints else ""
 
-        if not isinstance(step_count, int) or not 3 <= step_count <= 8:
-            return {
-                "success": False,
-                "error": "Guided attempt step count must be between 3 and 8.",
-            }
-
-        # PASS 1: solve the STEM problem as a short numbered path. This is
-        # deliberately plain text rather than JSON/schema constrained output.
-        # The model is therefore solving a much smaller task than the old
-        # one-shot MCQ generator.
-        solution_prompt = f"""Problem:
+        prompt = f"""Problem:
 {problem}
 
-Write a concise, correct solution in exactly {step_count} numbered steps.
+Create a concise connected Guided Attempt in exactly {step_count} steps.
+
+For every step, output ONE line in this exact format:
+STEP|||SOLUTION_STEP|||QUESTION|||CORRECT_ANSWER|||WRONG1|||WRONG2|||WRONG3{hint_field}
 
 Rules:
-- Solve the actual problem; do not discuss how to make MCQs.
-- Every step must perform one necessary mathematical/scientific action.
-- Use all quantities given by the problem directly; never ask for a supplied quantity.
-- Keep the path connected: each step must use the result/principle established before it.
-- Show the essential equation, substitution, transformation, or chemical relation.
-- Do not add generic topic definitions or filler.
+- SOLUTION_STEP is one necessary mathematical or scientific action.
+- All solution steps together must be a complete, connected solution.
+- QUESTION must test that exact step, not a generic definition.
+- CORRECT_ANSWER must answer QUESTION and agree with SOLUTION_STEP.
+- WRONG1/2/3 must be plausible but incorrect.
+- Never ask for a quantity already explicitly given in the problem.
+- Do not repeat the same calculation or final result.
+- Prefer the shortest valid derivation; avoid artificial stages.
 - The final step must establish the requested result.
-- Prefer the shortest valid derivation. Do not split trivial algebra into separate steps.
-- Use standard scientific notation and UTF-8 characters.
-- Return ONLY the numbered solution steps, one step per line.
+- If hints are requested, add a short hint without revealing the answer.
+- Keep every field concise. Use standard scientific notation; ASCII is fine where
+  it avoids encoding ambiguity.
+- Output exactly one STEP line per solution step.
+- No JSON, Markdown, headings, commentary, or blank lines.
 """.strip()
 
-        solution_system = """
-You are Nova's STEM solution-path solver.
-
-Solve the problem accurately for mathematics, physics, chemistry, or general
-science. Produce a short connected derivation that a student can follow.
-Do the reasoning internally, but expose the necessary equations and scientific
-transformations in the numbered steps.
-
-For chemistry, identify the exact transformation requested and check reactants,
-reagents/conditions, regiochemistry, stoichiometry, and product identity before
-writing the final step. Do not substitute a related reaction or product.
-For physics and mathematics, check the governing relation, substitutions,
-algebra, signs, units, and the requested quantity.
-Never invent missing data.
-
-Output only the numbered solution. No heading, commentary, alternatives, or
-MCQ instructions.
-""".strip()
-
-        solution_started = perf_counter()
-        solution_response = self.router.generate(
-            prompt=solution_prompt,
-            system_prompt=solution_system,
-            max_tokens=min(
-                420,
-                max(240, 48 * step_count + 60),
-            ),
-            temperature=0,
-            enable_thinking=False,
-        )
-        solution_generation_elapsed_ms = (perf_counter() - solution_started) * 1000
-
-        if not solution_response.get("success"):
-            return {
-                "success": False,
-                "error": solution_response.get("error") or "Guided solution generation failed.",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": 0.0,
-                "answer_tokens_advisory": guided_answer_tokens,
-            }
-
-        solution_text = self._normalize_generated_text(
-            str(solution_response.get("result") or "").strip()
-        )
-        solution_steps = self._parse_numbered_solution(solution_text)
-        if len(solution_steps) < 3:
-            return {
-                "success": False,
-                "error": "Guided solution generator returned fewer than three connected steps.",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": 0.0,
-                "answer_tokens_advisory": guided_answer_tokens,
-            }
-
-        # Use the parsed path rather than trusting an arbitrary requested count.
-        # The displayed full solution is exactly this first-pass solution.
-        solution_text = "\n".join(
-            f"{index}. {step}"
-            for index, step in enumerate(solution_steps, start=1)
-        )
-
-        # PASS 2: convert the fixed solution path into concise MCQ records.
-        # The solution path remains authoritative: the LLM supplies only the
-        # question wording and three distractors. Python supplies the correct
-        # answer directly from the corresponding solution step, so the model
-        # cannot change the answer or break the old stage_answer contract.
-        mcq_prompt = f"""Original problem:
-{problem}
-
-Authoritative solution steps:
-{solution_text}
-
-For EACH numbered solution step, write exactly one concise MCQ record in the
-same order. Do not solve a new problem and do not change the solution path.
-
-Record format:
-STEP|||QUESTION|||DISTRACTOR1|||DISTRACTOR2|||DISTRACTOR3"""
         if include_hints:
-            mcq_prompt += """|||HINT"""
-        mcq_prompt += """
+            prompt += "\nHints are requested."
 
-Rules:
-- One record per solution step, no extra records.
-- QUESTION must ask about the specific action/result of that step.
-- The correct answer is already fixed by the corresponding solution step; do
-  not write the correct answer as a distractor.
-- Never ask for a quantity explicitly supplied by the original problem.
-- Do not ask generic definitions or unrelated formula-recall questions.
-- Distractors must be short, plausible, and clearly different from the correct
-  answer.
-- Do not repeat the same question target.
-- If hints are requested, give a short hint that helps the student reach the
-  step without stating its answer.
-- Use plain scientific notation. Do not use JSON, Markdown, headings, or prose
-  outside the STEP records.
+        system_prompt = """You are Nova's Guided Attempt generator.
+
+Solve the original STEM problem accurately and turn the same solution into short
+MCQs in ONE pass. The SOLUTION_STEP fields are the connected solution path and
+the MCQs must test those exact steps.
+
+Reason internally, but output only the STEP records.
+Check mathematics, physics, chemistry, and other science before emitting them.
+Use the actual givens directly. Never invent missing data or substitute a
+related result. Do not expose internal reasoning.
 """.strip()
 
-        mcq_system = """
-You are a guided-attempt question writer.
-
-The numbered solution supplied by the user is authoritative. You are NOT the
-solver. Preserve its order and create one useful MCQ around each existing step.
-The correct answer for each record will be inserted by the application from
-that authoritative step, so focus only on concise question wording and three
-plausible wrong alternatives.
-
-Never create a new derivation, never change the requested result, never ask for
-data already given in the original problem, and never duplicate a target.
-Output only STEP records.
-""".strip()
-
-        generation_started = perf_counter()
-        generation_response = self.router.generate(
-            prompt=mcq_prompt,
-            system_prompt=mcq_system,
+        response = self.router.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
             max_tokens=min(
-                320,
-                max(180, 52 * len(solution_steps) + (18 if include_hints else 0)),
+                440,
+                max(300, 78 * step_count + (18 if include_hints else 0)),
             ),
             temperature=0,
             enable_thinking=False,
         )
-        mcq_generation_elapsed_ms = (perf_counter() - generation_started) * 1000
+        generation_elapsed_ms = (perf_counter() - started) * 1000
 
-        if not generation_response.get("success"):
+        if not response.get("success"):
             return {
                 "success": False,
-                "error": generation_response.get("error") or "Guided MCQ generation failed.",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "error": response.get("error") or "Guided attempt generation failed.",
+                "planner_elapsed_ms": 0.0,
+                "solution_generation_elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": 0.0,
                 "answer_tokens_advisory": guided_answer_tokens,
+                "elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_elapsed_ms": round(generation_elapsed_ms, 2),
+                "hint_elapsed_ms": 0.0,
             }
 
         try:
-            generated_steps = self._parse_mcq_records(
-                generation_response.get("result"),
-                solution_steps,
-                include_hints,
-            )
+            parsed = self._parse_one_pass_records(response.get("result"), include_hints)
         except ValueError as exc:
             return {
                 "success": False,
                 "error": str(exc),
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "planner_elapsed_ms": 0.0,
+                "solution_generation_elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": 0.0,
                 "answer_tokens_advisory": guided_answer_tokens,
+                "elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_elapsed_ms": round(generation_elapsed_ms, 2),
+                "hint_elapsed_ms": 0.0,
             }
+
+        full_solution = "\n".join(
+            f"{index}. {item['solution']}"
+            for index, item in enumerate(parsed, start=1)
+        )
+
+        generated_steps = []
+        for item in parsed:
+            options = [
+                {"text": item["correct"]},
+                {"text": item["wrong"][0]},
+                {"text": item["wrong"][1]},
+                {"text": item["wrong"][2]},
+            ]
+            random.shuffle(options)
+            correct_index = next(
+                index for index, option in enumerate(options)
+                if option["text"] == item["correct"]
+            )
+            step_payload = {
+                "question": item["question"],
+                "stage_answer": item["correct"],
+                "options": options,
+                "correct_index": correct_index,
+            }
+            if include_hints:
+                step_payload["hint"] = item["hint"]
+            generated_steps.append(step_payload)
 
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
             include_hints,
-            len(solution_steps),
+            len(generated_steps),
             problem,
         )
         if not valid:
             return {
                 "success": False,
                 "error": steps_or_error,
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+                "planner_elapsed_ms": 0.0,
+                "solution_generation_elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": 0.0,
                 "answer_tokens_advisory": guided_answer_tokens,
+                "elapsed_ms": round(generation_elapsed_ms, 2),
+                "mcq_elapsed_ms": round(generation_elapsed_ms, 2),
+                "hint_elapsed_ms": 0.0,
             }
 
         return {
@@ -274,12 +172,72 @@ Output only STEP records.
             "steps": steps_or_error,
             "include_hints": include_hints,
             "include_full_solution": True,
-            "full_solution": solution_text,
-            "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-            "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
-            "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
+            "full_solution": full_solution,
+            "planner_elapsed_ms": 0.0,
+            "solution_generation_elapsed_ms": round(generation_elapsed_ms, 2),
+            "mcq_generation_elapsed_ms": 0.0,
             "answer_tokens_advisory": guided_answer_tokens,
+            "elapsed_ms": round(generation_elapsed_ms, 2),
+            "mcq_elapsed_ms": round(generation_elapsed_ms, 2),
+            "hint_elapsed_ms": 0.0,
         }
+
+    @staticmethod
+    def _parse_one_pass_records(
+        raw: Any,
+        include_hints: bool,
+    ) -> list[dict[str, Any]]:
+        if not isinstance(raw, str):
+            raise ValueError("Guided generator returned no text.")
+
+        records: list[dict[str, Any]] = []
+        expected = 8 if include_hints else 7
+
+        for raw_line in raw.strip().splitlines():
+            line = raw_line.strip()
+            marker = line.upper().find("STEP|||")
+            if marker < 0:
+                continue
+
+            fields = [part.strip() for part in line[marker:].split("|||")]
+            if len(fields) != expected or fields[0].upper() != "STEP":
+                continue
+
+            solution, question, correct = fields[1], fields[2], fields[3]
+            wrong = fields[4:7]
+            hint = fields[7] if include_hints else None
+
+            if (
+                not solution
+                or not question
+                or not correct
+                or any(not value for value in wrong)
+                or len({correct, *wrong}) != 4
+            ):
+                continue
+            if include_hints and not hint:
+                continue
+
+            records.append({
+                "solution": GuidedAttemptService._normalize_generated_text(solution),
+                "question": GuidedAttemptService._normalize_generated_text(question),
+                "correct": GuidedAttemptService._normalize_generated_text(correct),
+                "wrong": [
+                    GuidedAttemptService._normalize_generated_text(value)
+                    for value in wrong
+                ],
+                "hint": (
+                    GuidedAttemptService._normalize_generated_text(hint)
+                    if include_hints else None
+                ),
+            })
+
+        if len(records) < 3:
+            raise ValueError(
+                "Guided generator returned fewer than three valid step records."
+            )
+
+        return records[:6]
 
     @staticmethod
     def _parse_mcq_records(
