@@ -159,9 +159,10 @@ class ComputationService:
                     error=f"Provider '{provider}' does not support plotting.",
                 )
 
+            plot_expression = self._graph_expression(normalized_expression, variable)
             solution_result = self._solve_graph_equation(normalized_expression, variable, selected)
             result = selected.plot(
-                expression=normalized_expression,
+                expression=plot_expression,
                 variable=variable,
                 xmin=xmin,
                 xmax=xmax,
@@ -201,9 +202,25 @@ class ComputationService:
                 error=f"Plotting failed: {exc}",
             )
     @staticmethod
+    def _graph_expression(expression: str, variable: str) -> str:
+        if "=" not in expression:
+            return expression
+        left, right = expression.split("=", 1)
+        if left.strip().lower() in {"y", "f(x)"}:
+            return right.strip()
+        return f"({left.strip()}) - ({right.strip()})"
+
+    @staticmethod
     def _solve_graph_equation(expression: str, variable: str, provider):
         try:
-            equation = expression if "=" in expression else f"{expression} == 0"
+            if "=" in expression:
+                left, right = expression.split("=", 1)
+                if left.strip().lower() in {"y", "f(x)"}:
+                    equation = f"{right.strip()} == 0"
+                else:
+                    equation = expression
+            else:
+                equation = f"{expression} == 0"
             solved = provider.calculate(f"Solve[{equation}, {variable}, Reals]")
             if not solved.get("success"):
                 return {"text": "", "points": []}
