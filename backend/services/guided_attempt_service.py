@@ -159,29 +159,12 @@ one correct_index. Output only the requested JSON.
                 "answer_tokens_advisory": guided_answer_tokens,
             }
 
-        solution_path = (
-            generated_payload.get("solution_path")
-            if isinstance(generated_payload, dict)
-            else None
-        )
         raw_steps = (
             generated_payload.get("steps")
             if isinstance(generated_payload, dict)
             else None
         )
-        if (
-            not isinstance(solution_path, list)
-            or len(solution_path) != step_count
-            or any(not isinstance(item, str) or not item.strip() for item in solution_path)
-        ):
-            return {
-                "success": False,
-                "error": "Guided attempt generator returned an invalid solution path.",
-                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
-                "answer_tokens_advisory": guided_answer_tokens,
-            }
-        if not isinstance(raw_steps, list):
+        if not isinstance(raw_steps, list) or len(raw_steps) != step_count:
             return {
                 "success": False,
                 "error": "Guided attempt generator returned an invalid step pool.",
