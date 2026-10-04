@@ -199,3 +199,122 @@ export async function plotExpression(
 
   return parseResponse<PlotResponse>(response);
 }
+
+
+export type LocalUser = {
+  id: number;
+  username: string;
+  created_at?: string;
+};
+
+export type LocalSettings = {
+  save_by_default: boolean;
+};
+
+export type SavedItem = {
+  id: number;
+  kind: "solution" | "guided_attempt";
+  title: string;
+  question: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("prismoffline_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function authRequest<T>(
+  url: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  Object.entries(authHeaders()).forEach(([key, value]) => headers.set(key, value));
+  const response = await fetch(url, { ...options, headers });
+  return parseResponse<T>(response);
+}
+
+export async function registerLocalAccount(
+  username: string,
+  password: string,
+): Promise<{ user: LocalUser; token: string }> {
+  return parseResponse(
+    await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }),
+  );
+}
+
+export async function loginLocalAccount(
+  username: string,
+  password: string,
+): Promise<{ user: LocalUser; token: string }> {
+  return parseResponse(
+    await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }),
+  );
+}
+
+export async function logoutLocalAccount(): Promise<void> {
+  try {
+    await authRequest("/api/auth/logout", { method: "POST" });
+  } finally {
+    localStorage.removeItem("prismoffline_auth_token");
+  }
+}
+
+export async function getCurrentLocalUser(): Promise<LocalUser> {
+  const result = await authRequest<{ success: boolean; user: LocalUser }>("/api/auth/me");
+  return result.user;
+}
+
+export async function getLocalSettings(): Promise<LocalSettings> {
+  const result = await authRequest<{ success: boolean; settings: LocalSettings }>("/api/settings");
+  return result.settings;
+}
+
+export async function updateLocalSettings(
+  settings: LocalSettings,
+): Promise<LocalSettings> {
+  const result = await authRequest<{ success: boolean; settings: LocalSettings }>(
+    "/api/settings",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    },
+  );
+  return result.settings;
+}
+
+export async function saveLocalItem(
+  kind: "solution" | "guided_attempt",
+  title: string,
+  question: string,
+  payload: Record<string, unknown>,
+): Promise<SavedItem> {
+  const result = await authRequest<{ success: boolean; item: SavedItem }>(
+    "/api/storage",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, title, question, payload }),
+    },
+  );
+  return result.item;
+}
+
+export async function listLocalItems(): Promise<SavedItem[]> {
+  const result = await authRequest<{ success: boolean; items: SavedItem[] }>("/api/storage");
+  return result.items;
+}
+
+export async function deleteLocalItem(id: number): Promise<void> {
+  await authRequest<{ success: boolean }>(`/api/storage/${id}`, { method: "DELETE" });
+}
