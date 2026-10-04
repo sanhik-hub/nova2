@@ -255,8 +255,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
   function guidedOriginalAnswer(): string {
     if (guided?.fullSolution?.answer) return String(guided.fullSolution.answer);
     if (!guided) return "";
-    return guided.steps.map((step, index) => `${index + 1}. ${step.question} Answer: ${step.options[step.correct_index]?.text ?? ""}`).join("
-");
+    return guided.steps.map((step, index) => `${index + 1}. ${step.question} Answer: ${step.options[step.correct_index]?.text ?? ""}`).join("\n");
   }
 
   function buildGuidedPayload(finished: GuidedState, followUps: FollowUpTurn[]) {
@@ -297,18 +296,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
         "guided_attempt",
         guided.query.slice(0, 120),
         guided.query,
-        {
-          steps: guided.steps,
-          answers: finishedGuided.answers,
-          score,
-          total_steps: guided.steps.length,
-          include_hints: includeHints,
-          include_full_solution: includeFullSolution,
-          full_solution: finishedGuided.fullSolution?.answer ?? null,
-          mcq_elapsed_ms: guided.mcqElapsedMs,
-          hint_elapsed_ms: guided.hintElapsedMs,
-          ...buildGuidedPayload(finishedGuided, guidedFollowUps),
-        },
+        buildGuidedPayload(finishedGuided, guidedFollowUps),
       )
         .then((saved) => {
           setSavedGuided(true);
