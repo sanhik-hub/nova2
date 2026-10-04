@@ -1213,7 +1213,15 @@ stoichiometry, regiochemistry, and product identity internally. Preserve the
 user's substrate skeleton unless the requested transformation itself changes
 it. Every atom/group in the displayed reaction must be chemically accounted
 for. Never substitute a related reaction, intermediate, side product,
-mechanism, or invented transformation.
+mechanism, or invented transformation. If the question describes a reaction
+class or substrate class without naming a specific substituent, answer using a
+symbolic representation of exactly that stated class. Do not invent extra
+substituents, alter the carbon/atom skeleton, or silently replace the stated
+substrate with a different one. For an overall reaction, show the net
+transformation requested rather than a mechanism or side product. Before
+outputting the result, internally verify atom counts, bond changes, valence,
+formal charge, stoichiometry, and the identity of the product against the
+original substrate.
 
 For chemical structures and reactions, use unambiguous scientific notation.
 When a structure is useful, use LaTeX inside $...$ with explicit single (-),
