@@ -5,6 +5,8 @@ import {
   type ExplanationPreference,
   type GuidedStep,
   type ReasonResponse,
+  getLocalSettings,
+  saveLocalItem,
 } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
@@ -38,6 +40,10 @@ export function StandardMode() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [guidedLoading, setGuidedLoading] = useState(false);
+  const [saveByDefault, setSaveByDefault] = useState(false);
+  const [savedSolution, setSavedSolution] = useState(false);
+  const [savedGuided, setSavedGuided] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [cachedGuided, setCachedGuided] = useState<{
     query: string;
     includeHints: boolean;
@@ -49,6 +55,10 @@ export function StandardMode() {
   const guidedCacheKey = "prismoffline-guided-attempt";
 
   useEffect(() => {
+    void getLocalSettings()
+      .then((settings) => setSaveByDefault(settings.save_by_default))
+      .catch(() => setSaveByDefault(false));
+
     try {
       const raw = sessionStorage.getItem(guidedCacheKey);
       if (!raw) return;
@@ -77,6 +87,26 @@ export function StandardMode() {
     try {
       const result = await reasonQuestion(trimmed, explanation);
       setResponse(result);
+      setSavedSolution(false);
+      setSaveError("");
+
+      if (result.success && saveByDefault) {
+        try {
+          await saveLocalItem(
+            "solution",
+            trimmed.slice(0, 120),
+            trimmed,
+            {
+              answer: typeof result.answer === "string" ? result.answer : String(result.answer ?? ""),
+              response: result,
+              explanation,
+            },
+          );
+          setSavedSolution(true);
+        } catch (error) {
+          setSaveError(error instanceof Error ? error.message : "Could not save the result.");
+        }
+      }
     } catch (error) {
       setResponse({
         success: false,
@@ -202,11 +232,85 @@ export function StandardMode() {
       return total + (answer === guided.steps[index].correct_index ? 1 : 0);
     }, 0);
 
-    setGuided({
+    const finishedGuided = {
       ...guided,
       finished: true,
       score,
-    });
+    };
+    setGuided(finishedGuided);
+    setSavedGuided(false);
+    setSaveError("");
+
+    if (saveByDefault) {
+      void saveLocalItem(
+        "guided_attempt",
+        guided.query.slice(0, 120),
+        guided.query,
+        {
+          steps: guided.steps,
+          answers: finishedGuided.answers,
+          score,
+          total_steps: guided.steps.length,
+          include_hints: includeHints,
+          include_full_solution: includeFullSolution,
+          full_solution: finishedGuided.fullSolution?.answer ?? null,
+          mcq_elapsed_ms: guided.mcqElapsedMs,
+          hint_elapsed_ms: guided.hintElapsedMs,
+          final_solution_elapsed_ms: guided.finalSolutionElapsedMs,
+        },
+      )
+        .then(() => setSavedGuided(true))
+        .catch((error) =>
+          setSaveError(error instanceof Error ? error.message : "Could not save the attempt."),
+        );
+    }
+  }
+
+  async function saveSolutionManually() {
+    if (!response?.success || savedSolution) return;
+    setSaveError("");
+    try {
+      await saveLocalItem(
+        "solution",
+        question.trim().slice(0, 120),
+        question.trim(),
+        {
+          answer: typeof response.answer === "string" ? response.answer : String(response.answer ?? ""),
+          response,
+          explanation,
+        },
+      );
+      setSavedSolution(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save the result.");
+    }
+  }
+
+  async function saveGuidedManually() {
+    if (!guided?.finished || savedGuided) return;
+    setSaveError("");
+    try {
+      await saveLocalItem(
+        "guided_attempt",
+        guided.query.slice(0, 120),
+        guided.query,
+        {
+          steps: guided.steps,
+          answers: guided.answers,
+          score: guided.score,
+          total_steps: guided.steps.length,
+          include_hints: includeHints,
+          include_full_solution: includeFullSolution,
+          full_solution: guided.fullSolution?.answer ?? null,
+          mcq_elapsed_ms: guided.mcqElapsedMs,
+          hint_elapsed_ms: guided.hintElapsedMs,
+          final_solution_elapsed_ms: guided.finalSolutionElapsedMs,
+        },
+      );
+      setSavedGuided(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save the attempt.");
+    }
   }
 
   function chooseOption(index: number) {
@@ -536,6 +640,28 @@ export function StandardMode() {
         </>
       )}
 
+      {saveError && (
+        <div className="card save-error-card">{saveError}</div>
+      )}
+
+      {!guided && !loading && !guidedLoading && response?.success && (
+        <section className="card save-result-card">
+          <span>
+            {savedSolution
+              ? "Saved locally to your account."
+              : "Keep this question and result in your local account."}
+          </span>
+          <button
+            className={savedSolution ? "secondary-button" : "primary-button"}
+            type="button"
+            onClick={() => void saveSolutionManually()}
+            disabled={savedSolution}
+          >
+            {savedSolution ? "Saved" : "Save"}
+          </button>
+        </section>
+      )}
+
       {!guidedLoading && guided?.finished && (
         <>
           <section className="card guided-timing-card">
@@ -577,6 +703,14 @@ export function StandardMode() {
                 : "Review the steps you missed and try the problem again."}
             </p>
             <div className="guided-result-actions">
+              <button
+                className={savedGuided ? "secondary-button" : "primary-button"}
+                type="button"
+                onClick={() => void saveGuidedManually()}
+                disabled={savedGuided}
+              >
+                {savedGuided ? "Saved" : "Save Attempt"}
+              </button>
               <button
                 className="primary-button"
                 type="button"
