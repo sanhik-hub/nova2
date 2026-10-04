@@ -25,16 +25,20 @@ class GuidedAttemptService:
         include_hints: bool = False,
         step_count: int | None = None,
     ) -> dict[str, Any]:
+        """Generate a concise verified solution first, then convert it into MCQs.
+
+        The solution path is the source of truth for the guided attempt. The
+        second model call only turns those already-connected solution steps into
+        questions/options; it is not asked to discover the solution path again.
+        The first response is also returned as the full solution, so no third
+        generation is required at the end of the attempt.
+        """
         problem = query.strip()
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
-        # Guided attempts use a genuinely small planner call for metadata only.
-        # It runs against the dedicated lightweight planner model, uses plain text
-        # instead of constrained JSON decoding, and is capped at a tiny completion.
-        # If the planner is unavailable or slow, the local estimator is an immediate
-        # fallback so guided generation never depends on a second full reasoning pass.
         planner_elapsed_ms = 0.0
+        solution_generation_elapsed_ms = 0.0
         mcq_generation_elapsed_ms = 0.0
         guided_answer_tokens: int | None = None
 
@@ -43,16 +47,14 @@ class GuidedAttemptService:
             planner_started = perf_counter()
             planner_response = self.router.plan(
                 prompt=(
-                    "Estimate a guided STEM solution path. Return ONLY two integers "
-                    "in this exact format: STEP_COUNT|ANSWER_TOKENS. "
-                    "STEP_COUNT must be 3-15. ANSWER_TOKENS is only an advisory "
-                    "estimate for the complete guided response and does not cap generation.\\n\\n"
-                    f"Problem: {problem}"
+                    "Estimate a useful concise STEM solution length. Return ONLY "
+                    "STEP_COUNT|ANSWER_TOKENS. STEP_COUNT must be 3-8."
+                    f"\n\nProblem: {problem}"
                 ),
                 system_prompt=(
                     "You are a fast planning model. Do not solve the problem. "
-                    "Estimate only the number of useful guided MCQ stages and a "
-                    "reasonable completion-size advisory. Return only N|T."
+                    "Return only N|T, where N is the number of useful solution "
+                    "steps and T is a rough completion-size estimate."
                 ),
                 max_tokens=48,
                 compact=True,
@@ -63,10 +65,6 @@ class GuidedAttemptService:
             planned = self._parse_compact_plan(planner_response.get("result"))
             if planned is not None:
                 planned_steps, planned_tokens = planned
-                # The compact 0.5B planner is advisory. Trust it for small
-                # adjustments, but reject implausible jumps from the deterministic
-                # local estimate rather than letting one bad completion distort
-                # the guided path.
                 if abs(planned_steps - fallback_step_count) <= 1:
                     step_count, guided_answer_tokens = planned_steps, planned_tokens
                 else:
@@ -74,105 +72,184 @@ class GuidedAttemptService:
             else:
                 step_count, guided_answer_tokens = fallback_step_count, fallback_tokens
 
-        if not isinstance(step_count, int) or not 3 <= step_count <= 15:
+        if not isinstance(step_count, int) or not 3 <= step_count <= 8:
             return {
                 "success": False,
-                "error": "Guided attempt step count must be between 3 and 15.",
+                "error": "Guided attempt step count must be between 3 and 8.",
             }
 
-        # Generate the complete MCQ pool in one call. The main model remains
-        # responsible for the actual STEM reasoning. The tiny planner is used
-        # only for coarse complexity metadata; its semantic reasoning is not
-        # trusted enough to dictate individual solution stages.
-        generation_prompt = f"""Problem:
+        # PASS 1: solve the STEM problem as a short numbered path. This is
+        # deliberately plain text rather than JSON/schema constrained output.
+        # The model is therefore solving a much smaller task than the old
+        # one-shot MCQ generator.
+        solution_prompt = f"""Problem:
 {problem}
 
-Create exactly {step_count} connected guided MCQ stages.
-
-Plan the shortest correct solution path internally, then turn each path stage
-into one MCQ in the same order. Do not output the path separately.
+Write a concise, correct solution in exactly {step_count} numbered steps.
 
 Rules:
-- Every stage must be a real mathematical/scientific action or intermediate result.
-- Use the actual givens immediately; NEVER make a question ask the student to identify, calculate, define, or recall a quantity that the problem already explicitly provides.
-- Example: if angular velocity is given as omega, do not ask "What is the angular velocity?"; use omega in the next relevant equation.
-- Do not create a prerequisite question whose answer is already stated verbatim in the problem.
-- No generic topic/law questions disconnected from the solution.
-- Prefer the shortest valid path: do not split one substitution or algebraic simplification into multiple trivial questions unless that split is necessary for the student's reasoning.
-- The final stage must establish the requested result.
-- Each MCQ has exactly four short answer choices and exactly one correct choice.
-- Generate each question's choices independently.
-- Do not put the final requested result in an earlier stage.
+- Solve the actual problem; do not discuss how to make MCQs.
+- Every step must perform one necessary mathematical/scientific action.
+- Use all quantities given by the problem directly; never ask for a supplied quantity.
+- Keep the path connected: each step must use the result/principle established before it.
+- Show the essential equation, substitution, transformation, or chemical relation.
+- Do not add generic topic definitions or filler.
+- The final step must establish the requested result.
+- Prefer the shortest valid derivation. Do not split trivial algebra into separate steps.
+- Use standard scientific notation and UTF-8 characters.
+- Return ONLY the numbered solution steps, one step per line.
+""".strip()
+
+        solution_system = """
+You are Nova's STEM solution-path solver.
+
+Solve the problem accurately for mathematics, physics, chemistry, or general
+science. Produce a short connected derivation that a student can follow.
+Do the reasoning internally, but expose the necessary equations and scientific
+transformations in the numbered steps.
+
+For chemistry, identify the exact transformation requested and check reactants,
+reagents/conditions, regiochemistry, stoichiometry, and product identity before
+writing the final step. Do not substitute a related reaction or product.
+For physics and mathematics, check the governing relation, substitutions,
+algebra, signs, units, and the requested quantity.
+Never invent missing data.
+
+Output only the numbered solution. No heading, commentary, alternatives, or
+MCQ instructions.
+""".strip()
+
+        solution_started = perf_counter()
+        solution_response = self.router.generate(
+            prompt=solution_prompt,
+            system_prompt=solution_system,
+            max_tokens=min(
+                420,
+                max(240, 48 * step_count + 60),
+            ),
+            temperature=0,
+            enable_thinking=False,
+        )
+        solution_generation_elapsed_ms = (perf_counter() - solution_started) * 1000
+
+        if not solution_response.get("success"):
+            return {
+                "success": False,
+                "error": solution_response.get("error") or "Guided solution generation failed.",
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": 0.0,
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
+
+        solution_text = self._normalize_generated_text(
+            str(solution_response.get("result") or "").strip()
+        )
+        solution_steps = self._parse_numbered_solution(solution_text)
+        if len(solution_steps) < 3:
+            return {
+                "success": False,
+                "error": "Guided solution generator returned fewer than three connected steps.",
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
+                "mcq_generation_elapsed_ms": 0.0,
+                "answer_tokens_advisory": guided_answer_tokens,
+            }
+
+        # Use the parsed path rather than trusting an arbitrary requested count.
+        # The displayed full solution is exactly this first-pass solution.
+        solution_text = "\n".join(
+            f"{index}. {step}"
+            for index, step in enumerate(solution_steps, start=1)
+        )
+
+        # PASS 2: convert the fixed solution path into MCQs. The model no longer
+        # has to discover the STEM path, which is the central reliability change.
+        mcq_prompt = f"""Original problem:
+{problem}
+
+Authoritative solution path:
+{solution_text}
+
+Convert EACH numbered solution step into exactly one guided MCQ, in the same
+order.
+
+Rules:
+- Do not invent, reorder, merge, or split solution steps.
+- The question must ask the student to perform or identify the specific action/result in that solution step.
+- The correct option must be the result established by that solution step.
+- Never ask for a quantity that the original problem already gives.
+- Do not repeat the same target in two different questions.
+- Do not ask generic definitions or unrelated formula-recall questions.
+- Each question has exactly four distinct short options and one correct option.
+- Earlier questions must not reveal the final requested result unless that result is genuinely established by that earlier step.
+- If hints are requested, give a short hint that points toward the current step without giving its answer.
 - Return only the required JSON object.
 """.strip()
 
-        generation_system = """
-You generate guided STEM MCQs. Internally solve the problem as a shortest
-connected sequence of useful stages, then emit one concise MCQ per stage.
-A supplied quantity is data, not a question target: never ask the student to
-identify or calculate a quantity already stated in the original problem.
-Use supplied symbols/values directly in the first relevant equation.
-Avoid trivial split-up steps; every MCQ must advance the solution.
-The final MCQ must establish the requested result. Each MCQ has four short
-options and one correct_index. Output only the requested JSON.
+        mcq_system = """
+You convert an authoritative STEM solution into concise guided MCQs.
+
+The supplied numbered solution is the source of truth. Do NOT solve a different
+problem and do NOT create a new path. Preserve the exact step order and make
+each question test the corresponding step.
+
+For each step, create one useful question, four distinct options, and exactly
+one correct_index. The correct option must match the result of that solution
+step. Use the original problem's supplied data directly rather than asking the
+student to identify it.
+
+Keep questions concise. Avoid duplicate targets, generic definitions, and
+trivial repetition. Output only the requested JSON.
 """.strip()
 
         generation_started = perf_counter()
         generation_response = self.router.generate(
-            prompt=generation_prompt,
-            system_prompt=generation_system,
+            prompt=mcq_prompt,
+            system_prompt=mcq_system,
             max_tokens=min(
-                guided_answer_tokens or 400,
-                (step_count * 64) + 96,
+                500,
+                max(300, 70 * len(solution_steps) + (30 if include_hints else 0)),
             ),
             temperature=0,
             enable_thinking=False,
             response_format=self._guided_response_format(
-                step_count=step_count,
+                step_count=len(solution_steps),
                 include_hints=include_hints,
             ),
         )
-        mcq_generation_elapsed_ms += (
-            perf_counter() - generation_started
-        ) * 1000
+        mcq_generation_elapsed_ms = (perf_counter() - generation_started) * 1000
 
         if not generation_response.get("success"):
             return {
                 "success": False,
-                "error": (
-                    generation_response.get("error")
-                    or "Guided attempt generation failed."
-                ),
+                "error": generation_response.get("error") or "Guided MCQ generation failed.",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
             }
 
-        raw_generation = generation_response.get("result")
         try:
-            generated_payload = self._parse_json(raw_generation)
+            generated_payload = self._parse_json(generation_response.get("result"))
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
-            # Keep this failure diagnostic and deterministic. Do not spend
-            # another 40-60 seconds on an LLM repair attempt.
-            detail = str(exc).strip() or "unknown guided generation format"
+            detail = str(exc).strip() or "unknown guided MCQ format"
             return {
                 "success": False,
-                "error": f"Guided attempt generator returned an unreadable format: {detail}",
+                "error": f"Guided MCQ generator returned an unreadable format: {detail}",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
             }
 
-        raw_steps = (
-            generated_payload.get("steps")
-            if isinstance(generated_payload, dict)
-            else None
-        )
-        if not isinstance(raw_steps, list) or len(raw_steps) != step_count:
+        raw_steps = generated_payload.get("steps") if isinstance(generated_payload, dict) else None
+        if not isinstance(raw_steps, list) or len(raw_steps) != len(solution_steps):
             return {
                 "success": False,
-                "error": "Guided attempt generator returned an invalid step pool.",
+                "error": "Guided MCQ generator returned the wrong number of steps.",
                 "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
             }
@@ -187,27 +264,26 @@ options and one correct_index. Output only the requested JSON.
             if normalized_step is None:
                 return {
                     "success": False,
-                    "error": "Guided attempt generator returned an invalid step contract.",
+                    "error": "Guided MCQ generator returned an invalid step contract.",
                     "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                    "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
                     "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                     "answer_tokens_advisory": guided_answer_tokens,
                 }
             generated_steps.append(normalized_step)
 
-        generated_steps = self._reorder_final_step(problem, generated_steps)
-
         valid, steps_or_error = self._validate(
             {"steps": generated_steps},
             include_hints,
-            step_count,
+            len(solution_steps),
             problem,
         )
-
         if not valid:
             return {
                 "success": False,
                 "error": steps_or_error,
-                "planner_elapsed_ms": planner_elapsed_ms,
+                "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
                 "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
                 "answer_tokens_advisory": guided_answer_tokens,
             }
@@ -217,11 +293,41 @@ options and one correct_index. Output only the requested JSON.
             "query": problem,
             "steps": steps_or_error,
             "include_hints": include_hints,
-            "include_full_solution": False,
-            "planner_elapsed_ms": planner_elapsed_ms,
+            "include_full_solution": True,
+            "full_solution": solution_text,
+            "planner_elapsed_ms": round(planner_elapsed_ms, 2),
+            "solution_generation_elapsed_ms": round(solution_generation_elapsed_ms, 2),
             "mcq_generation_elapsed_ms": round(mcq_generation_elapsed_ms, 2),
             "answer_tokens_advisory": guided_answer_tokens,
-            }
+        }
+
+    @staticmethod
+    def _parse_numbered_solution(text: str) -> list[str]:
+        """Parse a compact numbered solution while keeping multiline equations."""
+        if not isinstance(text, str):
+            return []
+
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        steps: list[str] = []
+        current: list[str] = []
+
+        for line in lines:
+            match = re.match(r"^(?:step\s*)?(\d+)\s*[.)-]\s*(.+)$", line, flags=re.IGNORECASE)
+            if match:
+                if current:
+                    steps.append(" ".join(current).strip())
+                current = [match.group(2).strip()]
+            elif current:
+                current.append(line)
+
+        if current:
+            steps.append(" ".join(current).strip())
+
+        return [
+            GuidedAttemptService._normalize_generated_text(step)
+            for step in steps
+            if step.strip()
+        ]
 
     @staticmethod
     def _estimate_guided_complexity(problem: str) -> tuple[int, int]:
@@ -263,12 +369,12 @@ options and one correct_index. Output only the requested JSON.
         if len(re.findall(r"\\b(?:x|y|z|t|m|M|L|r|R|v|u|a|q|p|V|T|P|I|omega|\\u03c9)\\b", problem)) >= 4:
             steps += 1
 
-        steps = max(3, min(15, steps))
+        steps = max(3, min(8, steps))
 
         # Advisory completion size scales with the number of generated MCQs.
         # It is telemetry/UI guidance only and is deliberately not passed as
         # max_tokens to the main generator.
-        advisory_tokens = max(420, min(1400, 90 * steps))
+        advisory_tokens = max(300, min(900, 70 * steps))
         return steps, advisory_tokens
 
     @staticmethod
