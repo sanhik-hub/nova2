@@ -697,7 +697,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         )
         if match:
             expression = match.group(1).strip()
-            expression = expression.strip("`").strip()
+            expression = normalize_expression(expression.strip("`").strip())
             expression = re.sub(
                 r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
                 "",
@@ -732,6 +732,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 variable = variable_match.group(1)
                 expression = expression[:variable_match.start()].strip()
             expression = re.sub(r"[.!?]+$", "", expression).strip()
+            expression = normalize_expression(expression)
             return ("integrate", {
                 "expression": expression,
                 "variable": variable,
