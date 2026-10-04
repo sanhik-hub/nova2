@@ -11,7 +11,7 @@ type Mode = "standard" | "graphical" | "account";
 function App() {
   const [mode, setMode] = useState<Mode>("standard");
   const [user, setUser] = useState<LocalUser | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);\n  const [savedGuidedAttempt, setSavedGuidedAttempt] = useState<import("./services/api").SavedItem | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("prismoffline_auth_token");
@@ -99,11 +99,11 @@ function App() {
 
       <main className="main-content">
         {mode === "standard" ? (
-          <StandardMode />
+          <StandardMode savedGuidedAttempt={savedGuidedAttempt} onSavedGuidedOpened={() => setSavedGuidedAttempt(null)} />
         ) : mode === "graphical" ? (
           <GraphicalMode />
         ) : (
-          <AccountView user={user} onLogout={() => void logout()} />
+          <AccountView user={user} onLogout={() => void logout()} onReattemptGuided={(item) => { setSavedGuidedAttempt(item); setMode("standard"); }} />
         )}
       </main>
 
