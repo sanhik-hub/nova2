@@ -8,6 +8,7 @@ import {
 } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
+import MathText from "../components/MathText";
 
 type TaskMode = "solution" | "guided";
 
@@ -477,7 +478,7 @@ export function StandardMode() {
 
           <section className="card guided-step-card">
             <div className="eyebrow">STEP {guided.current + 1}</div>
-            <h2>{currentStep.question}</h2>
+            <h2><MathText>{currentStep.question}</MathText></h2>
 
             <div className="guided-options">
               {currentStep.options.map((option, index) => {
@@ -499,7 +500,7 @@ export function StandardMode() {
                     <span className="guided-option-letter">
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span>{option.text}</span>
+                    <span><MathText>{option.text}</MathText></span>
                   </button>
                 );
               })}
@@ -508,7 +509,7 @@ export function StandardMode() {
             {includeHints && selectedOption === null && currentStep.hint && (
               <details className="hint-box">
                 <summary>Show Hint</summary>
-                <p>{currentStep.hint}</p>
+                <p><MathText>{currentStep.hint}</MathText></p>
               </details>
             )}
 
