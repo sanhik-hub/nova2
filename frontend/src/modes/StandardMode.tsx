@@ -400,25 +400,6 @@ export function StandardMode() {
               : "The follow-up was answered but could not be saved.",
           );
         }
-      } else if (savedSolutionId !== null) {
-        try {
-          const saved = await updateLocalItem(
-            savedSolutionId,
-            question.trim().slice(0, 120),
-            question.trim(),
-            {
-              answer: originalAnswer,
-              response,
-              explanation,
-              follow_ups: nextHistory,
-            },
-          );
-          setSavedSolution(true);
-          setSavedSolutionId(saved.id);
-        } catch {
-          // Keep the live session usable even if a previously saved item
-          // cannot be updated.
-        }
       }
     } catch (error) {
       setSaveError(
