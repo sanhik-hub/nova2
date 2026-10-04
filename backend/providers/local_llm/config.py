@@ -35,8 +35,9 @@ class LocalLLMConfig:
 
     batch_size: int = 128
 
-    # Never allow a request to hang indefinitely.
-    request_timeout: int = 180
+    # No application-level request timeout. Generation may run until the
+    # local model naturally completes or the caller/server terminates it.
+    request_timeout: int | None = None
 
     def __post_init__(self) -> None:
         profile_path = (
