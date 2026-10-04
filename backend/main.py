@@ -26,6 +26,7 @@ from backend.services.auth_storage import (
     list_items,
     save_item,
     update_settings,
+    update_item,
 )
 
 
@@ -116,8 +117,11 @@ def settings(authorization: str | None = Header(default=None)):
 @app.put("/api/settings")
 def update_user_settings(payload: dict, authorization: str | None = Header(default=None)):
     user = _current_user(authorization)
-    value = bool(payload.get("save_by_default", False))
-    return {"success": True, "settings": update_settings(user["id"], save_by_default=value)}
+    return {"success": True, "settings": update_settings(
+        user["id"],
+        save_by_default=bool(payload.get("save_by_default", False)),
+        save_followups_by_default=bool(payload.get("save_followups_by_default", False)),
+    )}
 
 
 @app.get("/api/storage")
@@ -140,6 +144,37 @@ def create_saved_item(payload: dict, authorization: str | None = Header(default=
         return {"success": True, "item": item}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.put("/api/storage/{item_id}")
+def update_saved_item(item_id: int, payload: dict, authorization: str | None = Header(default=None)):
+    user = _current_user(authorization)
+    try:
+        item = update_item(
+            user["id"],
+            item_id,
+            title=str(payload.get("title") or ""),
+            question=str(payload.get("question") or ""),
+            payload=payload.get("payload") if isinstance(payload.get("payload"), dict) else {},
+        )
+        return {"success": True, "item": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/follow-up")
+def follow_up(payload: dict):
+    original_question = str(payload.get("original_question") or "")
+    original_answer = str(payload.get("original_answer") or "")
+    follow_up = str(payload.get("follow_up") or "")
+    history = payload.get("history") if isinstance(payload.get("history"), list) else []
+
+    return reasoning.solve_follow_up(
+        original_question=original_question,
+        original_answer=original_answer,
+        history=history,
+        follow_up=follow_up,
+    )
 
 
 @app.delete("/api/storage/{item_id}")
