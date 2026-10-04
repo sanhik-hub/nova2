@@ -268,7 +268,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
         finalSolutionElapsedMs: null,
       });
 
-      if (includeFullSolution && !cached) {
+      if (includeFullSolution) {
         void prefetchGuidedFullSolution(trimmed, generatedSteps);
       }
     } catch (error) {
