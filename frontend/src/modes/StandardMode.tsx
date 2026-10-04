@@ -9,7 +9,7 @@ import {
   saveLocalItem,
   updateLocalItem,
   answerFollowUp,
-  type FollowUpTurn,
+  type FollowUpTurn,\n  type SavedItem,
 } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
@@ -32,11 +32,11 @@ type GuidedState = {
   finalSolutionElapsedMs: number | null;
 };
 
-export function StandardMode() {
+type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedGuidedOpened?: () => void;\n};\n\nexport function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }: StandardModeProps) {
   const [question, setQuestion] = useState("");
   const [taskMode, setTaskMode] = useState<TaskMode>("solution");
   const [explanation, setExplanation] =
-    useState<ExplanationPreference>("detailed");
+    useState<ExplanationPreference>("off");
   const [includeHints, setIncludeHints] = useState(false);
   const [includeFullSolution, setIncludeFullSolution] = useState(true);
   const [response, setResponse] = useState<ReasonResponse | null>(null);
@@ -50,7 +50,7 @@ export function StandardMode() {
   const [savedSolutionId, setSavedSolutionId] = useState<number | null>(null);
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<FollowUpTurn[]>([]);
-  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [followUpLoading, setFollowUpLoading] = useState(false);\n  const [guidedFollowUpText, setGuidedFollowUpText] = useState("");\n  const [guidedFollowUps, setGuidedFollowUps] = useState<FollowUpTurn[]>([]);\n  const [guidedFollowUpLoading, setGuidedFollowUpLoading] = useState(false);\n  const [savedGuidedId, setSavedGuidedId] = useState<number | null>(null);
 
   const [savedGuided, setSavedGuided] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -242,6 +242,28 @@ export function StandardMode() {
     }
   }
 
+  function guidedOriginalAnswer(): string {
+    if (guided?.fullSolution?.answer) return String(guided.fullSolution.answer);
+    if (!guided) return "";
+    return guided.steps.map((step, index) => `${index + 1}. ${step.question} Answer: ${step.options[step.correct_index]?.text ?? ""}`).join("\n");
+  }
+
+  function buildGuidedPayload(finished: GuidedState, followUps: FollowUpTurn[]) {
+    return {
+      steps: finished.steps,
+      answers: finished.answers,
+      score: finished.score,
+      total_steps: finished.steps.length,
+      include_hints: includeHints,
+      include_full_solution: includeFullSolution,
+      full_solution: finished.fullSolution?.answer ?? null,
+      mcq_elapsed_ms: finished.mcqElapsedMs,
+      hint_elapsed_ms: finished.hintElapsedMs,
+      final_solution_elapsed_ms: finished.finalSolutionElapsedMs,
+      follow_ups: followUps,
+    };
+  }
+
   function finishGuided() {
     if (!guided) return;
 
@@ -330,6 +352,32 @@ export function StandardMode() {
       setSavedGuided(true);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save the attempt.");
+    }
+  }
+
+  async function submitGuidedFollowUp() {
+    const trimmed = guidedFollowUpText.trim();
+    if (!guided?.finished || !trimmed || guidedFollowUpLoading) return;
+    setGuidedFollowUpLoading(true);
+    setSaveError("");
+    try {
+      const result = await answerFollowUp(guided.query, guidedOriginalAnswer(), guidedFollowUps, trimmed);
+      if (!result.success) {
+        setSaveError(result.error || "Could not answer the follow-up.");
+        return;
+      }
+      const answer = typeof result.answer === "string" ? result.answer : String(result.answer ?? "");
+      const nextHistory = [...guidedFollowUps, { question: trimmed, answer, elapsed_ms: result.elapsed_ms ?? 0 }];
+      setGuidedFollowUps(nextHistory);
+      setGuidedFollowUpText("");
+      if (saveFollowupsByDefault && savedGuidedId !== null) {
+        await updateLocalItem(savedGuidedId, guided.query.slice(0, 120), guided.query, buildGuidedPayload(guided, nextHistory));
+        setSavedGuided(true);
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not answer the follow-up.");
+    } finally {
+      setGuidedFollowUpLoading(false);
     }
   }
 
