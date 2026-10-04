@@ -253,26 +253,16 @@ Rules:
     {"type":"plan","intent":"formula","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":40}
 - Do not classify an explicit request to differentiate, integrate, factor, expand, simplify, solve, or take a limit as pure reasoning when the user supplied the concrete expression/equation needed for that exact operation.
 - "answer_tokens" is the planner's estimate of the completion tokens actually
-  required for the final answer. It is an advisory generation budget, not a
-  global preset.
-- Estimate the complete final response, not just the final expression or the
-  number of mathematical results.
-- Count the mathematics the writer must actually emit: required equations,
-  substitutions, transformations, derivation/proof steps, and the concise prose
-  needed to make those steps understandable.
-- For a derivation or proof, the estimate must cover the complete mathematical
-  chain, not merely the final formula and a one-sentence explanation.
-- The estimate must be a realistic sufficient budget for the whole answer.
-  Do not output a trivially small estimate when the request requires a
-  derivation, proof, or worked explanation.
-- Use the smallest sufficient estimate for this specific request. Do not
-  inflate it merely because the topic is difficult.
-- If the request is genuinely short, the estimate should also be short.
-- If the request needs a substantial derivation, proof, or multi-part solution,
-  the estimate should grow accordingly, without relying on a fixed table of
-  budgets.
-- The requested explanation mode is supplied separately by the caller; use it
-  when estimating answer_tokens.
+  required for the final answer. It is an advisory generation budget.
+- For explanation "off", estimate ONLY the required result that should be shown
+  to the user. Do not budget for explanations, introductions, commentary,
+  headings, derivations, or summaries. An overall-reaction request should budget
+  for the reaction equation; a formula request for the formula; a name request
+  for the name; a value request for the value.
+- For "concise" and "detailed", estimate the complete response including the
+  mathematics and prose required by that explanation mode.
+- Always use the smallest sufficient estimate for this specific request.
+- Never inflate the estimate merely because the topic is difficult.
 
 The planner is a router, not a solver. When information needed for a formula or calculation is missing, leave Wolfram unused rather than guessing it.
 
@@ -1194,39 +1184,34 @@ Rules:
 
         if explanation == "off":
             final_system = r"""
-You are Nova's accuracy-first direct STEM answer writer.
+You are Nova's result-only STEM answer writer.
 
-Return ONLY the final answer to the user's request. Do not expose derivation,
-reasoning, commentary, headings, or internal processing. However, before
-writing the answer, solve the request carefully and completely internally.
+Solve the user's request accurately. Internal reasoning is allowed when it is
+necessary for correctness, but it must never appear in the response.
 
-Accuracy is more important than brevity. The request may be mathematics,
-physics, chemistry, or general science, including factual, conceptual,
-qualitative, quantitative, formula, nomenclature, derivation, and
-calculation requests.
+The response must contain ONLY the required result and nothing else.
 
-Rules:
-- Answer the actual question, not a nearby easier question.
-- Use all relevant information in the user request.
-- If verified computational results are supplied in the input, treat them as
-  authoritative and use them consistently.
-- For chemistry, distinguish carefully between molecular formula, empirical
-  formula, structural information, nomenclature, reaction outcome, oxidation
-  state, and qualitative facts. Do not invent compounds, products, conditions,
-  or values.
-- For physics, use the appropriate physical law and supplied quantities; do
-  not substitute a memorized special case unless its conditions match.
-- For mathematics, preserve exact symbolic results where appropriate and do
-  not silently change the problem.
-- If a calculation or derivation is necessary to determine the answer, perform
-  the necessary mathematical/scientific reasoning internally before returning
-  the final result.
-- If the user asks for a formula, return the requested formula directly.
-- If the user asks for a chemical formula, use normal chemical notation such
-  as C6H5NO2, not a multiplication expression.
-- Use standard mathematical notation or LaTeX only where appropriate.
+Strict rules:
+- Do not explain, justify, summarize, or add background.
+- Do not use lead-ins such as "The answer is", "It is", or "The reaction is".
+- Do not add headings, bullets, commentary, or definitions.
+- Return the smallest complete answer that directly satisfies the request.
+- If the user asks for an overall reaction, return the balanced overall
+  reaction/equation only.
+- If the user asks for a formula, return the formula only.
+- If the user asks for a value or expression, return the value/expression only.
+- If the user asks for a name, return the name only.
+- If multiple results are explicitly requested, return only those results.
+- Use standard mathematical and chemical notation.
+- For chemistry, distinguish molecular formula, empirical formula, structural
+  formula, nomenclature, reaction outcome, and oxidation state. Do not invent
+  compounds, products, conditions, or values.
+- For physics, use the appropriate law and supplied conditions; do not use a
+  mismatched memorized special case.
+- For mathematics, preserve exact symbolic results.
 - Never invent missing information or assumptions.
-- Return only the answer text.
+- If a calculation or derivation is necessary for correctness, perform it
+  internally and expose only the resulting required answer.
 """
         elif explanation == "concise":
             final_system = r"""
@@ -1313,9 +1298,10 @@ Return ONLY the complete solution text.
                 ensure_ascii=False,
             ),
             system_prompt=final_system,
-            # answer_tokens is advisory guidance only. Do not turn the
-            # planner's estimate into a hard generation ceiling.
-            max_tokens=None,
+            # Result-only mode must not spend completion tokens on prose.
+            # Use the planner's request-specific result budget only in this
+            # mode; concise/detailed remain uncapped at the service level.
+            max_tokens=estimated_answer_tokens if explanation == "off" else None,
             temperature=0,
             enable_thinking=False,
         )
@@ -1475,6 +1461,5 @@ Return ONLY the complete solution text.
             "tool_calls": [],
             "cached": False,
         }
-
 
 
