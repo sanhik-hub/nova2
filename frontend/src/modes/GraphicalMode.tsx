@@ -2,7 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMemo, useState } from "react";
 import { plotExpression, type PlotPoint } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
-import WorkspaceSolutionText from "../components/WorkspaceSolutionText";\nimport WorkspaceSolutionText from "../components/WorkspaceSolutionText";
+import WorkspaceSolutionText from "../components/WorkspaceSolutionText";
 
 type Coordinate = [number, number];
 
@@ -53,7 +53,7 @@ function GraphCanvas({
     window.addEventListener("pointerup", stop, { once: true });
   }
 
-  const solutionPointSvg = solutionPoints.map(toSvg);\n\n  const solutionPointSvg = solutionPoints.map(toSvg);
+  const solutionPointSvg = solutionPoints.map(toSvg);
 
   const curvePoints = curve
     .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
@@ -91,7 +91,14 @@ function GraphCanvas({
 
       {curvePoints && <polyline points={curvePoints} className="graphical-curve" />}
 
-      {solutionPointSvg.map(([x, y], index) => (\n        <g key={`solution-${index}`}>\n          <circle cx={x} cy={y} r="7" className="graphical-solution-point" />\n          <text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text>\n        </g>\n      ))}\n\n      {solutionPointSvg.map(([x, y], index) => (<g key={`solution-${index}`}><circle cx={x} cy={y} r="7" className="graphical-solution-point" /><text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text></g>))}
+      {solutionPointSvg.map(([x, y], index) => (
+        <g key={`solution-${index}`}>
+          <circle cx={x} cy={y} r="7" className="graphical-solution-point" />
+          <text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text>
+        </g>
+      ))}
+
+      {solutionPointSvg.map(([x, y], index) => (<g key={`solution-${index}`}><circle cx={x} cy={y} r="7" className="graphical-solution-point" /><text x={x + 10} y={y + 18} className="graphical-point-label">S{index + 1}</text></g>))}
 
       {coordinates.map((point, index) => {
         const [x, y] = toSvg(point);
@@ -122,7 +129,7 @@ export function GraphicalMode() {
   const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
   const [curve, setCurve] = useState<PlotPoint[]>([]);
   const [solutionPoints, setSolutionPoints] = useState<Coordinate[]>([]);
-  const [solutionText, setSolutionText] = useState("");\n  const [solutionPoints, setSolutionPoints] = useState<Coordinate[]>([]);\n  const [solutionText, setSolutionText] = useState("");
+  const [solutionText, setSolutionText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -157,7 +164,7 @@ export function GraphicalMode() {
 
       setCurve(points);
       setSolutionPoints((result.solution_points ?? []).map((point) => [Number(point[0]), Number(point[1])] as Coordinate));
-      setSolutionText(result.result ?? "");\n      setSolutionPoints((result.solution_points ?? []).map((point) => [Number(point[0]), Number(point[1])] as Coordinate));\n      setSolutionText(result.result ?? "");
+      setSolutionText(result.result ?? "");
     } catch (err) {
       setCurve([]);
       setError(err instanceof Error ? err.message : "Unable to generate the graph.");
@@ -233,7 +240,8 @@ export function GraphicalMode() {
         <div className="card graphical-plot-card">
           <GraphCanvas coordinates={coordinates} curve={curve} onChange={setCoordinates} />
           <p className="graph-help">The curve is sampled by the local exact computation engine.</p>
-          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}\n          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
+          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
+          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
         </div>
       </div>
 
