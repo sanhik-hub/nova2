@@ -20,7 +20,9 @@ class PlannerLLMConfig:
     threads: int = 6
     batch_size: int = 128
     temperature: float = 0.0
-    request_timeout: int = 20
+    # No application-level planner timeout. The planner is small, but its
+    # estimate must never turn into a hard request-time limit.
+    request_timeout: int | None = None
 
 
 def main() -> int:
