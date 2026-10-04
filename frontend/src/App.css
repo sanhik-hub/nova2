@@ -919,3 +919,53 @@ body{background:#0b0912;color:#e9e7ff}
 .save-error-card{margin-top:18px;padding:12px 14px;color:#f0b0aa;font-size:11px}
 @media(max-width:900px){.account-grid{grid-template-columns:1fr}.account-chip{width:100%;justify-content:space-between}}
 @media(max-width:600px){.saved-header{align-items:stretch;flex-direction:column}.save-result-card{align-items:stretch;flex-direction:column}.save-result-card button{width:100%}}
+
+
+.follow-up-card {
+  margin-top: 1rem;
+}
+
+.follow-up-card > p {
+  margin: 0.35rem 0 1rem;
+}
+
+.follow-up-history {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.follow-up-entry {
+  border: 1px solid var(--border, #d9dee7);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: var(--surface-muted, #f8fafc);
+}
+
+.follow-up-question {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.follow-up-answer {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border, #d9dee7);
+}
+
+.follow-up-input {
+  min-height: 96px;
+}
+
+.saved-follow-ups {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.saved-follow-up {
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, #d9dee7);
+}
