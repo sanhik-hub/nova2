@@ -245,7 +245,6 @@ export function GraphicalMode() {
           <GraphCanvas coordinates={coordinates} curve={curve} solutionPoints={solutionPoints} onChange={setCoordinates} />
           <p className="graph-help">The curve is sampled by the local exact computation engine.</p>
           {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
-          {solutionText && <div className="graphical-solution-card"><div className="answer-label">Solution</div><div className="answer-content"><WorkspaceSolutionText>{solutionText}</WorkspaceSolutionText></div></div>}
         </div>
       </div>
 
