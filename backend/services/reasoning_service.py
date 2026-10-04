@@ -681,6 +681,599 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         return None
 
+    def _validate_tool_call(self, call: dict):
+
+        if not isinstance(call, dict):
+            return {
+                "valid": False,
+                "error": "Tool call is not an object.",
+            }
+
+        tool = call.get("tool")
+        arguments = call.get("arguments")
+
+        allowed = {
+            "simplify",
+            "factor",
+            "expand",
+            "differentiate",
+            "integrate",
+            "solve",
+            "limit",
+        }
+
+        if tool not in allowed:
+            return {
+                "valid": False,
+                "error": f"Unsupported tool: {tool}",
+            }
+
+        if not isinstance(arguments, dict):
+            return {
+                "valid": False,
+                "error": "Tool arguments must be an object.",
+            }
+
+        # -----------------------------------------------------
+        # Argument safety
+        # -----------------------------------------------------
+
+        for key, value in arguments.items():
+
+            if not isinstance(value, str):
+                continue
+
+            if len(value) > 500:
+                return {
+                    "valid": False,
+                    "error": "Tool argument is too long.",
+                }
+
+            lowered = value.lower()
+
+            natural_language_patterns = [
+                r"\bintegral_\d",
+                r"\bfrom\s+\d+\s+to\s+\d+",
+                r"\bwhere\b",
+                r"\bgiven\b",
+                r"\bsuppose\b",
+                r"\bcontinuous\b",
+                r"\bfunction\s+f\b",
+                r"\bprove\b",
+                r"\bfind\s+the\b",
+            ]
+
+            if any(
+                re.search(pattern, lowered)
+                for pattern in natural_language_patterns
+            ):
+                return {
+                    "valid": False,
+                    "error": (
+                        "Rejected unsafe/natural-language "
+                        f"Wolfram argument: {value}"
+                    ),
+                }
+
+        # -----------------------------------------------------
+        # Required arguments
+        # -----------------------------------------------------
+
+        if tool in {
+            "simplify",
+            "factor",
+            "expand",
+            "differentiate",
+            "integrate",
+        }:
+            if not arguments.get("expression"):
+                return {
+                    "valid": False,
+                    "error": f"{tool} requires an expression.",
+                }
+
+        if tool == "solve":
+
+            if not arguments.get("equation"):
+                return {
+                    "valid": False,
+                    "error": "solve requires an equation.",
+                }
+
+            if not arguments.get("variable"):
+                return {
+                    "valid": False,
+                    "error": "solve requires a variable.",
+                }
+
+        if tool == "limit":
+
+            for field in (
+                "expression",
+                "variable",
+                "value",
+            ):
+                if not arguments.get(field):
+                    return {
+                        "valid": False,
+                        "error": f"limit requires {field}.",
+                    }
+
+        return {
+            "valid": True,
+            "tool": tool,
+            "arguments": arguments,
+        }
+
+    # =========================================================
+    # UNKNOWN FUNCTION DETECTION
+    # =========================================================
+
+    def _contains_undefined_function_call(
+        self,
+        calls: list,
+    ) -> bool:
+
+        known_functions = {
+            "sin",
+            "cos",
+            "tan",
+            "cot",
+            "sec",
+            "csc",
+            "asin",
+            "acos",
+            "atan",
+            "sinh",
+            "cosh",
+            "tanh",
+            "sqrt",
+            "log",
+            "ln",
+            "exp",
+            "abs",
+            "floor",
+            "ceil",
+            "sign",
+        }
+
+        for call in calls:
+
+            # The planner contract requires Wolfram entries to be structured
+            # objects. A malformed entry must be rejected here rather than
+            # crashing the FastAPI request with AttributeError.
+            if not isinstance(call, dict):
+                return True
+
+            arguments = call.get(
+                "arguments",
+                {},
+            )
+
+            if not isinstance(arguments, dict):
+                return True
+
+            for value in arguments.values():
+
+                if not isinstance(value, str):
+                    continue
+
+                # f(x), g(x), h(x), etc.
+                matches = re.findall(
+                    r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+                    value,
+                )
+
+                for name in matches:
+
+                    if name.lower() not in known_functions:
+                        return True
+
+                # Explicit Wolfram Integrate containing
+                # unknown parenthesized functions.
+                if re.search(
+                    r"\bIntegrate\s*\[.*"
+                    r"[A-Za-z_][A-Za-z0-9_]*\s*\(",
+                    value,
+                    flags=re.IGNORECASE,
+                ):
+                    return True
+
+        return False
+
+    # =========================================================
+    # TOOL EXECUTION
+    # =========================================================
+
+    def _execute_tool(
+        self,
+        tool: str,
+        arguments: dict,
+    ) -> dict:
+
+        try:
+
+            provider = self.router.get_provider("wolfram")
+
+            if tool == "simplify":
+
+                raw = provider.engine.simplify(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "factor":
+
+                raw = provider.engine.factor(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "expand":
+
+                raw = provider.engine.expand(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+            elif tool == "differentiate":
+
+                raw = provider.engine.differentiate(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "integrate":
+
+                raw = provider.engine.integrate(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "solve":
+
+                raw = provider.engine.solve(
+                    normalize_expression(
+                        arguments["equation"]
+                    ),
+                    arguments.get("variable", "x"),
+                )
+
+            elif tool == "limit":
+
+                raw = provider.engine.limit(
+                    normalize_expression(
+                        arguments["expression"]
+                    ),
+                    arguments.get("variable", "x"),
+                    arguments["value"],
+                )
+
+            else:
+
+                return {
+                    "success": False,
+                    "result": None,
+                    "error": f"Unknown tool: {tool}",
+                }
+
+            if raw.success:
+
+                return {
+                    "success": True,
+                    "result": raw.result,
+                    "error": None,
+                }
+
+            return {
+                "success": False,
+                "result": None,
+                "error": raw.error,
+            }
+
+        except Exception as exc:
+
+            return {
+                "success": False,
+                "result": None,
+                "error": str(exc),
+            }
+
+    # =========================================================
+    # PURE REASONING RESULT
+    # =========================================================
+
+    def _final_from_reasoning(
+        self,
+        problem: str,
+        plan: dict,
+    ):
+
+        reasoning = plan.get(
+            "reasoning",
+            [],
+        )
+
+        if not isinstance(reasoning, list):
+            reasoning = []
+
+        answer_parts = []
+
+        idea = plan.get("idea", "")
+
+        if isinstance(idea, str) and idea.strip():
+            answer_parts.append(
+                idea.strip()
+            )
+
+        for step in reasoning:
+
+            if isinstance(step, str):
+                step = step.strip()
+
+                if step:
+                    answer_parts.append(step)
+
+        answer = "\n\n".join(
+            answer_parts
+        )
+
+        if not answer:
+            return self._error(
+                "The reasoning model returned no solution."
+            )
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm",
+            "tool_calls": [],
+            "cached": False,
+        }
+
+    # =========================================================
+    # RESULT-ONLY CAS RESPONSE
+    # =========================================================
+
+    def _cas_result_only(
+        self,
+        tool_results: list,
+    ):
+        """
+        Return only the exact symbolic result when explanation is off.
+
+        No explanatory prose, tool metadata, steps, or verification
+        details are exposed to the caller.
+        """
+
+        if not tool_results:
+            return self._error(
+                "No computational result was produced."
+            )
+
+        results = [
+            item.get("result")
+            for item in tool_results
+            if isinstance(item, dict)
+            and item.get("result") is not None
+        ]
+
+        if not results:
+            return self._error(
+                "No computational result was produced."
+            )
+
+        answer = "\n".join(
+            str(result).strip()
+            for result in results
+            if str(result).strip()
+        )
+
+        if not answer:
+            return self._error(
+                "The computational result was empty."
+            )
+
+        return {
+            "success": True,
+            "answer": answer,
+            "result_only": True,
+        }
+
+    # =========================================================
+    # FINAL EXPLANATION AFTER CAS
+    # =========================================================
+
+    def _final_explanation(
+        self,
+        problem: str,
+        idea: str,
+        reasoning: list,
+        tool_results: list,
+        explanation: str = "detailed",
+        estimated_answer_tokens: int | None = None,
+    ):
+
+        if explanation == "off":
+            final_system = r"""
+Return ONLY the exact result requested by the user. No explanation, heading,
+lead-in, summary, justification, or commentary.
+
+For chemistry, check the complete atom mapping, bond changes, valence, charge,
+stoichiometry, regiochemistry, and product identity internally. Preserve the
+user's substrate skeleton unless the requested transformation itself changes
+it. Every atom/group in the displayed reaction must be chemically accounted
+for. Never substitute a related reaction, intermediate, side product,
+mechanism, or invented transformation. If the question describes a reaction
+class or substrate class without naming a specific substituent, answer using a
+symbolic representation of exactly that stated class. Do not invent extra
+substituents, alter the carbon/atom skeleton, or silently replace the stated
+substrate with a different one. For an overall reaction, show the net
+transformation requested rather than a mechanism or side product. Before
+outputting the result, internally verify atom counts, bond changes, valence,
+formal charge, stoichiometry, and the identity of the product against the
+original substrate.
+
+For chemical structures and reactions, use unambiguous scientific notation.
+When a structure is useful, use LaTeX inside $...$ with explicit single (-),
+double (=), and triple (\equiv) bonds, explicit formal charges such as
+$\mathrm{NH_4^+}$, and explicit lone-pair notation when relevant. Do not rely
+on ambiguous plain-text superscripts or spacing.
+
+For mathematics and physics, check the governing relation, dimensions/units,
+and required substitution internally. Never invent missing data.
+
+Output only the final result.
+"""
+        elif explanation == "concise":
+            final_system = r"""
+You are Nova's concise STEM solution writer.
+
+Write ONE compact but complete worked solution. The request may involve mathematics, physics, chemistry, or general science. "Concise" means remove
+unnecessary prose, not the mathematical work required to justify the answer.
+
+For a calculation, show the essential setup and transformations leading to the
+result. For a derivation or proof, ALWAYS show the mathematical chain from the
+starting principle to the requested formula/result, with the key equation at
+each necessary step and a brief explanation of what each step does. Do not
+replace a derivation with a sentence saying that it follows from integration,
+differentiation, substitution, or another operation.
+
+Use short explanatory sentences around the mathematics. Preserve necessary
+definitions, substitutions, limits/integrals, algebraic transformations, and
+the final result. Omit optional background, repeated explanations, alternative
+methods, long summaries, and filler.
+
+The answer must be complete enough that a student can follow HOW the result was
+obtained without needing an omitted derivation. Never stop at an intermediate
+expression. Never invent missing information.
+
+For a derivation or proof, do NOT state or preview the requested final formula,
+result, or conclusion before the derivation is complete. Build the result
+step by step using the necessary intermediate equations. State the requested
+final formula, result, or conclusion exactly ONCE, at the end of the solution.
+Do not repeat it in an introduction, summary, or second final-answer section.
+
+Do not mention tools, AI, prompts, token budgets, or internal processing.
+Return ONLY the solution text.
+"""
+        else:
+            final_system = r"""
+You are Nova's detailed STEM solution writer.
+Write ONE complete, self-contained solution from beginning to end. The request may involve mathematics, physics, chemistry, or general science.
+Explain HOW the result is obtained and show the important equations, transformations, scientific relationships, and rule applications when they are relevant.
+
+For differentiation, explicitly apply the relevant rules. For quantitative physics or chemistry, show the necessary equations, substitutions, units, and calculations. For derivations and proofs, continue through every necessary step to the requested final formula, result, or conclusion. For factual or conceptual questions, answer the actual question clearly without inventing a calculation.
+
+Be complete but disciplined: do not repeat the same idea, add unrelated
+background, present alternative methods, or continue after the result is
+established. Stop when the solution is complete.
+
+Never stop at an intermediate setup or partial argument. Never invent missing
+information or assumptions.
+
+For a derivation or proof, do NOT state or preview the requested final formula,
+result, or conclusion before the derivation is complete. Build the result
+step by step using the necessary intermediate equations. State the requested
+final formula, result, or conclusion exactly ONCE, as the final mathematical
+statement of the solution. Do not repeat it in an introduction, summary, or
+second final-answer section.
+
+Do not mention tools, AI, prompts, token budgets, or internal processing.
+Return ONLY the complete solution text.
+"""
+
+        # Use one common scientific-format contract across explanation modes.
+        final_system += r"""
+Scientific display contract:
+- Put mathematical expressions in $...$ and larger derivations in $...$.
+- Put chemical formulas, structures, and reaction equations in $...$ so the
+  frontend can typeset element subscripts, explicit bonds, charges, and lone
+  pairs unambiguously.
+- For chemical structures use upright element symbols with explicit bond
+  characters: - for single, = for double, \equiv for triple, and
+  \rightarrow or \rightleftharpoons for reaction arrows.
+- Show formal charges explicitly, e.g. $\mathrm{NH_4^+}$.
+- When lone pairs are important, show them explicitly with LaTeX such as
+  $\overset{\cdot\,\cdot}{\mathrm{O}}$ rather than relying on prose or
+  invisible electron pairs.
+- Keep chemical atom counts and charge balance consistent with the displayed
+  structure. Do not use ambiguous plain-text superscripts for charges.
+- Do not invent structural details that are not supported by the question.
+""";
+
+        # The planner supplies request-specific advisory generation guidance.
+        # It is never a hard generation ceiling.
+        if estimated_answer_tokens:
+            final_system += (
+                "\n\nInternal answer-size guidance: aim for approximately "
+                f"{estimated_answer_tokens} completion tokens. "
+                "Treat this as a target, not a hard limit. If more tokens are "
+                "mathematically necessary to complete the requested solution, "
+                "continue until the solution is complete. If fewer are "
+                "sufficient, stop when the solution is complete."
+            )
+
+        payload = {
+            "problem": problem,
+            "idea": idea,
+            "reasoning": reasoning,
+            "verified_results": tool_results,
+        }
+
+        final_llm_started = time.perf_counter()
+
+        response = self.router.generate(
+            prompt=json.dumps(
+                payload,
+                ensure_ascii=False,
+            ),
+            system_prompt=final_system,
+            # answer_tokens is advisory metadata only. Never pass it as a
+            # provider max_tokens ceiling; a difficult STEM request may need
+            # substantially more output than the planner estimates.
+            temperature=0,
+            enable_thinking=False,
+            request_timeout=None,
+        )
+
+        final_llm_ms = round(
+            (time.perf_counter() - final_llm_started) * 1000,
+            2,
+        )
+
+        if not response["success"]:
+            result = self._error(response["error"])
+            result["_final_llm_ms"] = final_llm_ms
+            return result
+
+        answer = str(response["result"] or "").strip()
+
+        if not answer:
+            result = self._error(
+                "The reasoning model returned no solution."
+            )
+            result["_final_llm_ms"] = final_llm_ms
+            return result
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm+wolfram" if tool_results else "local_llm",
+            "tool_calls": tool_results,
+            "cached": False,
+            "result_only": explanation == "off",
+            "_final_llm_ms": final_llm_ms,
+        }
+
+
     # =========================================================
     # JSON PARSER
     # =========================================================
