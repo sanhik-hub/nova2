@@ -223,20 +223,34 @@ def start_guided_attempt(request: GuidedAttemptRequest):
 
     elapsed_ms = round((perf_counter() - started) * 1000, 2)
     result["elapsed_ms"] = elapsed_ms
-    result["mcq_elapsed_ms"] = elapsed_ms
-    # Hints are generated in the same structured response, so there is no
-    # independent hint-generation phase.
-    result["hint_elapsed_ms"] = elapsed_ms if request.include_hints else 0.0
+    result["mcq_elapsed_ms"] = result.get("mcq_generation_elapsed_ms", elapsed_ms)
+    result["hint_elapsed_ms"] = (
+        result.get("hint_elapsed_ms", result["mcq_elapsed_ms"])
+        if request.include_hints
+        else 0.0
+    )
+    result["include_full_solution"] = False
+    result["full_solution"] = None
     return result
 
 
 @app.post("/api/guided/solution")
 def generate_guided_solution(payload: dict):
     started = perf_counter()
-    result = guided_attempts.generate_solution(
-        query=str(payload.get("query") or ""),
-        steps=payload.get("steps") or [],
-    )
+    query = str(payload.get("query") or "").strip()
+    if not query:
+        return {"success": False, "error": "Question is empty."}
+
+    try:
+        result = guided_attempts.generate_solution(
+            query=query,
+            steps=payload.get("steps") or [],
+        )
+    except Exception as exc:
+        result = {
+            "success": False,
+            "error": f"Full solution generation failed: {type(exc).__name__}: {exc}",
+        }
     result["elapsed_ms"] = round((perf_counter() - started) * 1000, 2)
     result["final_solution_elapsed_ms"] = result["elapsed_ms"]
     return result
