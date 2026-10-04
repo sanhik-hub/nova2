@@ -126,7 +126,7 @@ export type GuidedAttemptResponse = {
 export async function startGuidedAttempt(
   query: string,
   includeHints = false,
-  includeFullSolution = true,
+  includeFullSolution = false,
 ): Promise<GuidedAttemptResponse> {
   const response = await fetch("/api/guided/start", {
     method: "POST",
