@@ -146,7 +146,7 @@ class ReasoningService:
 
         hydro = (
             ("hydroboration" in text or "hydro boration" in text)
-            and ("oxidation" in text or "oxidation" in text)
+            and "oxidation" in text
         )
         if hydro and overall:
             return (
@@ -157,7 +157,7 @@ class ReasoningService:
 
         hydrogenation = (
             "hydrogenation" in text
-            and any(term in text for term in ("alkene", "alkene", "double bond"))
+            and any(term in text for term in ("alkene", "double bond"))
         )
         if hydrogenation and overall:
             return (
