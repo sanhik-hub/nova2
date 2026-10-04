@@ -9,7 +9,8 @@ import {
   saveLocalItem,
   updateLocalItem,
   answerFollowUp,
-  type FollowUpTurn,\n  type SavedItem,
+  type FollowUpTurn,
+  type SavedItem,
 } from "../services/api";
 import { LoadingState } from "../components/LoadingState";
 import { ReasonResult } from "../components/ReasonResult";
@@ -32,7 +33,12 @@ type GuidedState = {
   finalSolutionElapsedMs: number | null;
 };
 
-type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedGuidedOpened?: () => void;\n};\n\nexport function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }: StandardModeProps) {
+type StandardModeProps = {
+  savedGuidedAttempt?: SavedItem | null;
+  onSavedGuidedOpened?: () => void;
+};
+
+export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }: StandardModeProps) {
   const [question, setQuestion] = useState("");
   const [taskMode, setTaskMode] = useState<TaskMode>("solution");
   const [explanation, setExplanation] =
@@ -50,7 +56,11 @@ type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedG
   const [savedSolutionId, setSavedSolutionId] = useState<number | null>(null);
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<FollowUpTurn[]>([]);
-  const [followUpLoading, setFollowUpLoading] = useState(false);\n  const [guidedFollowUpText, setGuidedFollowUpText] = useState("");\n  const [guidedFollowUps, setGuidedFollowUps] = useState<FollowUpTurn[]>([]);\n  const [guidedFollowUpLoading, setGuidedFollowUpLoading] = useState(false);\n  const [savedGuidedId, setSavedGuidedId] = useState<number | null>(null);
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [guidedFollowUpText, setGuidedFollowUpText] = useState("");
+  const [guidedFollowUps, setGuidedFollowUps] = useState<FollowUpTurn[]>([]);
+  const [guidedFollowUpLoading, setGuidedFollowUpLoading] = useState(false);
+  const [savedGuidedId, setSavedGuidedId] = useState<number | null>(null);
 
   const [savedGuided, setSavedGuided] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -245,7 +255,8 @@ type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedG
   function guidedOriginalAnswer(): string {
     if (guided?.fullSolution?.answer) return String(guided.fullSolution.answer);
     if (!guided) return "";
-    return guided.steps.map((step, index) => `${index + 1}. ${step.question} Answer: ${step.options[step.correct_index]?.text ?? ""}`).join("\n");
+    return guided.steps.map((step, index) => `${index + 1}. ${step.question} Answer: ${step.options[step.correct_index]?.text ?? ""}`).join("
+");
   }
 
   function buildGuidedPayload(finished: GuidedState, followUps: FollowUpTurn[]) {
@@ -296,10 +307,13 @@ type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedG
           full_solution: finishedGuided.fullSolution?.answer ?? null,
           mcq_elapsed_ms: guided.mcqElapsedMs,
           hint_elapsed_ms: guided.hintElapsedMs,
-          final_solution_elapsed_ms: guided.finalSolutionElapsedMs,
+          ...buildGuidedPayload(finishedGuided, guidedFollowUps),
         },
       )
-        .then(() => setSavedGuided(true))
+        .then((saved) => {
+          setSavedGuided(true);
+          setSavedGuidedId(saved.id);
+        })
         .catch((error) =>
           setSaveError(error instanceof Error ? error.message : "Could not save the attempt."),
         );
@@ -332,24 +346,14 @@ type StandardModeProps = {\n  savedGuidedAttempt?: SavedItem | null;\n  onSavedG
     if (!guided?.finished || savedGuided) return;
     setSaveError("");
     try {
-      await saveLocalItem(
+      const saved = await saveLocalItem(
         "guided_attempt",
         guided.query.slice(0, 120),
         guided.query,
-        {
-          steps: guided.steps,
-          answers: guided.answers,
-          score: guided.score,
-          total_steps: guided.steps.length,
-          include_hints: includeHints,
-          include_full_solution: includeFullSolution,
-          full_solution: guided.fullSolution?.answer ?? null,
-          mcq_elapsed_ms: guided.mcqElapsedMs,
-          hint_elapsed_ms: guided.hintElapsedMs,
-          final_solution_elapsed_ms: guided.finalSolutionElapsedMs,
-        },
+        buildGuidedPayload(guided, guidedFollowUps),
       );
       setSavedGuided(true);
+      setSavedGuidedId(saved.id);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save the attempt.");
     }
