@@ -176,6 +176,7 @@ export type PlotResponse = {
     variable?: string;
     points?: PlotPoint[];
   }>;
+  solution_points?: PlotPoint[];
 };
 
 export async function plotExpression(
@@ -314,6 +315,7 @@ export async function saveLocalItem(
 export type FollowUpTurn = {
   question: string;
   answer: string;
+  elapsed_ms?: number;
 };
 
 export type FollowUpResponse = ReasonResponse & {
