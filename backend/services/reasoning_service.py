@@ -51,31 +51,27 @@ class ReasoningService:
         problem = problem.strip()
 
         # -----------------------------------------------------
-        # 1A. DETERMINISTIC RESULT-ONLY REACTION KNOWLEDGE
+        # 1. FAST EXACT OPERATION PATH
         # -----------------------------------------------------
         #
-        # Common named-reaction "overall reaction" requests do not need a
-        # generative answer. Returning the canonical transformation directly
-        # is both faster and safer than asking the 4B model to paraphrase it.
-        #
-        # This is intentionally narrow: only an unambiguous overall
-        # oxymercuration-demercuration request is handled here.
+        # Result-only mode should not spend planner/final-writer time on an
+        # unambiguous exact symbolic operation. This uses the same validated
+        # Wolfram execution path as the normal solver; only the routing step
+        # is skipped because the user's requested operation is explicit.
         # -----------------------------------------------------
         if explanation == "off":
-            named_reaction = self._result_only_named_reaction(problem)
-            if named_reaction is not None:
-                return {
-                    "success": True,
-                    "answer": named_reaction,
-                    "engine": "local_knowledge",
-                    "tool_calls": [],
-                    "cached": False,
-                    "result_only": True,
-                    "elapsed_ms": round(
-                        (time.perf_counter() - started) * 1000,
-                        2,
-                    ),
-                }
+            direct_operation = self._detect_explicit_operation(problem)
+            if direct_operation is not None:
+                response = self._solve_direct_operation(
+                    problem=problem,
+                    operation=direct_operation,
+                    explanation=explanation,
+                )
+                response["elapsed_ms"] = round(
+                    (time.perf_counter() - started) * 1000,
+                    2,
+                )
+                return response
 
         # -----------------------------------------------------
         # 1. EXACT CACHE
@@ -117,66 +113,6 @@ class ReasoningService:
         return response
 
     @staticmethod
-    def _result_only_named_reaction(problem: str) -> str | None:
-        """Return a canonical result for narrowly identifiable named reactions."""
-        text = re.sub(r"[^a-z0-9]+", " ", problem.lower()).strip()
-
-        oxy = (
-            ("oxymercuration" in text or "oxy mercuration" in text)
-            and "demercuration" in text
-        )
-        overall = any(
-            phrase in text
-            for phrase in (
-                "overall reaction",
-                "overall equation",
-                "net reaction",
-                "net equation",
-                "reaction for",
-                "equation for",
-            )
-        )
-
-        if oxy and overall:
-            return (
-                "R-CH=CH₂ + H₂O "
-                "→[1. Hg(OAc)₂, H₂O/THF; 2. NaBH₄] "
-                "R-CH(OH)-CH₃"
-            )
-
-        hydro = (
-            ("hydroboration" in text or "hydro boration" in text)
-            and "oxidation" in text
-        )
-        if hydro and overall:
-            return (
-                "R-CH=CH₂ "
-                "→[1. BH₃·THF; 2. H₂O₂, OH⁻] "
-                "R-CH₂-CH₂OH"
-            )
-
-        hydrogenation = (
-            "hydrogenation" in text
-            and any(term in text for term in ("alkene", "double bond"))
-        )
-        if hydrogenation and overall:
-            return (
-                "R-CH=CH₂ + H₂ "
-                "→[Ni/Pt/Pd] "
-                "R-CH₂-CH₃"
-            )
-
-        halogenation = (
-            "halogenation" in text
-            and any(term in text for term in ("alkene", "double bond"))
-        )
-        if halogenation and overall:
-            return (
-                "R-CH=CH₂ + Br₂ → R-CHBr-CH₂Br"
-            )
-
-        return None
-
     def _normalize_explanation_preference(self, explanation: bool | str) -> str:
         if explanation is True:
             return "detailed"
@@ -1276,8 +1212,9 @@ Rules:
 Return ONLY the requested result. Do the minimum internal reasoning needed for
 accuracy, but expose no reasoning.
 
-No explanation, lead-in, heading, summary, definition, justification, or
-background. Do not write "The answer is" or similar text.
+No explanation, lead-in, heading, summary, definition, justification,
+background, alternatives, or commentary. Do not write "The answer is" or
+similar text.
 
 Output rules:
 - overall reaction/equation -> reaction/equation only
@@ -1285,9 +1222,19 @@ Output rules:
 - value/expression -> value/expression only
 - name -> name only
 - multiple explicitly requested results -> only those results
-Use standard mathematical/chemical notation. Never invent missing data.
-For chemistry, preserve the distinction between the requested reaction,
-formula, structure, name, product, and oxidation state.
+
+For chemistry, first internally identify exactly what the user requested
+(reaction, product, formula, structure, name, oxidation state, or condition).
+For an overall-reaction request, reproduce the requested transformation itself;
+do not substitute a related reaction, reagent, product, or mechanism. Check
+reactants, reagents/conditions, stoichiometry, regiochemistry, and product
+identity internally before emitting the result.
+For physics and mathematics, check the governing relationship and any required
+substitution internally before emitting the requested result.
+Never invent missing data or assumptions.
+
+Emit only the final requested result in standard mathematical/scientific
+notation.
 """
         elif explanation == "concise":
             final_system = r"""
