@@ -51,6 +51,24 @@ class ReasoningService:
         problem = problem.strip()
 
         # -----------------------------------------------------
+        # 1. EXACT CACHE
+        # -----------------------------------------------------
+
+        cached = self._cache_get(
+            problem,
+            explanation,
+        )
+
+        if cached is not None:
+            cached["cached"] = True
+            cached["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            return cached
+
+
+        # -----------------------------------------------------
         # 1. FAST EXACT OPERATION PATH
         # -----------------------------------------------------
         #
@@ -72,23 +90,6 @@ class ReasoningService:
                     2,
                 )
                 return response
-
-        # -----------------------------------------------------
-        # 1. EXACT CACHE
-        # -----------------------------------------------------
-
-        cached = self._cache_get(
-            problem,
-            explanation,
-        )
-
-        if cached is not None:
-            cached["cached"] = True
-            cached["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-            return cached
 
         # -----------------------------------------------------
         # 2. MODEL-DRIVEN SEMANTIC PLANNING
