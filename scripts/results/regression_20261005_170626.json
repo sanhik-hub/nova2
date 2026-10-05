@@ -1,0 +1,1935 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-05T11:36:26.301540+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "cases_file": "scripts\\stem_regression_cases.json",
+  "configuration": {
+    "standard_explanations": [
+      "off",
+      "concise",
+      "detailed"
+    ],
+    "guided": false,
+    "guided_hints": false,
+    "request_timeout_seconds": 180.0
+  },
+  "health": {
+    "http_status": 200,
+    "elapsed_ms": 31.54,
+    "json": {
+      "status": "healthy",
+      "wolfram": true,
+      "wolfram_session": {
+        "session_exists": true,
+        "session_started": true,
+        "startup_error": null
+      },
+      "executable": "C:\\Program Files\\Wolfram Research\\WolframScript\\wolframscript.EXE"
+    },
+    "raw_response": "{\"status\":\"healthy\",\"wolfram\":true,\"wolfram_session\":{\"session_exists\":true,\"session_started\":true,\"startup_error\":null},\"executable\":\"C:\\\\Program Files\\\\Wolfram Research\\\\WolframScript\\\\wolframscript.EXE\"}",
+    "exception": null,
+    "traceback": null
+  },
+  "results": [
+    {
+      "kind": "standard",
+      "case_id": "math_derivative",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+      "request": {
+        "query": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 12.52,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "-7 + 10*x + 3*x^2",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 8.74
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"-7 + 10*x + 3*x^2\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":8.74}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_derivative",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+      "request": {
+        "query": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 23131.91,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To differentiate $ x^3 + 5x^2 - 7x + 2 $ with respect to $ x $, apply the power rule to each term:\n\n$$\n\\frac{d}{dx}(x^3) = 3x^2, \\quad \\frac{d}{dx}(5x^2) = 10x, \\quad \\frac{d}{dx}(-7x) = -7, \\quad \\frac{d}{dx}(2) = 0\n$$\n\nSum the derivatives:\n\n$$\n3x^2 + 10x - 7\n$$\n\nThe derivative is $ 3x^2 + 10x - 7 $.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "-7 + 10*x + 3*x^2",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 23114.5,
+        "elapsed_ms": 23117.74
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To differentiate $ x^3 + 5x^2 - 7x + 2 $ with respect to $ x $, apply the power rule to each term:\\n\\n$$\\n\\\\frac{d}{dx}(x^3) = 3x^2, \\\\quad \\\\frac{d}{dx}(5x^2) = 10x, \\\\quad \\\\frac{d}{dx}(-7x) = -7, \\\\quad \\\\frac{d}{dx}(2) = 0\\n$$\\n\\nSum the derivatives:\\n\\n$$\\n3x^2 + 10x - 7\\n$$\\n\\nThe derivative is $ 3x^2 + 10x - 7 $.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"-7 + 10*x + 3*x^2\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":23114.5,\"elapsed_ms\":23117.74}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_derivative",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+      "request": {
+        "query": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 39645.23,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The derivative of the function $ f(x) = x^3 + 5x^2 - 7x + 2 $ with respect to $ x $ is found by applying the power rule to each term individually. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\n1. The derivative of $ x^3 $ with respect to $ x $ is $ 3x^2 $.\n2. The derivative of $ 5x^2 $ with respect to $ x $ is $ 10x $.\n3. The derivative of $ -7x $ with respect to $ x $ is $ -7 $.\n4. The derivative of the constant term $ 2 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{d}{dx}(x^3 + 5x^2 - 7x + 2) = 3x^2 + 10x - 7\n$$\n\nThus, the derivative of $ x^3 + 5x^2 - 7x + 2 $ with respect to $ x $ is $ 3x^2 + 10x - 7 $.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "-7 + 10*x + 3*x^2",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 39619.42,
+        "elapsed_ms": 39624.79
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The derivative of the function $ f(x) = x^3 + 5x^2 - 7x + 2 $ with respect to $ x $ is found by applying the power rule to each term individually. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\\n\\n1. The derivative of $ x^3 $ with respect to $ x $ is $ 3x^2 $.\\n2. The derivative of $ 5x^2 $ with respect to $ x $ is $ 10x $.\\n3. The derivative of $ -7x $ with respect to $ x $ is $ -7 $.\\n4. The derivative of the constant term $ 2 $ with respect to $ x $ is $ 0 $.\\n\\nAdding these derivatives together, we get:\\n\\n$$\\n\\\\frac{d}{dx}(x^3 + 5x^2 - 7x + 2) = 3x^2 + 10x - 7\\n$$\\n\\nThus, the derivative of $ x^3 + 5x^2 - 7x + 2 $ with respect to $ x $ is $ 3x^2 + 10x - 7 $.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"-7 + 10*x + 3*x^2\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":39619.42,\"elapsed_ms\":39624.79}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_equation",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Solve x^2 - 5x + 6 = 0.",
+      "request": {
+        "query": "Solve x^2 - 5x + 6 = 0.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 43.09,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "{{x -> 2}, {x -> 3}}",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 40.51
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"{{x -> 2}, {x -> 3}}\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":40.51}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_equation",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "Solve x^2 - 5x + 6 = 0.",
+      "request": {
+        "query": "Solve x^2 - 5x + 6 = 0.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 25066.98,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To solve the quadratic equation $ x^2 - 5x + 6 = 0 $, factor the quadratic expression:\n\n$$\nx^2 - 5x + 6 = (x - 2)(x - 3)\n$$\n\nSet the factored form equal to zero:\n\n$$\n(x - 2)(x - 3) = 0\n$$\n\nThis gives the solutions:\n\n$$\nx - 2 = 0 \\quad \\text{or} \\quad x - 3 = 0\n$$\n\nSolving for $ x $:\n\n$$\nx = 2 \\quad \\text{or} \\quad x = 3\n$$\n\nThe solutions are $ \\{x \\to 2, x \\to 3\\} $.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "{{x -> 2}, {x -> 3}}",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 25058.31,
+        "elapsed_ms": 25063.69
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To solve the quadratic equation $ x^2 - 5x + 6 = 0 $, factor the quadratic expression:\\n\\n$$\\nx^2 - 5x + 6 = (x - 2)(x - 3)\\n$$\\n\\nSet the factored form equal to zero:\\n\\n$$\\n(x - 2)(x - 3) = 0\\n$$\\n\\nThis gives the solutions:\\n\\n$$\\nx - 2 = 0 \\\\quad \\\\text{or} \\\\quad x - 3 = 0\\n$$\\n\\nSolving for $ x $:\\n\\n$$\\nx = 2 \\\\quad \\\\text{or} \\\\quad x = 3\\n$$\\n\\nThe solutions are $ \\\\{x \\\\to 2, x \\\\to 3\\\\} $.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"{{x -> 2}, {x -> 3}}\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":25058.31,\"elapsed_ms\":25063.69}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_equation",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "Solve x^2 - 5x + 6 = 0.",
+      "request": {
+        "query": "Solve x^2 - 5x + 6 = 0.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 33774.17,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The quadratic equation $ x^2 - 5x + 6 = 0 $ can be solved by factoring. To factor the quadratic, we need to find two numbers that multiply to 6 (the constant term) and add up to -5 (the coefficient of the linear term). These two numbers are -2 and -3.\n\nThus, the equation can be factored as:\n$$\n(x - 2)(x - 3) = 0\n$$\n\nSetting each factor equal to zero gives the solutions:\n$$\nx - 2 = 0 \\quad \\text{or} \\quad x - 3 = 0\n$$\n\nSolving for $ x $ in each case, we get:\n$$\nx = 2 \\quad \\text{or} \\quad x = 3\n$$\n\nThe solutions to the equation $ x^2 - 5x + 6 = 0 $ are:\n$$\n\\boxed{x = 2 \\text{ and } x = 3}\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "{{x -> 2}, {x -> 3}}",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 33766.01,
+        "elapsed_ms": 33770.25
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The quadratic equation $ x^2 - 5x + 6 = 0 $ can be solved by factoring. To factor the quadratic, we need to find two numbers that multiply to 6 (the constant term) and add up to -5 (the coefficient of the linear term). These two numbers are -2 and -3.\\n\\nThus, the equation can be factored as:\\n$$\\n(x - 2)(x - 3) = 0\\n$$\\n\\nSetting each factor equal to zero gives the solutions:\\n$$\\nx - 2 = 0 \\\\quad \\\\text{or} \\\\quad x - 3 = 0\\n$$\\n\\nSolving for $ x $ in each case, we get:\\n$$\\nx = 2 \\\\quad \\\\text{or} \\\\quad x = 3\\n$$\\n\\nThe solutions to the equation $ x^2 - 5x + 6 = 0 $ are:\\n$$\\n\\\\boxed{x = 2 \\\\text{ and } x = 3}\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"{{x -> 2}, {x -> 3}}\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":33766.01,\"elapsed_ms\":33770.25}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_integral",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Integrate 3x^2 + 4x - 1 with respect to x.",
+      "request": {
+        "query": "Integrate 3x^2 + 4x - 1 with respect to x.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8.96,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "-x + 2*x^2 + x^3",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 5.91
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"-x + 2*x^2 + x^3\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":5.91}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_integral",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "Integrate 3x^2 + 4x - 1 with respect to x.",
+      "request": {
+        "query": "Integrate 3x^2 + 4x - 1 with respect to x.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 25868.55,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To integrate $3x^2 + 4x - 1$ with respect to $x$, we find the antiderivative term by term:\n\n$$\n\\int (3x^2 + 4x - 1) \\, dx = \\int 3x^2 \\, dx + \\int 4x \\, dx - \\int 1 \\, dx\n$$\n\n$$\n= 3 \\cdot \\frac{x^3}{3} + 4 \\cdot \\frac{x^2}{2} - x + C\n$$\n\n$$\n= x^3 + 2x^2 - x + C\n$$\n\nThe result of the integration is:\n\n$$\nx^3 + 2x^2 - x + C\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "-x + 2*x^2 + x^3",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 25860.57,
+        "elapsed_ms": 25864.37
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To integrate $3x^2 + 4x - 1$ with respect to $x$, we find the antiderivative term by term:\\n\\n$$\\n\\\\int (3x^2 + 4x - 1) \\\\, dx = \\\\int 3x^2 \\\\, dx + \\\\int 4x \\\\, dx - \\\\int 1 \\\\, dx\\n$$\\n\\n$$\\n= 3 \\\\cdot \\\\frac{x^3}{3} + 4 \\\\cdot \\\\frac{x^2}{2} - x + C\\n$$\\n\\n$$\\n= x^3 + 2x^2 - x + C\\n$$\\n\\nThe result of the integration is:\\n\\n$$\\nx^3 + 2x^2 - x + C\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"-x + 2*x^2 + x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":25860.57,\"elapsed_ms\":25864.37}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_integral",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "Integrate 3x^2 + 4x - 1 with respect to x.",
+      "request": {
+        "query": "Integrate 3x^2 + 4x - 1 with respect to x.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 54964.1,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Integrate $3x^2 + 4x - 1$ with respect to $x$.\n\nTo find the integral of the polynomial $3x^2 + 4x - 1$, we apply the power rule for integration. The power rule states that the integral of $x^n$ with respect to $x$ is $\\frac{x^{n+1}}{n+1}$, where $n \\neq -1$.\n\nWe integrate term by term:\n\n1. The integral of $3x^2$ with respect to $x$ is:\n$$\n\\int 3x^2 \\, dx = 3 \\cdot \\frac{x^{2+1}}{2+1} = 3 \\cdot \\frac{x^3}{3} = x^3\n$$\n\n2. The integral of $4x$ with respect to $x$ is:\n$$\n\\int 4x \\, dx = 4 \\cdot \\frac{x^{1+1}}{1+1} = 4 \\cdot \\frac{x^2}{2} = 2x^2\n$$\n\n3. The integral of $-1$ with respect to $x$ is:\n$$\n\\int -1 \\, dx = -x\n$$\n\nAdding these results together and including the constant of integration $C$, we get:\n$$\n\\int (3x^2 + 4x - 1) \\, dx = x^3 + 2x^2 - x + C\n$$\n\nThe verified result is:\n$$\n-x + 2x^2 + x^3\n$$\n\nThis matches the expected form of the integral, with the constant of integration $C$ typically omitted in such problems unless specified.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "-x + 2*x^2 + x^3",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 54941.7,
+        "elapsed_ms": 54946.48
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Integrate $3x^2 + 4x - 1$ with respect to $x$.\\n\\nTo find the integral of the polynomial $3x^2 + 4x - 1$, we apply the power rule for integration. The power rule states that the integral of $x^n$ with respect to $x$ is $\\\\frac{x^{n+1}}{n+1}$, where $n \\\\neq -1$.\\n\\nWe integrate term by term:\\n\\n1. The integral of $3x^2$ with respect to $x$ is:\\n$$\\n\\\\int 3x^2 \\\\, dx = 3 \\\\cdot \\\\frac{x^{2+1}}{2+1} = 3 \\\\cdot \\\\frac{x^3}{3} = x^3\\n$$\\n\\n2. The integral of $4x$ with respect to $x$ is:\\n$$\\n\\\\int 4x \\\\, dx = 4 \\\\cdot \\\\frac{x^{1+1}}{1+1} = 4 \\\\cdot \\\\frac{x^2}{2} = 2x^2\\n$$\\n\\n3. The integral of $-1$ with respect to $x$ is:\\n$$\\n\\\\int -1 \\\\, dx = -x\\n$$\\n\\nAdding these results together and including the constant of integration $C$, we get:\\n$$\\n\\\\int (3x^2 + 4x - 1) \\\\, dx = x^3 + 2x^2 - x + C\\n$$\\n\\nThe verified result is:\\n$$\\n-x + 2x^2 + x^3\\n$$\\n\\nThis matches the expected form of the integral, with the constant of integration $C$ typically omitted in such problems unless specified.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"-x + 2*x^2 + x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":54941.7,\"elapsed_ms\":54946.48}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_limit",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+      "request": {
+        "query": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 282.48,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "of",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 279.16
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"of\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":279.16}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_limit",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+      "request": {
+        "query": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 32134.47,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The limit of $\\frac{\\sin(x)}{x}$ as $x$ approaches 0 is a well-known result in calculus. It can be evaluated using the squeeze theorem or by using the Taylor series expansion of $\\sin(x)$ around 0.\n\nUsing the Taylor series expansion of $\\sin(x)$ around 0:\n$$\n\\sin(x) = x - \\frac{x^3}{6} + \\frac{x^5}{120} - \\cdots\n$$\n\nDividing by $x$:\n$$\n\\frac{\\sin(x)}{x} = 1 - \\frac{x^2}{6} + \\frac{x^4}{120} - \\cdots\n$$\n\nAs $x$ approaches 0, all the higher-order terms (involving $x^2$, $x^4$, etc.) approach 0, leaving:\n$$\n\\lim_{x \\to 0} \\frac{\\sin(x)}{x} = 1\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "of",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 32111.79,
+        "elapsed_ms": 32120.23
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The limit of $\\\\frac{\\\\sin(x)}{x}$ as $x$ approaches 0 is a well-known result in calculus. It can be evaluated using the squeeze theorem or by using the Taylor series expansion of $\\\\sin(x)$ around 0.\\n\\nUsing the Taylor series expansion of $\\\\sin(x)$ around 0:\\n$$\\n\\\\sin(x) = x - \\\\frac{x^3}{6} + \\\\frac{x^5}{120} - \\\\cdots\\n$$\\n\\nDividing by $x$:\\n$$\\n\\\\frac{\\\\sin(x)}{x} = 1 - \\\\frac{x^2}{6} + \\\\frac{x^4}{120} - \\\\cdots\\n$$\\n\\nAs $x$ approaches 0, all the higher-order terms (involving $x^2$, $x^4$, etc.) approach 0, leaving:\\n$$\\n\\\\lim_{x \\\\to 0} \\\\frac{\\\\sin(x)}{x} = 1\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"of\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":32111.79,\"elapsed_ms\":32120.23}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_limit",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+      "request": {
+        "query": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 48845.06,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To evaluate the limit of $\\frac{\\sin(x)}{x}$ as $x$ approaches 0, we can use the well-known limit property:\n\n$$\n\\lim_{x \\to 0} \\frac{\\sin(x)}{x} = 1\n$$\n\nThis result is a fundamental limit in calculus and is often derived using the squeeze theorem or Taylor series expansion of $\\sin(x)$. Here, we will use the Taylor series expansion of $\\sin(x)$ around $x = 0$ to verify the result.\n\nThe Taylor series expansion of $\\sin(x)$ around $x = 0$ is:\n\n$$\n\\sin(x) = x - \\frac{x^3}{6} + \\frac{x^5}{120} - \\cdots\n$$\n\nDividing by $x$, we get:\n\n$$\n\\frac{\\sin(x)}{x} = 1 - \\frac{x^2}{6} + \\frac{x^4}{120} - \\cdots\n$$\n\nNow, taking the limit as $x$ approaches 0:\n\n$$\n\\lim_{x \\to 0} \\left(1 - \\frac{x^2}{6} + \\frac{x^4}{120} - \\cdots\\right) = 1\n$$\n\nThus, the limit of $\\frac{\\sin(x)}{x}$ as $x$ approaches 0 is:\n\n$$\n1\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "of",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 48830.06,
+        "elapsed_ms": 48841.76
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To evaluate the limit of $\\\\frac{\\\\sin(x)}{x}$ as $x$ approaches 0, we can use the well-known limit property:\\n\\n$$\\n\\\\lim_{x \\\\to 0} \\\\frac{\\\\sin(x)}{x} = 1\\n$$\\n\\nThis result is a fundamental limit in calculus and is often derived using the squeeze theorem or Taylor series expansion of $\\\\sin(x)$. Here, we will use the Taylor series expansion of $\\\\sin(x)$ around $x = 0$ to verify the result.\\n\\nThe Taylor series expansion of $\\\\sin(x)$ around $x = 0$ is:\\n\\n$$\\n\\\\sin(x) = x - \\\\frac{x^3}{6} + \\\\frac{x^5}{120} - \\\\cdots\\n$$\\n\\nDividing by $x$, we get:\\n\\n$$\\n\\\\frac{\\\\sin(x)}{x} = 1 - \\\\frac{x^2}{6} + \\\\frac{x^4}{120} - \\\\cdots\\n$$\\n\\nNow, taking the limit as $x$ approaches 0:\\n\\n$$\\n\\\\lim_{x \\\\to 0} \\\\left(1 - \\\\frac{x^2}{6} + \\\\frac{x^4}{120} - \\\\cdots\\\\right) = 1\\n$$\\n\\nThus, the limit of $\\\\frac{\\\\sin(x)}{x}$ as $x$ approaches 0 is:\\n\\n$$\\n1\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"of\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":48830.06,\"elapsed_ms\":48841.76}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_simplify",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Simplify (x^2 - 1)/(x - 1).",
+      "request": {
+        "query": "Simplify (x^2 - 1)/(x - 1).",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 7.11,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "1 + x",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 3.54
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"1 + x\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":3.54}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_simplify",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "Simplify (x^2 - 1)/(x - 1).",
+      "request": {
+        "query": "Simplify (x^2 - 1)/(x - 1).",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 20823.74,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\n\\frac{x^2 - 1}{x - 1}\n$$\n\nFactor the numerator:\n\n$$\nx^2 - 1 = (x - 1)(x + 1)\n$$\n\nSubstitute back into the expression:\n\n$$\n\\frac{(x - 1)(x + 1)}{x - 1}\n$$\n\nCancel the common factor $x - 1$ (for $x \\neq 1$):\n\n$$\nx + 1\n$$\n\nThe simplified form is $x + 1$.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "1 + x",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 20816.02,
+        "elapsed_ms": 20820.72
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\n\\\\frac{x^2 - 1}{x - 1}\\n$$\\n\\nFactor the numerator:\\n\\n$$\\nx^2 - 1 = (x - 1)(x + 1)\\n$$\\n\\nSubstitute back into the expression:\\n\\n$$\\n\\\\frac{(x - 1)(x + 1)}{x - 1}\\n$$\\n\\nCancel the common factor $x - 1$ (for $x \\\\neq 1$):\\n\\n$$\\nx + 1\\n$$\\n\\nThe simplified form is $x + 1$.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"1 + x\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":20816.02,\"elapsed_ms\":20820.72}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_simplify",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "Simplify (x^2 - 1)/(x - 1).",
+      "request": {
+        "query": "Simplify (x^2 - 1)/(x - 1).",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 30495.89,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Simplify the expression $\\frac{x^2 - 1}{x - 1}$.\n\nFirst, recognize that the numerator $x^2 - 1$ is a difference of squares, which can be factored as:\n$$\nx^2 - 1 = (x - 1)(x + 1)\n$$\n\nSubstitute this factorization into the original expression:\n$$\n\\frac{x^2 - 1}{x - 1} = \\frac{(x - 1)(x + 1)}{x - 1}\n$$\n\nSince $x - 1$ is a common factor in the numerator and the denominator, it can be canceled out, provided $x \\neq 1$ (to avoid division by zero). This simplifies the expression to:\n$$\nx + 1\n$$\n\nThus, the simplified form of $\\frac{x^2 - 1}{x - 1}$ is:\n$$\n1 + x\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "1 + x",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 30489.45,
+        "elapsed_ms": 30492.85
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Simplify the expression $\\\\frac{x^2 - 1}{x - 1}$.\\n\\nFirst, recognize that the numerator $x^2 - 1$ is a difference of squares, which can be factored as:\\n$$\\nx^2 - 1 = (x - 1)(x + 1)\\n$$\\n\\nSubstitute this factorization into the original expression:\\n$$\\n\\\\frac{x^2 - 1}{x - 1} = \\\\frac{(x - 1)(x + 1)}{x - 1}\\n$$\\n\\nSince $x - 1$ is a common factor in the numerator and the denominator, it can be canceled out, provided $x \\\\neq 1$ (to avoid division by zero). This simplifies the expression to:\\n$$\\nx + 1\\n$$\\n\\nThus, the simplified form of $\\\\frac{x^2 - 1}{x - 1}$ is:\\n$$\\n1 + x\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"1 + x\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":30489.45,\"elapsed_ms\":30492.85}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_expression",
+      "domain": "math",
+      "explanation": "off",
+      "question": "(3 + 5)^2 / 4",
+      "request": {
+        "query": "(3 + 5)^2 / 4",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 9.47,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "16",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 6.34
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"16\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":6.34}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_expression",
+      "domain": "math",
+      "explanation": "concise",
+      "question": "(3 + 5)^2 / 4",
+      "request": {
+        "query": "(3 + 5)^2 / 4",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 7099.76,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\n\\frac{(3 + 5)^2}{4} = \\frac{8^2}{4} = \\frac{64}{4} = 16\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "result": "16"
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 7092.6,
+        "elapsed_ms": 7097.19
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\n\\\\frac{(3 + 5)^2}{4} = \\\\frac{8^2}{4} = \\\\frac{64}{4} = 16\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"result\":\"16\"}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":7092.6,\"elapsed_ms\":7097.19}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_expression",
+      "domain": "math",
+      "explanation": "detailed",
+      "question": "(3 + 5)^2 / 4",
+      "request": {
+        "query": "(3 + 5)^2 / 4",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 14249.43,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The expression to evaluate is $(3 + 5)^2 / 4$.\n\nFirst, simplify the expression inside the parentheses:\n$$\n3 + 5 = 8\n$$\n\nNext, square the result:\n$$\n(8)^2 = 64\n$$\n\nThen, divide by 4:\n$$\n64 / 4 = 16\n$$\n\nThus, the value of the expression is $16$.",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "result": "16"
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 14242.48,
+        "elapsed_ms": 14246.44
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The expression to evaluate is $(3 + 5)^2 / 4$.\\n\\nFirst, simplify the expression inside the parentheses:\\n$$\\n3 + 5 = 8\\n$$\\n\\nNext, square the result:\\n$$\\n(8)^2 = 64\\n$$\\n\\nThen, divide by 4:\\n$$\\n64 / 4 = 16\\n$$\\n\\nThus, the value of the expression is $16$.\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"result\":\"16\"}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":14242.48,\"elapsed_ms\":14246.44}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_emf_rotation",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+      "request": {
+        "query": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 15280.47,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The formula for the emf induced in a rod of length $ l $ rotating with angular velocity $ \\omega $ perpendicular to a magnetic field $ B $ is given by:\n\n$$\n\\mathcal{E} = \\frac{1}{2} B \\omega l^2\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 5687.11,
+          "wolfram": 0.0,
+          "final_llm": 9590.53
+        },
+        "elapsed_ms": 15278.04
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The formula for the emf induced in a rod of length $ l $ rotating with angular velocity $ \\\\omega $ perpendicular to a magnetic field $ B $ is given by:\\n\\n$$\\n\\\\mathcal{E} = \\\\frac{1}{2} B \\\\omega l^2\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":5687.11,\"wolfram\":0.0,\"final_llm\":9590.53},\"elapsed_ms\":15278.04}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_emf_rotation",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+      "request": {
+        "query": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 33378.82,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To derive the formula for emf induced in a rod of length $ l $ rotating with angular velocity $ \\omega $ perpendicular to a magnetic field $ B $, consider the motion of the rod in the magnetic field. The emf induced in the rod is due to the motion of the charges in the magnetic field, which experiences a force $ F = q(\\vec{v} \\times \\vec{B}) $. \n\nThe velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\omega r $. The emf induced in the rod is the integral of the electric field along the length of the rod. The electric field $ E $ due to the motion in the magnetic field is given by $ E = \\frac{1}{2} B \\omega l $. \n\nThus, the induced emf $ \\mathcal{E} $ is:\n\n$$\n\\mathcal{E} = \\frac{1}{2} B \\omega l\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 5707.25,
+          "wolfram": 0.0,
+          "final_llm": 27668.9
+        },
+        "elapsed_ms": 33376.3
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To derive the formula for emf induced in a rod of length $ l $ rotating with angular velocity $ \\\\omega $ perpendicular to a magnetic field $ B $, consider the motion of the rod in the magnetic field. The emf induced in the rod is due to the motion of the charges in the magnetic field, which experiences a force $ F = q(\\\\vec{v} \\\\times \\\\vec{B}) $. \\n\\nThe velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\\\omega r $. The emf induced in the rod is the integral of the electric field along the length of the rod. The electric field $ E $ due to the motion in the magnetic field is given by $ E = \\\\frac{1}{2} B \\\\omega l $. \\n\\nThus, the induced emf $ \\\\mathcal{E} $ is:\\n\\n$$\\n\\\\mathcal{E} = \\\\frac{1}{2} B \\\\omega l\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":5707.25,\"wolfram\":0.0,\"final_llm\":27668.9},\"elapsed_ms\":33376.3}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_emf_rotation",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+      "request": {
+        "query": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 122926.71,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To derive the formula for the electromotive force (emf) induced in a rod of length $ l $ rotating with angular velocity $ \\omega $ perpendicular to a magnetic field, we consider the motion of the rod in a magnetic field and the induced electric field due to this motion.\n\nThe rod is rotating in a magnetic field $ \\mathbf{B} $, which is perpendicular to the plane of rotation. The magnetic field is uniform and constant. The rod is of length $ l $ and is rotating about one end, with angular velocity $ \\omega $.\n\nThe induced emf in a conductor moving in a magnetic field can be determined by considering the motional emf. The motional emf is given by the integral of the electric field $ \\mathbf{E} $ along the path of the conductor. The electric field in a magnetic field is given by:\n\n$$\n\\mathbf{E} = \\mathbf{v} \\times \\mathbf{B}\n$$\n\nwhere $ \\mathbf{v} $ is the velocity of the conductor and $ \\mathbf{B} $ is the magnetic field.\n\nFor a rod rotating with angular velocity $ \\omega $, the velocity of a point at a distance $ r $ from the center of rotation is:\n\n$$\nv = \\omega r\n$$\n\nThe magnetic field is perpendicular to the plane of rotation, so $ \\mathbf{B} $ is perpendicular to $ \\mathbf{v} $. Therefore, the cross product $ \\mathbf{v} \\times \\mathbf{B} $ is non-zero and gives the electric field.\n\nTo find the induced emf, we integrate the electric field along the length of the rod. The induced emf $ \\mathcal{E} $ is given by:\n\n$$\n\\mathcal{E} = \\int \\mathbf{E} \\cdot d\\mathbf{l}\n$$\n\nSubstituting $ \\mathbf{E} = \\mathbf{v} \\times \\mathbf{B} $, we get:\n\n$$\n\\mathcal{E} = \\int (\\mathbf{v} \\times \\mathbf{B}) \\cdot d\\mathbf{l}\n$$\n\nSince $ \\mathbf{v} = \\omega r \\hat{r} $ and $ \\mathbf{B} $ is perpendicular to $ \\hat{r} $, the cross product $ \\mathbf{v} \\times \\mathbf{B} $ is in the direction of $ \\mathbf{B} $, and the dot product with $ d\\mathbf{l} $ gives a scalar value.\n\nThe length of the rod is $ l $, and the velocity at each point along the rod is $ \\omega r $. Therefore, the induced emf is:\n\n$$\n\\mathcal{E} = \\int_0^l \\omega r B \\, dr\n$$\n\nThis integral evaluates to:\n\n$$\n\\mathcal{E} = \\omega B \\int_0^l r \\, dr = \\omega B \\left[ \\frac{r^2}{2} \\right]_0^l = \\frac{1}{2} \\omega B l^2\n$$\n\nThus, the formula for the emf induced in a rod of length $ l $ rotating with angular velocity $ \\omega $ perpendicular to a magnetic field $ B $ is:\n\n$$\n\\boxed{\\mathcal{E} = \\frac{1}{2} \\omega B l^2}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 13013.72,
+          "wolfram": 0.0,
+          "final_llm": 109888.94
+        },
+        "elapsed_ms": 122904.31
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To derive the formula for the electromotive force (emf) induced in a rod of length $ l $ rotating with angular velocity $ \\\\omega $ perpendicular to a magnetic field, we consider the motion of the rod in a magnetic field and the induced electric field due to this motion.\\n\\nThe rod is rotating in a magnetic field $ \\\\mathbf{B} $, which is perpendicular to the plane of rotation. The magnetic field is uniform and constant. The rod is of length $ l $ and is rotating about one end, with angular velocity $ \\\\omega $.\\n\\nThe induced emf in a conductor moving in a magnetic field can be determined by considering the motional emf. The motional emf is given by the integral of the electric field $ \\\\mathbf{E} $ along the path of the conductor. The electric field in a magnetic field is given by:\\n\\n$$\\n\\\\mathbf{E} = \\\\mathbf{v} \\\\times \\\\mathbf{B}\\n$$\\n\\nwhere $ \\\\mathbf{v} $ is the velocity of the conductor and $ \\\\mathbf{B} $ is the magnetic field.\\n\\nFor a rod rotating with angular velocity $ \\\\omega $, the velocity of a point at a distance $ r $ from the center of rotation is:\\n\\n$$\\nv = \\\\omega r\\n$$\\n\\nThe magnetic field is perpendicular to the plane of rotation, so $ \\\\mathbf{B} $ is perpendicular to $ \\\\mathbf{v} $. Therefore, the cross product $ \\\\mathbf{v} \\\\times \\\\mathbf{B} $ is non-zero and gives the electric field.\\n\\nTo find the induced emf, we integrate the electric field along the length of the rod. The induced emf $ \\\\mathcal{E} $ is given by:\\n\\n$$\\n\\\\mathcal{E} = \\\\int \\\\mathbf{E} \\\\cdot d\\\\mathbf{l}\\n$$\\n\\nSubstituting $ \\\\mathbf{E} = \\\\mathbf{v} \\\\times \\\\mathbf{B} $, we get:\\n\\n$$\\n\\\\mathcal{E} = \\\\int (\\\\mathbf{v} \\\\times \\\\mathbf{B}) \\\\cdot d\\\\mathbf{l}\\n$$\\n\\nSince $ \\\\mathbf{v} = \\\\omega r \\\\hat{r} $ and $ \\\\mathbf{B} $ is perpendicular to $ \\\\hat{r} $, the cross product $ \\\\mathbf{v} \\\\times \\\\mathbf{B} $ is in the direction of $ \\\\mathbf{B} $, and the dot product with $ d\\\\mathbf{l} $ gives a scalar value.\\n\\nThe length of the rod is $ l $, and the velocity at each point along the rod is $ \\\\omega r $. Therefore, the induced emf is:\\n\\n$$\\n\\\\mathcal{E} = \\\\int_0^l \\\\omega r B \\\\, dr\\n$$\\n\\nThis integral evaluates to:\\n\\n$$\\n\\\\mathcal{E} = \\\\omega B \\\\int_0^l r \\\\, dr = \\\\omega B \\\\left[ \\\\frac{r^2}{2} \\\\right]_0^l = \\\\frac{1}{2} \\\\omega B l^2\\n$$\\n\\nThus, the formula for the emf induced in a rod of length $ l $ rotating with angular velocity $ \\\\omega $ perpendicular to a magnetic field $ B $ is:\\n\\n$$\\n\\\\boxed{\\\\mathcal{E} = \\\\frac{1}{2} \\\\omega B l^2}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":13013.72,\"wolfram\":0.0,\"final_llm\":109888.94},\"elapsed_ms\":122904.31}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_projectile",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+      "request": {
+        "query": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 37857.78,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ h = \\frac{v^2}{2g} = \\frac{20^2}{2 \\times 10} = \\frac{400}{20} = 20 \\, \\text{m} $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2738.95,
+          "wolfram": 0.0,
+          "final_llm": 35112.0
+        },
+        "elapsed_ms": 37853.34
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ h = \\\\frac{v^2}{2g} = \\\\frac{20^2}{2 \\\\times 10} = \\\\frac{400}{20} = 20 \\\\, \\\\text{m} $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2738.95,\"wolfram\":0.0,\"final_llm\":35112.0},\"elapsed_ms\":37853.34}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_projectile",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+      "request": {
+        "query": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 58332.05,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the maximum height of a ball projected vertically upward, we use the kinematic equation:\n\n$$\nv^2 = u^2 + 2as\n$$\n\nwhere:\n- $ v $ is the final velocity (0 m/s at maximum height),\n- $ u $ is the initial velocity (20 m/s),\n- $ a $ is the acceleration ( -10 m/s², since it's opposite to the direction of motion),\n- $ s $ is the displacement (maximum height).\n\nSubstitute the known values:\n\n$$\n0 = (20)^2 + 2(-10)s\n$$\n\nSimplify:\n\n$$\n0 = 400 - 20s\n$$\n\nSolve for $ s $:\n\n$$\n20s = 400 \\implies s = 20\n$$\n\nThe maximum height is $ \\boxed{20} $ meters.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2572.5,
+          "wolfram": 0.0,
+          "final_llm": 55755.8
+        },
+        "elapsed_ms": 58328.49
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the maximum height of a ball projected vertically upward, we use the kinematic equation:\\n\\n$$\\nv^2 = u^2 + 2as\\n$$\\n\\nwhere:\\n- $ v $ is the final velocity (0 m/s at maximum height),\\n- $ u $ is the initial velocity (20 m/s),\\n- $ a $ is the acceleration ( -10 m/s², since it's opposite to the direction of motion),\\n- $ s $ is the displacement (maximum height).\\n\\nSubstitute the known values:\\n\\n$$\\n0 = (20)^2 + 2(-10)s\\n$$\\n\\nSimplify:\\n\\n$$\\n0 = 400 - 20s\\n$$\\n\\nSolve for $ s $:\\n\\n$$\\n20s = 400 \\\\implies s = 20\\n$$\\n\\nThe maximum height is $ \\\\boxed{20} $ meters.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2572.5,\"wolfram\":0.0,\"final_llm\":55755.8},\"elapsed_ms\":58328.49}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_projectile",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+      "request": {
+        "query": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 42689.06,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the maximum height reached by a ball projected vertically upward with an initial speed of 20 m/s, we can use the kinematic equation for vertical motion under constant acceleration (gravity). The relevant equation is:\n\n$$\nv^2 = u^2 + 2as\n$$\n\nwhere:\n- $ v $ is the final velocity (0 m/s at maximum height),\n- $ u $ is the initial velocity (20 m/s),\n- $ a $ is the acceleration (which is $ -g = -10 \\, \\text{m/s}^2 $ since gravity acts downward),\n- $ s $ is the displacement (maximum height in this case).\n\nSubstituting the known values into the equation:\n\n$$\n0^2 = (20)^2 + 2(-10)s\n$$\n\n$$\n0 = 400 - 20s\n$$\n\n$$\n20s = 400\n$$\n\n$$\ns = \\frac{400}{20} = 20\n$$\n\nThus, the maximum height reached by the ball is:\n\n$$\n\\boxed{20 \\, \\text{m}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1708.35,
+          "wolfram": 0.0,
+          "final_llm": 40977.27
+        },
+        "elapsed_ms": 42685.79
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the maximum height reached by a ball projected vertically upward with an initial speed of 20 m/s, we can use the kinematic equation for vertical motion under constant acceleration (gravity). The relevant equation is:\\n\\n$$\\nv^2 = u^2 + 2as\\n$$\\n\\nwhere:\\n- $ v $ is the final velocity (0 m/s at maximum height),\\n- $ u $ is the initial velocity (20 m/s),\\n- $ a $ is the acceleration (which is $ -g = -10 \\\\, \\\\text{m/s}^2 $ since gravity acts downward),\\n- $ s $ is the displacement (maximum height in this case).\\n\\nSubstituting the known values into the equation:\\n\\n$$\\n0^2 = (20)^2 + 2(-10)s\\n$$\\n\\n$$\\n0 = 400 - 20s\\n$$\\n\\n$$\\n20s = 400\\n$$\\n\\n$$\\ns = \\\\frac{400}{20} = 20\\n$$\\n\\nThus, the maximum height reached by the ball is:\\n\\n$$\\n\\\\boxed{20 \\\\, \\\\text{m}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1708.35,\"wolfram\":0.0,\"final_llm\":40977.27},\"elapsed_ms\":42685.79}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_ohm",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "State Ohm's law and explain the meaning of resistance.",
+      "request": {
+        "query": "State Ohm's law and explain the meaning of resistance.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 18587.27,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Ohm's law states that the current (I) through a conductor between two points is directly proportional to the voltage (V) across the two points, and inversely proportional to the resistance (R) of the conductor. Mathematically, it is expressed as $ V = I \\times R $. \n\nResistance is a measure of how much a material opposes the flow of electric current. It is determined by the material's properties, the length of the conductor, the cross-sectional area, and the temperature. The unit of resistance is the ohm (Ω).",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1518.94,
+          "wolfram": 0.0,
+          "final_llm": 17061.35
+        },
+        "elapsed_ms": 18580.43
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Ohm's law states that the current (I) through a conductor between two points is directly proportional to the voltage (V) across the two points, and inversely proportional to the resistance (R) of the conductor. Mathematically, it is expressed as $ V = I \\\\times R $. \\n\\nResistance is a measure of how much a material opposes the flow of electric current. It is determined by the material's properties, the length of the conductor, the cross-sectional area, and the temperature. The unit of resistance is the ohm (Ω).\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1518.94,\"wolfram\":0.0,\"final_llm\":17061.35},\"elapsed_ms\":18580.43}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_ohm",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "State Ohm's law and explain the meaning of resistance.",
+      "request": {
+        "query": "State Ohm's law and explain the meaning of resistance.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 29880.69,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Ohm's law states that the current $ I $ through a conductor is directly proportional to the voltage $ V $ across it and inversely proportional to the resistance $ R $:  \n$$\nV = IR\n$$  \nThis law describes the linear relationship between voltage and current in an electrical circuit.  \n\nResistance $ R $ is a measure of how much a material opposes the flow of electric current. It is defined as the ratio of the voltage across a conductor to the current flowing through it:  \n$$\nR = \\frac{V}{I}\n$$  \nThe unit of resistance is the ohm ($ \\Omega $), and it depends on the material's properties, the length of the conductor, and its cross-sectional area. A higher resistance means a smaller current for a given voltage.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1504.8,
+          "wolfram": 0.0,
+          "final_llm": 28372.67
+        },
+        "elapsed_ms": 29877.59
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Ohm's law states that the current $ I $ through a conductor is directly proportional to the voltage $ V $ across it and inversely proportional to the resistance $ R $:  \\n$$\\nV = IR\\n$$  \\nThis law describes the linear relationship between voltage and current in an electrical circuit.  \\n\\nResistance $ R $ is a measure of how much a material opposes the flow of electric current. It is defined as the ratio of the voltage across a conductor to the current flowing through it:  \\n$$\\nR = \\\\frac{V}{I}\\n$$  \\nThe unit of resistance is the ohm ($ \\\\Omega $), and it depends on the material's properties, the length of the conductor, and its cross-sectional area. A higher resistance means a smaller current for a given voltage.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1504.8,\"wolfram\":0.0,\"final_llm\":28372.67},\"elapsed_ms\":29877.59}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_ohm",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "State Ohm's law and explain the meaning of resistance.",
+      "request": {
+        "query": "State Ohm's law and explain the meaning of resistance.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 62431.27,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "**Ohm's Law and the Meaning of Resistance**\n\n**Ohm's Law**:  \nOhm's law is a fundamental principle in electrical engineering and physics that relates the voltage, current, and resistance in an electrical circuit. It is stated as:\n\n$$\nV = I \\cdot R\n$$\n\nwhere:\n- $ V $ is the voltage (measured in volts, V),\n- $ I $ is the current (measured in amperes, A),\n- $ R $ is the resistance (measured in ohms, Ω).\n\n**Explanation of Resistance**:  \nResistance is a measure of how much a material opposes the flow of electric current. It is defined as the ratio of the voltage across a conductor to the current flowing through it, as given by Ohm's law. The unit of resistance, the ohm (Ω), is named after the German physicist Georg Ohm.\n\nThe resistance of a material depends on several factors:\n1. **Material**: Different materials have different resistivities. For example, copper has a lower resistivity than rubber.\n2. **Length**: The longer the conductor, the higher the resistance.\n3. **Cross-sectional area**: The larger the cross-sectional area, the lower the resistance.\n4. **Temperature**: The resistance of most materials increases with temperature.\n\nThe resistivity (ρ) of a material is a property that quantifies how strongly it resists the flow of electric current. The resistance $ R $ of a conductor can also be calculated using the formula:\n\n$$\nR = \\rho \\cdot \\frac{L}{A}\n$$\n\nwhere:\n- $ \\rho $ is the resistivity of the material,\n- $ L $ is the length of the conductor,\n- $ A $ is the cross-sectional area of the conductor.\n\nIn summary, Ohm's law provides a direct relationship between voltage, current, and resistance in a circuit, while resistance is a property that determines how much a material opposes the flow of electric current.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1386.1,
+          "wolfram": 0.0,
+          "final_llm": 61041.7
+        },
+        "elapsed_ms": 62427.92
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"**Ohm's Law and the Meaning of Resistance**\\n\\n**Ohm's Law**:  \\nOhm's law is a fundamental principle in electrical engineering and physics that relates the voltage, current, and resistance in an electrical circuit. It is stated as:\\n\\n$$\\nV = I \\\\cdot R\\n$$\\n\\nwhere:\\n- $ V $ is the voltage (measured in volts, V),\\n- $ I $ is the current (measured in amperes, A),\\n- $ R $ is the resistance (measured in ohms, Ω).\\n\\n**Explanation of Resistance**:  \\nResistance is a measure of how much a material opposes the flow of electric current. It is defined as the ratio of the voltage across a conductor to the current flowing through it, as given by Ohm's law. The unit of resistance, the ohm (Ω), is named after the German physicist Georg Ohm.\\n\\nThe resistance of a material depends on several factors:\\n1. **Material**: Different materials have different resistivities. For example, copper has a lower resistivity than rubber.\\n2. **Length**: The longer the conductor, the higher the resistance.\\n3. **Cross-sectional area**: The larger the cross-sectional area, the lower the resistance.\\n4. **Temperature**: The resistance of most materials increases with temperature.\\n\\nThe resistivity (ρ) of a material is a property that quantifies how strongly it resists the flow of electric current. The resistance $ R $ of a conductor can also be calculated using the formula:\\n\\n$$\\nR = \\\\rho \\\\cdot \\\\frac{L}{A}\\n$$\\n\\nwhere:\\n- $ \\\\rho $ is the resistivity of the material,\\n- $ L $ is the length of the conductor,\\n- $ A $ is the cross-sectional area of the conductor.\\n\\nIn summary, Ohm's law provides a direct relationship between voltage, current, and resistance in a circuit, while resistance is a property that determines how much a material opposes the flow of electric current.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1386.1,\"wolfram\":0.0,\"final_llm\":61041.7},\"elapsed_ms\":62427.92}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_work",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+      "request": {
+        "query": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 19239.82,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The work done is calculated using the formula $ W = F \\cdot d $, where $ F $ is the force and $ d $ is the distance. Substituting the given values, $ W = 10 \\, \\text{N} \\cdot 5 \\, \\text{m} = 50 \\, \\text{J} $. \n\n$$\n\\boxed{50 \\, \\text{J}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2175.71,
+          "wolfram": 0.0,
+          "final_llm": 17059.91
+        },
+        "elapsed_ms": 19235.75
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The work done is calculated using the formula $ W = F \\\\cdot d $, where $ F $ is the force and $ d $ is the distance. Substituting the given values, $ W = 10 \\\\, \\\\text{N} \\\\cdot 5 \\\\, \\\\text{m} = 50 \\\\, \\\\text{J} $. \\n\\n$$\\n\\\\boxed{50 \\\\, \\\\text{J}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2175.71,\"wolfram\":0.0,\"final_llm\":17059.91},\"elapsed_ms\":19235.75}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_work",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+      "request": {
+        "query": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 25681.88,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The work done $ W $ by a constant force $ F $ over a distance $ d $ in the direction of the force is given by:\n\n$$\nW = F \\cdot d\n$$\n\nSubstituting the given values $ F = 10 \\, \\text{N} $ and $ d = 5 \\, \\text{m} $:\n\n$$\nW = 10 \\, \\text{N} \\cdot 5 \\, \\text{m} = 50 \\, \\text{J}\n$$\n\nThe work done is $ 50 \\, \\text{J} $.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1967.09,
+          "wolfram": 0.0,
+          "final_llm": 23711.29
+        },
+        "elapsed_ms": 25678.5
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The work done $ W $ by a constant force $ F $ over a distance $ d $ in the direction of the force is given by:\\n\\n$$\\nW = F \\\\cdot d\\n$$\\n\\nSubstituting the given values $ F = 10 \\\\, \\\\text{N} $ and $ d = 5 \\\\, \\\\text{m} $:\\n\\n$$\\nW = 10 \\\\, \\\\text{N} \\\\cdot 5 \\\\, \\\\text{m} = 50 \\\\, \\\\text{J}\\n$$\\n\\nThe work done is $ 50 \\\\, \\\\text{J} $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1967.09,\"wolfram\":0.0,\"final_llm\":23711.29},\"elapsed_ms\":25678.5}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_work",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+      "request": {
+        "query": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 37185.25,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the work done by a constant force on an object, we use the definition of work in physics. Work is defined as the product of the force applied to an object and the displacement of the object in the direction of the force. The formula for work $ W $ is:\n\n$$\nW = F \\cdot d\n$$\n\nwhere:\n- $ W $ is the work done (in joules, J),\n- $ F $ is the magnitude of the force (in newtons, N),\n- $ d $ is the displacement (in meters, m).\n\nGiven:\n- $ F = 10 \\, \\text{N} $,\n- $ d = 5 \\, \\text{m} $.\n\nSubstituting the given values into the formula:\n\n$$\nW = 10 \\, \\text{N} \\cdot 5 \\, \\text{m} = 50 \\, \\text{J}\n$$\n\nThus, the work done is:\n\n$$\n\\boxed{50 \\, \\text{J}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2301.14,
+          "wolfram": 0.0,
+          "final_llm": 34879.68
+        },
+        "elapsed_ms": 37180.94
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the work done by a constant force on an object, we use the definition of work in physics. Work is defined as the product of the force applied to an object and the displacement of the object in the direction of the force. The formula for work $ W $ is:\\n\\n$$\\nW = F \\\\cdot d\\n$$\\n\\nwhere:\\n- $ W $ is the work done (in joules, J),\\n- $ F $ is the magnitude of the force (in newtons, N),\\n- $ d $ is the displacement (in meters, m).\\n\\nGiven:\\n- $ F = 10 \\\\, \\\\text{N} $,\\n- $ d = 5 \\\\, \\\\text{m} $.\\n\\nSubstituting the given values into the formula:\\n\\n$$\\nW = 10 \\\\, \\\\text{N} \\\\cdot 5 \\\\, \\\\text{m} = 50 \\\\, \\\\text{J}\\n$$\\n\\nThus, the work done is:\\n\\n$$\\n\\\\boxed{50 \\\\, \\\\text{J}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2301.14,\"wolfram\":0.0,\"final_llm\":34879.68},\"elapsed_ms\":37180.94}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_coulomb",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+      "request": {
+        "query": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 25056.32,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\nF = k \\frac{|q_1 q_2|}{r^2} = 9 \\times 10^9 \\frac{|2 \\times 10^{-6} \\times 3 \\times 10^{-6}|}{(0.5)^2} = 9 \\times 10^9 \\frac{6 \\times 10^{-12}}{0.25} = 9 \\times 10^9 \\times 2.4 \\times 10^{-11} = 2.16 \\times 10^{-1} \\text{ N}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2637.86,
+          "wolfram": 0.0,
+          "final_llm": 22414.0
+        },
+        "elapsed_ms": 25051.97
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\nF = k \\\\frac{|q_1 q_2|}{r^2} = 9 \\\\times 10^9 \\\\frac{|2 \\\\times 10^{-6} \\\\times 3 \\\\times 10^{-6}|}{(0.5)^2} = 9 \\\\times 10^9 \\\\frac{6 \\\\times 10^{-12}}{0.25} = 9 \\\\times 10^9 \\\\times 2.4 \\\\times 10^{-11} = 2.16 \\\\times 10^{-1} \\\\text{ N}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2637.86,\"wolfram\":0.0,\"final_llm\":22414.0},\"elapsed_ms\":25051.97}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_coulomb",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+      "request": {
+        "query": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 52744.03,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the electrostatic force between two point charges in vacuum, use Coulomb's law:\n\n$$\nF = k \\frac{|q_1 q_2|}{r^2}\n$$\n\nwhere $ k = 9 \\times 10^9 \\, \\mathrm{N \\cdot m^2/C^2} $, $ q_1 = 2 \\, \\mu\\mathrm{C} = 2 \\times 10^{-6} \\, \\mathrm{C} $, $ q_2 = 3 \\, \\mu\\mathrm{C} = 3 \\times 10^{-6} \\, \\mathrm{C} $, and $ r = 0.5 \\, \\mathrm{m} $.\n\nSubstitute the values:\n\n$$\nF = 9 \\times 10^9 \\times \\frac{|2 \\times 10^{-6} \\times 3 \\times 10^{-6}|}{(0.5)^2}\n$$\n\n$$\nF = 9 \\times 10^9 \\times \\frac{6 \\times 10^{-12}}{0.25}\n$$\n\n$$\nF = 9 \\times 10^9 \\times 2.4 \\times 10^{-11}\n$$\n\n$$\nF = 2.16 \\times 10^{-1} \\, \\mathrm{N}\n$$\n\nThe electrostatic force between the charges is $ 0.216 \\, \\mathrm{N} $.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2539.6,
+          "wolfram": 0.0,
+          "final_llm": 50201.45
+        },
+        "elapsed_ms": 52741.15
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the electrostatic force between two point charges in vacuum, use Coulomb's law:\\n\\n$$\\nF = k \\\\frac{|q_1 q_2|}{r^2}\\n$$\\n\\nwhere $ k = 9 \\\\times 10^9 \\\\, \\\\mathrm{N \\\\cdot m^2/C^2} $, $ q_1 = 2 \\\\, \\\\mu\\\\mathrm{C} = 2 \\\\times 10^{-6} \\\\, \\\\mathrm{C} $, $ q_2 = 3 \\\\, \\\\mu\\\\mathrm{C} = 3 \\\\times 10^{-6} \\\\, \\\\mathrm{C} $, and $ r = 0.5 \\\\, \\\\mathrm{m} $.\\n\\nSubstitute the values:\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\times \\\\frac{|2 \\\\times 10^{-6} \\\\times 3 \\\\times 10^{-6}|}{(0.5)^2}\\n$$\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\times \\\\frac{6 \\\\times 10^{-12}}{0.25}\\n$$\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\times 2.4 \\\\times 10^{-11}\\n$$\\n\\n$$\\nF = 2.16 \\\\times 10^{-1} \\\\, \\\\mathrm{N}\\n$$\\n\\nThe electrostatic force between the charges is $ 0.216 \\\\, \\\\mathrm{N} $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2539.6,\"wolfram\":0.0,\"final_llm\":50201.45},\"elapsed_ms\":52741.15}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_coulomb",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+      "request": {
+        "query": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 97640.97,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the electrostatic force between two point charges in a vacuum, we use Coulomb's Law, which is given by:\n\n$$\nF = k \\cdot \\frac{|q_1 \\cdot q_2|}{r^2}\n$$\n\nwhere:\n- $ F $ is the magnitude of the electrostatic force between the charges (in newtons, N),\n- $ k $ is Coulomb's constant, $ 9 \\times 10^9 \\, \\mathrm{N \\cdot m^2/C^2} $,\n- $ q_1 $ and $ q_2 $ are the magnitudes of the two point charges (in coulombs, C),\n- $ r $ is the distance between the two charges (in meters, m).\n\nGiven:\n- $ q_1 = 2 \\, \\mu\\mathrm{C} = 2 \\times 10^{-6} \\, \\mathrm{C} $,\n- $ q_2 = 3 \\, \\mu\\mathrm{C} = 3 \\times 10^{-6} \\, \\mathrm{C} $,\n- $ r = 0.5 \\, \\mathrm{m} $,\n- $ k = 9 \\times 10^9 \\, \\mathrm{N \\cdot m^2/C^2} $.\n\nSubstitute the given values into the formula:\n\n$$\nF = 9 \\times 10^9 \\cdot \\frac{|2 \\times 10^{-6} \\cdot 3 \\times 10^{-6}|}{(0.5)^2}\n$$\n\nFirst, calculate the numerator:\n\n$$\n|2 \\times 10^{-6} \\cdot 3 \\times 10^{-6}| = |6 \\times 10^{-12}| = 6 \\times 10^{-12}\n$$\n\nNext, calculate the denominator:\n\n$$\n(0.5)^2 = 0.25\n$$\n\nNow, substitute these values back into the formula:\n\n$$\nF = 9 \\times 10^9 \\cdot \\frac{6 \\times 10^{-12}}{0.25}\n$$\n\nSimplify the fraction:\n\n$$\n\\frac{6 \\times 10^{-12}}{0.25} = 2.4 \\times 10^{-11}\n$$\n\nNow, multiply by $ 9 \\times 10^9 $:\n\n$$\nF = 9 \\times 10^9 \\cdot 2.4 \\times 10^{-11} = 2.16 \\times 10^{-1}\n$$\n\nThus, the electrostatic force between the two charges is:\n\n$$\nF = 0.216 \\, \\mathrm{N}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2293.73,
+          "wolfram": 0.0,
+          "final_llm": 95343.78
+        },
+        "elapsed_ms": 97637.64
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the electrostatic force between two point charges in a vacuum, we use Coulomb's Law, which is given by:\\n\\n$$\\nF = k \\\\cdot \\\\frac{|q_1 \\\\cdot q_2|}{r^2}\\n$$\\n\\nwhere:\\n- $ F $ is the magnitude of the electrostatic force between the charges (in newtons, N),\\n- $ k $ is Coulomb's constant, $ 9 \\\\times 10^9 \\\\, \\\\mathrm{N \\\\cdot m^2/C^2} $,\\n- $ q_1 $ and $ q_2 $ are the magnitudes of the two point charges (in coulombs, C),\\n- $ r $ is the distance between the two charges (in meters, m).\\n\\nGiven:\\n- $ q_1 = 2 \\\\, \\\\mu\\\\mathrm{C} = 2 \\\\times 10^{-6} \\\\, \\\\mathrm{C} $,\\n- $ q_2 = 3 \\\\, \\\\mu\\\\mathrm{C} = 3 \\\\times 10^{-6} \\\\, \\\\mathrm{C} $,\\n- $ r = 0.5 \\\\, \\\\mathrm{m} $,\\n- $ k = 9 \\\\times 10^9 \\\\, \\\\mathrm{N \\\\cdot m^2/C^2} $.\\n\\nSubstitute the given values into the formula:\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\cdot \\\\frac{|2 \\\\times 10^{-6} \\\\cdot 3 \\\\times 10^{-6}|}{(0.5)^2}\\n$$\\n\\nFirst, calculate the numerator:\\n\\n$$\\n|2 \\\\times 10^{-6} \\\\cdot 3 \\\\times 10^{-6}| = |6 \\\\times 10^{-12}| = 6 \\\\times 10^{-12}\\n$$\\n\\nNext, calculate the denominator:\\n\\n$$\\n(0.5)^2 = 0.25\\n$$\\n\\nNow, substitute these values back into the formula:\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\cdot \\\\frac{6 \\\\times 10^{-12}}{0.25}\\n$$\\n\\nSimplify the fraction:\\n\\n$$\\n\\\\frac{6 \\\\times 10^{-12}}{0.25} = 2.4 \\\\times 10^{-11}\\n$$\\n\\nNow, multiply by $ 9 \\\\times 10^9 $:\\n\\n$$\\nF = 9 \\\\times 10^9 \\\\cdot 2.4 \\\\times 10^{-11} = 2.16 \\\\times 10^{-1}\\n$$\\n\\nThus, the electrostatic force between the two charges is:\\n\\n$$\\nF = 0.216 \\\\, \\\\mathrm{N}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2293.73,\"wolfram\":0.0,\"final_llm\":95343.78},\"elapsed_ms\":97637.64}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_nitrobenzene",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "What is the molecular formula of nitrobenzene?",
+      "request": {
+        "query": "What is the molecular formula of nitrobenzene?",
+        "explanation": "off"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 167.07,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_nitrobenzene",
+      "domain": "chemistry",
+      "explanation": "concise",
+      "question": "What is the molecular formula of nitrobenzene?",
+      "request": {
+        "query": "What is the molecular formula of nitrobenzene?",
+        "explanation": "concise"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 7.93,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_nitrobenzene",
+      "domain": "chemistry",
+      "explanation": "detailed",
+      "question": "What is the molecular formula of nitrobenzene?",
+      "request": {
+        "query": "What is the molecular formula of nitrobenzene?",
+        "explanation": "detailed"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 10.47,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_moles",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+      "request": {
+        "query": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 10221.5,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\\frac{18\\ \\text{g}}{18\\ \\text{g/mol}} = 1\\ \\text{mol}$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1737.75,
+          "wolfram": 0.0,
+          "final_llm": 8479.64
+        },
+        "elapsed_ms": 10217.55
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\\\frac{18\\\\ \\\\text{g}}{18\\\\ \\\\text{g/mol}} = 1\\\\ \\\\text{mol}$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1737.75,\"wolfram\":0.0,\"final_llm\":8479.64},\"elapsed_ms\":10217.55}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_moles",
+      "domain": "chemistry",
+      "explanation": "concise",
+      "question": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+      "request": {
+        "query": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 26715.4,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the number of moles in 18 g of water, use the formula:\n\n$$\n\\text{moles} = \\frac{\\text{mass}}{\\text{molar mass}}\n$$\n\nGiven:\n- Mass of water = 18 g\n- Molar mass of water = 18 g/mol\n\nSubstitute the values:\n\n$$\n\\text{moles} = \\frac{18\\ \\text{g}}{18\\ \\text{g/mol}} = 1\\ \\text{mol}\n$$\n\nThus, the number of moles in 18 g of water is $1\\ \\text{mol}$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2196.96,
+          "wolfram": 0.0,
+          "final_llm": 24514.51
+        },
+        "elapsed_ms": 26711.61
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the number of moles in 18 g of water, use the formula:\\n\\n$$\\n\\\\text{moles} = \\\\frac{\\\\text{mass}}{\\\\text{molar mass}}\\n$$\\n\\nGiven:\\n- Mass of water = 18 g\\n- Molar mass of water = 18 g/mol\\n\\nSubstitute the values:\\n\\n$$\\n\\\\text{moles} = \\\\frac{18\\\\ \\\\text{g}}{18\\\\ \\\\text{g/mol}} = 1\\\\ \\\\text{mol}\\n$$\\n\\nThus, the number of moles in 18 g of water is $1\\\\ \\\\text{mol}$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2196.96,\"wolfram\":0.0,\"final_llm\":24514.51},\"elapsed_ms\":26711.61}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_moles",
+      "domain": "chemistry",
+      "explanation": "detailed",
+      "question": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+      "request": {
+        "query": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 37577.77,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To determine the number of moles present in 18 g of water, we use the relationship between mass, molar mass, and moles. The molar mass of a substance is the mass of one mole of that substance, and it is typically expressed in grams per mole (g/mol).\n\nThe formula to calculate the number of moles (n) from mass (m) and molar mass (M) is:\n\n$$\nn = \\frac{m}{M}\n$$\n\nGiven:\n- Mass of water ($m$) = 18 g\n- Molar mass of water ($M$) = 18 g/mol\n\nSubstituting the given values into the formula:\n\n$$\nn = \\frac{18\\ \\text{g}}{18\\ \\text{g/mol}} = 1\\ \\text{mol}\n$$\n\nThus, the number of moles present in 18 g of water is:\n\n$$\n\\boxed{1\\ \\text{mol}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1678.08,
+          "wolfram": 0.0,
+          "final_llm": 35896.25
+        },
+        "elapsed_ms": 37574.46
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To determine the number of moles present in 18 g of water, we use the relationship between mass, molar mass, and moles. The molar mass of a substance is the mass of one mole of that substance, and it is typically expressed in grams per mole (g/mol).\\n\\nThe formula to calculate the number of moles (n) from mass (m) and molar mass (M) is:\\n\\n$$\\nn = \\\\frac{m}{M}\\n$$\\n\\nGiven:\\n- Mass of water ($m$) = 18 g\\n- Molar mass of water ($M$) = 18 g/mol\\n\\nSubstituting the given values into the formula:\\n\\n$$\\nn = \\\\frac{18\\\\ \\\\text{g}}{18\\\\ \\\\text{g/mol}} = 1\\\\ \\\\text{mol}\\n$$\\n\\nThus, the number of moles present in 18 g of water is:\\n\\n$$\\n\\\\boxed{1\\\\ \\\\text{mol}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1678.08,\"wolfram\":0.0,\"final_llm\":35896.25},\"elapsed_ms\":37574.46}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ideal_gas",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+      "request": {
+        "query": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 21541.07,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\nn = \\frac{PV}{RT} = \\frac{(1 \\, \\text{atm})(22.4 \\, \\text{L})}{(0.0821 \\, \\text{L atm mol}^{-1} \\text{K}^{-1})(273 \\, \\text{K})} = 1 \\, \\text{mol}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 3169.13,
+          "wolfram": 0.0,
+          "final_llm": 18356.04
+        },
+        "elapsed_ms": 21525.31
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\nn = \\\\frac{PV}{RT} = \\\\frac{(1 \\\\, \\\\text{atm})(22.4 \\\\, \\\\text{L})}{(0.0821 \\\\, \\\\text{L atm mol}^{-1} \\\\text{K}^{-1})(273 \\\\, \\\\text{K})} = 1 \\\\, \\\\text{mol}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":3169.13,\"wolfram\":0.0,\"final_llm\":18356.04},\"elapsed_ms\":21525.31}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ideal_gas",
+      "domain": "chemistry",
+      "explanation": "concise",
+      "question": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+      "request": {
+        "query": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 45426.18,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the number of moles of an ideal gas, use the ideal gas law:  \n$$\nPV = nRT\n$$  \nwhere $P$ is pressure, $V$ is volume, $n$ is the number of mooles, $R$ is the gas constant, and $T$ is temperature.  \n\nRearranging for $n$:  \n$$\nn = \\frac{PV}{RT}\n$$  \n\nSubstitute the given values:  \n$P = 1$ atm, $V = 22.4$ L, $R = 0.0821$ L atm mol$^{-1}$ K$^{-1}$, $T = 273$ K.  \n\n$$\nn = \\frac{(1 \\, \\text{atm})(22.4 \\, \\text{L})}{(0.0821 \\, \\text{L atm mol}^{-1} \\text{K}^{-1})(273 \\, \\text{K})}\n$$  \n\n$$\nn = \\frac{22.4}{22.4} = 1\n$$  \n\nThe number of moles is $1$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2624.3,
+          "wolfram": 0.0,
+          "final_llm": 42797.48
+        },
+        "elapsed_ms": 45421.89
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the number of moles of an ideal gas, use the ideal gas law:  \\n$$\\nPV = nRT\\n$$  \\nwhere $P$ is pressure, $V$ is volume, $n$ is the number of mooles, $R$ is the gas constant, and $T$ is temperature.  \\n\\nRearranging for $n$:  \\n$$\\nn = \\\\frac{PV}{RT}\\n$$  \\n\\nSubstitute the given values:  \\n$P = 1$ atm, $V = 22.4$ L, $R = 0.0821$ L atm mol$^{-1}$ K$^{-1}$, $T = 273$ K.  \\n\\n$$\\nn = \\\\frac{(1 \\\\, \\\\text{atm})(22.4 \\\\, \\\\text{L})}{(0.0821 \\\\, \\\\text{L atm mol}^{-1} \\\\text{K}^{-1})(273 \\\\, \\\\text{K})}\\n$$  \\n\\n$$\\nn = \\\\frac{22.4}{22.4} = 1\\n$$  \\n\\nThe number of moles is $1$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2624.3,\"wolfram\":0.0,\"final_llm\":42797.48},\"elapsed_ms\":45421.89}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ideal_gas",
+      "domain": "chemistry",
+      "explanation": "detailed",
+      "question": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+      "request": {
+        "query": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 60396.92,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the number of moles of an ideal gas, we use the ideal gas law, which is given by:\n\n$$\nPV = nRT\n$$\n\nwhere:\n- $P$ is the pressure of the gas,\n- $V$ is the volume of the gas,\n- $n$ is the number of moles of the gas,\n- $R$ is the gas constant, and\n- $T$ is the temperature of the gas.\n\nWe are given:\n- $P = 1$ atm,\n- $V = 22.4$ L,\n- $T = 273$ K,\n- $R = 0.0821$ L atm mol$^{-1}$ K$^{-1}$.\n\nWe need to solve for $n$, the number of moles. Rearranging the ideal gas law to solve for $n$ gives:\n\n$$\nn = \\frac{PV}{RT}\n$$\n\nSubstituting the given values into the equation:\n\n$$\nn = \\frac{(1\\ \\text{atm})(22.4\\ \\text{L})}{(0.0821\\ \\text{L atm mol}^{-1}\\ \\text{K}^{-1})(273\\ \\text{K})}\n$$\n\nNow, calculate the value of $n$:\n\n$$\nn = \\frac{22.4}{0.0821 \\times 273}\n$$\n\n$$\nn = \\frac{22.4}{22.4033}\n$$\n\n$$\nn \\approx 1\n$$\n\nThus, the number of moles of the ideal gas is approximately:\n\n$$\n\\boxed{1}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 3215.16,
+          "wolfram": 0.0,
+          "final_llm": 57178.53
+        },
+        "elapsed_ms": 60393.81
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the number of moles of an ideal gas, we use the ideal gas law, which is given by:\\n\\n$$\\nPV = nRT\\n$$\\n\\nwhere:\\n- $P$ is the pressure of the gas,\\n- $V$ is the volume of the gas,\\n- $n$ is the number of moles of the gas,\\n- $R$ is the gas constant, and\\n- $T$ is the temperature of the gas.\\n\\nWe are given:\\n- $P = 1$ atm,\\n- $V = 22.4$ L,\\n- $T = 273$ K,\\n- $R = 0.0821$ L atm mol$^{-1}$ K$^{-1}$.\\n\\nWe need to solve for $n$, the number of moles. Rearranging the ideal gas law to solve for $n$ gives:\\n\\n$$\\nn = \\\\frac{PV}{RT}\\n$$\\n\\nSubstituting the given values into the equation:\\n\\n$$\\nn = \\\\frac{(1\\\\ \\\\text{atm})(22.4\\\\ \\\\text{L})}{(0.0821\\\\ \\\\text{L atm mol}^{-1}\\\\ \\\\text{K}^{-1})(273\\\\ \\\\text{K})}\\n$$\\n\\nNow, calculate the value of $n$:\\n\\n$$\\nn = \\\\frac{22.4}{0.0821 \\\\times 273}\\n$$\\n\\n$$\\nn = \\\\frac{22.4}{22.4033}\\n$$\\n\\n$$\\nn \\\\approx 1\\n$$\\n\\nThus, the number of moles of the ideal gas is approximately:\\n\\n$$\\n\\\\boxed{1}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":3215.16,\"wolfram\":0.0,\"final_llm\":57178.53},\"elapsed_ms\":60393.81}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_balancing",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+      "request": {
+        "query": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+        "explanation": "off"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 15.66,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_balancing",
+      "domain": "chemistry",
+      "explanation": "concise",
+      "question": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+      "request": {
+        "query": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+        "explanation": "concise"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 10.27,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_balancing",
+      "domain": "chemistry",
+      "explanation": "detailed",
+      "question": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+      "request": {
+        "query": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+        "explanation": "detailed"
+      },
+      "status": "backend_error",
+      "error": "Wolfram Engine could not evaluate the expression.",
+      "timing_ms": 12.89,
+      "http_status": 200,
+      "response": {
+        "success": false,
+        "answer": null,
+        "error": "Wolfram Engine could not evaluate the expression.",
+        "engine": null,
+        "tool_calls": [],
+        "cached": false
+      },
+      "raw_response": "{\"success\":false,\"answer\":null,\"error\":\"Wolfram Engine could not evaluate the expression.\",\"engine\":null,\"tool_calls\":[],\"cached\":false}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ph",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+      "request": {
+        "query": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 7770.23,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The pH of a 0.001 M strong hydrochloric acid solution is 3.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2378.14,
+          "wolfram": 0.0,
+          "final_llm": 5388.42
+        },
+        "elapsed_ms": 7766.74
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The pH of a 0.001 M strong hydrochloric acid solution is 3.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2378.14,\"wolfram\":0.0,\"final_llm\":5388.42},\"elapsed_ms\":7766.74}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ph",
+      "domain": "chemistry",
+      "explanation": "concise",
+      "question": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+      "request": {
+        "query": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 39040.6,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the pH of a 0.001 M strong hydrochloric acid (HCl) solution, we use the definition of pH for strong acids:\n\n$$\n\\text{pH} = -\\log_{10}[\\text{H}^+]\n$$\n\nHydrochloric acid is a strong acid, meaning it completely dissociates in water:\n\n$$\n\\text{HCl} \\rightarrow \\text{H}^+ + \\text{Cl}^-\n$$\n\nSince the concentration of HCl is 0.001 M, the concentration of $\\text{H}^+$ ions is also 0.001 M. Substituting into the pH formula:\n\n$$\n\\text{pH} = -\\log_{10}(0.001)\n$$\n\n$$\n\\text{pH} = -\\log_{10}(1 \\times 10^{-3}) = -(-3) = 3\n$$\n\nThe pH of the 0.001 M strong hydrochloric acid solution is 3.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2100.55,
+          "wolfram": 0.0,
+          "final_llm": 36935.69
+        },
+        "elapsed_ms": 39036.49
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the pH of a 0.001 M strong hydrochloric acid (HCl) solution, we use the definition of pH for strong acids:\\n\\n$$\\n\\\\text{pH} = -\\\\log_{10}[\\\\text{H}^+]\\n$$\\n\\nHydrochloric acid is a strong acid, meaning it completely dissociates in water:\\n\\n$$\\n\\\\text{HCl} \\\\rightarrow \\\\text{H}^+ + \\\\text{Cl}^-\\n$$\\n\\nSince the concentration of HCl is 0.001 M, the concentration of $\\\\text{H}^+$ ions is also 0.001 M. Substituting into the pH formula:\\n\\n$$\\n\\\\text{pH} = -\\\\log_{10}(0.001)\\n$$\\n\\n$$\\n\\\\text{pH} = -\\\\log_{10}(1 \\\\times 10^{-3}) = -(-3) = 3\\n$$\\n\\nThe pH of the 0.001 M strong hydrochloric acid solution is 3.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2100.55,\"wolfram\":0.0,\"final_llm\":36935.69},\"elapsed_ms\":39036.49}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ph",
+      "domain": "chemistry",
+      "explanation": "detailed",
+      "question": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+      "request": {
+        "query": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 52955.33,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the pH of a 0.001 M strong hydrochloric acid (HCl) solution, we use the definition of pH for strong acids. Hydrochloric acid is a strong acid, meaning it completely dissociates in water:\n\n$$\n\\mathrm{HCl} \\rightarrow \\mathrm{H^+} + \\mathrm{Cl^-}\n$$\n\nSince HCl is a strong acid, it dissociates completely, so the concentration of $\\mathrm{H^+}$ ions in the solution is equal to the concentration of HCl. Therefore, the concentration of $\\mathrm{H^+}$ is:\n\n$$\n[\\mathrm{H^+}] = 0.001 \\, \\mathrm{M}\n$$\n\nThe pH is calculated using the formula:\n\n$$\n\\mathrm{pH} = -\\log_{10}[\\mathrm{H^+}]\n$$\n\nSubstituting the concentration of $\\mathrm{H^+}$:\n\n$$\n\\mathrm{pH} = -\\log_{10}(0.001)\n$$\n\n$$\n\\mathrm{pH} = -\\log_{10}(1 \\times 10^{-3})\n$$\n\n$$\n\\mathrm{pH} = -(-3) = 3\n$$\n\nThus, the pH of a 0.001 M strong hydrochloric acid solution is:\n\n$$\n\\boxed{3}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 3358.83,
+          "wolfram": 0.0,
+          "final_llm": 49592.62
+        },
+        "elapsed_ms": 52951.6
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the pH of a 0.001 M strong hydrochloric acid (HCl) solution, we use the definition of pH for strong acids. Hydrochloric acid is a strong acid, meaning it completely dissociates in water:\\n\\n$$\\n\\\\mathrm{HCl} \\\\rightarrow \\\\mathrm{H^+} + \\\\mathrm{Cl^-}\\n$$\\n\\nSince HCl is a strong acid, it dissociates completely, so the concentration of $\\\\mathrm{H^+}$ ions in the solution is equal to the concentration of HCl. Therefore, the concentration of $\\\\mathrm{H^+}$ is:\\n\\n$$\\n[\\\\mathrm{H^+}] = 0.001 \\\\, \\\\mathrm{M}\\n$$\\n\\nThe pH is calculated using the formula:\\n\\n$$\\n\\\\mathrm{pH} = -\\\\log_{10}[\\\\mathrm{H^+}]\\n$$\\n\\nSubstituting the concentration of $\\\\mathrm{H^+}$:\\n\\n$$\\n\\\\mathrm{pH} = -\\\\log_{10}(0.001)\\n$$\\n\\n$$\\n\\\\mathrm{pH} = -\\\\log_{10}(1 \\\\times 10^{-3})\\n$$\\n\\n$$\\n\\\\mathrm{pH} = -(-3) = 3\\n$$\\n\\nThus, the pH of a 0.001 M strong hydrochloric acid solution is:\\n\\n$$\\n\\\\boxed{3}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":3358.83,\"wolfram\":0.0,\"final_llm\":49592.62},\"elapsed_ms\":52951.6}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_newton",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "What is Newton's second law of motion?",
+      "request": {
+        "query": "What is Newton's second law of motion?",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 17197.25,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on it and is in the direction of the net force. Mathematically, it is expressed as $ F = ma $, where $ F $ is the net force, $ m $ is the mass of the object, and $ a $ is the acceleration.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1079.14,
+          "wolfram": 0.0,
+          "final_llm": 16114.31
+        },
+        "elapsed_ms": 17193.6
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on it and is in the direction of the net force. Mathematically, it is expressed as $ F = ma $, where $ F $ is the net force, $ m $ is the mass of the object, and $ a $ is the acceleration.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1079.14,\"wolfram\":0.0,\"final_llm\":16114.31},\"elapsed_ms\":17193.6}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_newton",
+      "domain": "general_science",
+      "explanation": "concise",
+      "question": "What is Newton's second law of motion?",
+      "request": {
+        "query": "What is Newton's second law of motion?",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 22056.06,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on it and is inversely proportional to its mass. Mathematically, it is expressed as:\n\n$$\n\\vec{F} = m\\vec{a}\n$$\n\nwhere $\\vec{F}$ is the net force applied to the object, $m$ is the mass of the object, and $\\vec{a}$ is the acceleration of the object. This law establishes the relationship between force, mass, and acceleration, forming the foundation of classical mechanics.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1555.42,
+          "wolfram": 0.0,
+          "final_llm": 20496.86
+        },
+        "elapsed_ms": 22052.46
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on it and is inversely proportional to its mass. Mathematically, it is expressed as:\\n\\n$$\\n\\\\vec{F} = m\\\\vec{a}\\n$$\\n\\nwhere $\\\\vec{F}$ is the net force applied to the object, $m$ is the mass of the object, and $\\\\vec{a}$ is the acceleration of the object. This law establishes the relationship between force, mass, and acceleration, forming the foundation of classical mechanics.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1555.42,\"wolfram\":0.0,\"final_llm\":20496.86},\"elapsed_ms\":22052.46}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_newton",
+      "domain": "general_science",
+      "explanation": "detailed",
+      "question": "What is Newton's second law of motion?",
+      "request": {
+        "query": "What is Newton's second law of motion?",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 39969.35,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on the object and is inversely proportional to the mass of the object. Mathematically, this law is expressed as:\n\n$$\n\\vec{F} = m\\vec{a}\n$$\n\nwhere:\n- $\\vec{F}$ is the net force acting on the object (in newtons, N),\n- $m$ is the mass of the object (in kilograms, kg),\n- $\\vec{a}$ is the acceleration of the object (in meters per second squared, m/s²).\n\nThis equation shows that the acceleration of an object depends on the net force applied to it and its mass. If the net force increases, the acceleration increases proportionally, and if the mass increases, the acceleration decreases proportionally for the same net force.\n\nThe law is fundamental in classical mechanics and is used to analyze and predict the motion of objects under the influence of forces. It provides a quantitative relationship between force, mass, and acceleration, allowing for the calculation of unknown quantities when the others are known.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1051.04,
+          "wolfram": 0.0,
+          "final_llm": 38913.85
+        },
+        "elapsed_ms": 39965.03
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting on the object and is inversely proportional to the mass of the object. Mathematically, this law is expressed as:\\n\\n$$\\n\\\\vec{F} = m\\\\vec{a}\\n$$\\n\\nwhere:\\n- $\\\\vec{F}$ is the net force acting on the object (in newtons, N),\\n- $m$ is the mass of the object (in kilograms, kg),\\n- $\\\\vec{a}$ is the acceleration of the object (in meters per second squared, m/s²).\\n\\nThis equation shows that the acceleration of an object depends on the net force applied to it and its mass. If the net force increases, the acceleration increases proportionally, and if the mass increases, the acceleration decreases proportionally for the same net force.\\n\\nThe law is fundamental in classical mechanics and is used to analyze and predict the motion of objects under the influence of forces. It provides a quantitative relationship between force, mass, and acceleration, allowing for the calculation of unknown quantities when the others are known.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1051.04,\"wolfram\":0.0,\"final_llm\":38913.85},\"elapsed_ms\":39965.03}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_density",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+      "request": {
+        "query": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 16485.43,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The density of the substance is calculated by dividing its mass by its volume. \n\n$$\n\\text{Density} = \\frac{\\text{Mass}}{\\text{Volume}} = \\frac{200 \\, \\text{g}}{50 \\, \\text{cm}^3} = 4 \\, \\text{g/cm}^3\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2172.42,
+          "wolfram": 0.0,
+          "final_llm": 14309.11
+        },
+        "elapsed_ms": 16481.68
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The density of the substance is calculated by dividing its mass by its volume. \\n\\n$$\\n\\\\text{Density} = \\\\frac{\\\\text{Mass}}{\\\\text{Volume}} = \\\\frac{200 \\\\, \\\\text{g}}{50 \\\\, \\\\text{cm}^3} = 4 \\\\, \\\\text{g/cm}^3\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2172.42,\"wolfram\":0.0,\"final_llm\":14309.11},\"elapsed_ms\":16481.68}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_density",
+      "domain": "general_science",
+      "explanation": "concise",
+      "question": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+      "request": {
+        "query": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 21182.99,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The density $ \\rho $ of a substance is calculated using the formula:\n\n$$\n\\rho = \\frac{m}{V}\n$$\n\nwhere $ m $ is the mass and $ V $ is the volume. Substituting the given values:\n\n$$\n\\rho = \\frac{200 \\, \\text{g}}{50 \\, \\text{cm}^3}\n$$\n\n$$\n\\rho = 4 \\, \\text{g/cm}^3\n$$\n\nThe density of the substance is $ 4 \\, \\text{g/cm}^3 $.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1547.59,
+          "wolfram": 0.0,
+          "final_llm": 19632.04
+        },
+        "elapsed_ms": 21179.75
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The density $ \\\\rho $ of a substance is calculated using the formula:\\n\\n$$\\n\\\\rho = \\\\frac{m}{V}\\n$$\\n\\nwhere $ m $ is the mass and $ V $ is the volume. Substituting the given values:\\n\\n$$\\n\\\\rho = \\\\frac{200 \\\\, \\\\text{g}}{50 \\\\, \\\\text{cm}^3}\\n$$\\n\\n$$\\n\\\\rho = 4 \\\\, \\\\text{g/cm}^3\\n$$\\n\\nThe density of the substance is $ 4 \\\\, \\\\text{g/cm}^3 $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1547.59,\"wolfram\":0.0,\"final_llm\":19632.04},\"elapsed_ms\":21179.75}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_density",
+      "domain": "general_science",
+      "explanation": "detailed",
+      "question": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+      "request": {
+        "query": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 24089.15,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To calculate the density of a substance, we use the formula:\n\n$$\n\\text{Density} = \\frac{\\text{Mass}}{\\text{Volume}}\n$$\n\nGiven:\n- Mass = 200 g\n- Volume = 50 cm³\n\nSubstitute the given values into the formula:\n\n$$\n\\text{Density} = \\frac{200\\ \\text{g}}{50\\ \\text{cm}^3}\n$$\n\nPerform the division:\n\n$$\n\\text{Density} = 4\\ \\text{g/cm}^3\n$$\n\nThus, the density of the substance is $4\\ \\text{g/cm}^3$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1998.81,
+          "wolfram": 0.0,
+          "final_llm": 22087.54
+        },
+        "elapsed_ms": 24086.47
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To calculate the density of a substance, we use the formula:\\n\\n$$\\n\\\\text{Density} = \\\\frac{\\\\text{Mass}}{\\\\text{Volume}}\\n$$\\n\\nGiven:\\n- Mass = 200 g\\n- Volume = 50 cm³\\n\\nSubstitute the given values into the formula:\\n\\n$$\\n\\\\text{Density} = \\\\frac{200\\\\ \\\\text{g}}{50\\\\ \\\\text{cm}^3}\\n$$\\n\\nPerform the division:\\n\\n$$\\n\\\\text{Density} = 4\\\\ \\\\text{g/cm}^3\\n$$\\n\\nThus, the density of the substance is $4\\\\ \\\\text{g/cm}^3$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1998.81,\"wolfram\":0.0,\"final_llm\":22087.54},\"elapsed_ms\":24086.47}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_percentage",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+      "request": {
+        "query": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 7348.97,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ \\frac{25}{25 + 75} \\times 100 = 25\\% $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1929.51,
+          "wolfram": 0.0,
+          "final_llm": 5416.4
+        },
+        "elapsed_ms": 7346.06
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ \\\\frac{25}{25 + 75} \\\\times 100 = 25\\\\% $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1929.51,\"wolfram\":0.0,\"final_llm\":5416.4},\"elapsed_ms\":7346.06}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_percentage",
+      "domain": "general_science",
+      "explanation": "concise",
+      "question": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+      "request": {
+        "query": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 29799.6,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the percentage of salt in the total mass, calculate the ratio of the mass of salt to the total mass of the sample, then multiply by 100.\n\n$$\n\\text{Percentage of salt} = \\left( \\frac{\\text{mass of salt}}{\\text{total mass}} \\right) \\times 100\n$$\n\n$$\n\\text{Percentage of salt} = \\left( \\frac{25}{25 + 75} \\right) \\times 100 = \\left( \\frac{25}{100} \\right) \\times 100 = 25\\%\n$$\n\nThe percentage of the total mass that is salt is $25\\%$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1793.51,
+          "wolfram": 0.0,
+          "final_llm": 28003.25
+        },
+        "elapsed_ms": 29796.89
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the percentage of salt in the total mass, calculate the ratio of the mass of salt to the total mass of the sample, then multiply by 100.\\n\\n$$\\n\\\\text{Percentage of salt} = \\\\left( \\\\frac{\\\\text{mass of salt}}{\\\\text{total mass}} \\\\right) \\\\times 100\\n$$\\n\\n$$\\n\\\\text{Percentage of salt} = \\\\left( \\\\frac{25}{25 + 75} \\\\right) \\\\times 100 = \\\\left( \\\\frac{25}{100} \\\\right) \\\\times 100 = 25\\\\%\\n$$\\n\\nThe percentage of the total mass that is salt is $25\\\\%$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1793.51,\"wolfram\":0.0,\"final_llm\":28003.25},\"elapsed_ms\":29796.89}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_percentage",
+      "domain": "general_science",
+      "explanation": "detailed",
+      "question": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+      "request": {
+        "query": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 42159.11,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To find the percentage of the total mass that is salt, we first need to calculate the total mass of the sample and then determine the proportion of salt in that total mass.\n\nThe sample contains 25 g of salt and 75 g of water. The total mass of the sample is the sum of the masses of salt and water:\n\n$$\n\\text{Total mass} = 25\\, \\text{g (salt)} + 75\\, \\text{g (water)} = 100\\, \\text{g}\n$$\n\nNext, we calculate the percentage of the total mass that is salt:\n\n$$\n\\text{Percentage of salt} = \\left( \\frac{\\text{mass of salt}}{\\text{total mass}} \\right) \\times 100\\%\n$$\n\nSubstituting the known values:\n\n$$\n\\text{Percentage of salt} = \\left( \\frac{25\\, \\text{g}}{100\\, \\text{g}} \\right) \\times 100\\% = 25\\%\n$$\n\nThus, the percentage of the total mass that is salt is $25\\%$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 4207.95,
+          "wolfram": 0.0,
+          "final_llm": 37947.35
+        },
+        "elapsed_ms": 42155.46
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To find the percentage of the total mass that is salt, we first need to calculate the total mass of the sample and then determine the proportion of salt in that total mass.\\n\\nThe sample contains 25 g of salt and 75 g of water. The total mass of the sample is the sum of the masses of salt and water:\\n\\n$$\\n\\\\text{Total mass} = 25\\\\, \\\\text{g (salt)} + 75\\\\, \\\\text{g (water)} = 100\\\\, \\\\text{g}\\n$$\\n\\nNext, we calculate the percentage of the total mass that is salt:\\n\\n$$\\n\\\\text{Percentage of salt} = \\\\left( \\\\frac{\\\\text{mass of salt}}{\\\\text{total mass}} \\\\right) \\\\times 100\\\\%\\n$$\\n\\nSubstituting the known values:\\n\\n$$\\n\\\\text{Percentage of salt} = \\\\left( \\\\frac{25\\\\, \\\\text{g}}{100\\\\, \\\\text{g}} \\\\right) \\\\times 100\\\\% = 25\\\\%\\n$$\\n\\nThus, the percentage of the total mass that is salt is $25\\\\%$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":4207.95,\"wolfram\":0.0,\"final_llm\":37947.35},\"elapsed_ms\":42155.46}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_circular",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+      "request": {
+        "query": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 14344.81,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The centripetal acceleration $ a $ of a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $ is given by:\n\n$$\na = \\frac{v^2}{r}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1540.15,
+          "wolfram": 0.0,
+          "final_llm": 12801.36
+        },
+        "elapsed_ms": 14341.66
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The centripetal acceleration $ a $ of a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $ is given by:\\n\\n$$\\na = \\\\frac{v^2}{r}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1540.15,\"wolfram\":0.0,\"final_llm\":12801.36},\"elapsed_ms\":14341.66}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_circular",
+      "domain": "physics",
+      "explanation": "concise",
+      "question": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+      "request": {
+        "query": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+        "explanation": "concise"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 39562.01,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To derive the expression for centripetal acceleration, consider a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $. The centripetal acceleration $ a_c $ is the acceleration directed toward the center of the circle. The magnitude of this acceleration can be found using the relationship between linear speed and circular motion.\n\nThe distance traveled in one full revolution is the circumference of the circle, $ 2\\pi r $. If the particle completes one revolution in time $ T $, its speed is given by $ v = \\frac{2\\pi r}{T} $.\n\nThe centripetal acceleration is given by:\n\n$$\na_c = \\frac{v^2}{r}\n$$\n\nThis expression is derived from the relationship between the linear speed $ v $ and the radius $ r $ of the circular path. Substituting $ v $ into the formula for centripetal acceleration gives the final expression:\n\n$$\na_c = \\frac{v^2}{r}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1747.8,
+          "wolfram": 0.0,
+          "final_llm": 37810.94
+        },
+        "elapsed_ms": 39558.87
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To derive the expression for centripetal acceleration, consider a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $. The centripetal acceleration $ a_c $ is the acceleration directed toward the center of the circle. The magnitude of this acceleration can be found using the relationship between linear speed and circular motion.\\n\\nThe distance traveled in one full revolution is the circumference of the circle, $ 2\\\\pi r $. If the particle completes one revolution in time $ T $, its speed is given by $ v = \\\\frac{2\\\\pi r}{T} $.\\n\\nThe centripetal acceleration is given by:\\n\\n$$\\na_c = \\\\frac{v^2}{r}\\n$$\\n\\nThis expression is derived from the relationship between the linear speed $ v $ and the radius $ r $ of the circular path. Substituting $ v $ into the formula for centripetal acceleration gives the final expression:\\n\\n$$\\na_c = \\\\frac{v^2}{r}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1747.8,\"wolfram\":0.0,\"final_llm\":37810.94},\"elapsed_ms\":39558.87}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_circular",
+      "domain": "physics",
+      "explanation": "detailed",
+      "question": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+      "request": {
+        "query": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+        "explanation": "detailed"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 37923.63,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "To derive the expression for centripetal acceleration of a particle moving in a circle, we start with the definition of centripetal acceleration, which is the acceleration directed toward the center of the circle. For a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $, the centripetal acceleration $ a_c $ is given by:\n\n$$\na_c = \\frac{v^2}{r}\n$$\n\nThis expression can be derived from the relationship between linear velocity and angular velocity. The linear velocity $ v $ of a particle moving in a circle is related to its angular velocity $ \\omega $ by:\n\n$$\nv = r\\omega\n$$\n\nSubstituting this into the expression for centripetal acceleration:\n\n$$\na_c = \\frac{(r\\omega)^2}{r} = \\frac{r^2\\omega^2}{r} = r\\omega^2\n$$\n\nThus, the expression for centripetal acceleration is:\n\n$$\na_c = \\frac{v^2}{r}\n$$\n\nThis is the derived expression for centripetal acceleration.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1957.82,
+          "wolfram": 0.0,
+          "final_llm": 35961.81
+        },
+        "elapsed_ms": 37919.73
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"To derive the expression for centripetal acceleration of a particle moving in a circle, we start with the definition of centripetal acceleration, which is the acceleration directed toward the center of the circle. For a particle of mass $ m $ moving in a circle of radius $ r $ with speed $ v $, the centripetal acceleration $ a_c $ is given by:\\n\\n$$\\na_c = \\\\frac{v^2}{r}\\n$$\\n\\nThis expression can be derived from the relationship between linear velocity and angular velocity. The linear velocity $ v $ of a particle moving in a circle is related to its angular velocity $ \\\\omega $ by:\\n\\n$$\\nv = r\\\\omega\\n$$\\n\\nSubstituting this into the expression for centripetal acceleration:\\n\\n$$\\na_c = \\\\frac{(r\\\\omega)^2}{r} = \\\\frac{r^2\\\\omega^2}{r} = r\\\\omega^2\\n$$\\n\\nThus, the expression for centripetal acceleration is:\\n\\n$$\\na_c = \\\\frac{v^2}{r}\\n$$\\n\\nThis is the derived expression for centripetal acceleration.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1957.82,\"wolfram\":0.0,\"final_llm\":35961.81},\"elapsed_ms\":37919.73}",
+      "exception": null,
+      "traceback": null
+    }
+  ],
+  "summary": {
+    "total_tests": 60,
+    "status_counts": {
+      "pass": 54,
+      "backend_error": 6
+    },
+    "failed_tests": 6,
+    "standard_tests": 60,
+    "guided_tests": 0,
+    "average_ms": {
+      "standard": 27489.38
+    },
+    "max_ms": {
+      "standard": 122926.71
+    }
+  },
+  "progress": {
+    "completed_tests": 60,
+    "total_tests": 60,
+    "current_index": 60,
+    "current_test": null,
+    "percent": 100.0
+  },
+  "run_status": "completed",
+  "resumed_at": "2026-10-05T17:17:32.140296+00:00",
+  "finished_at": "2026-10-05T17:38:16.592995+00:00"
+}
