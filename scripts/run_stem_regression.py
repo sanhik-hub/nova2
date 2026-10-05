@@ -193,6 +193,40 @@ def guided_test(base_url: str, case: dict, include_hints: bool, timeout: float) 
     }
 
 
+def test_key(kind: str, case_id: str, explanation: str | None = None) -> str:
+    """Return a stable identity for one regression test."""
+    if kind == "standard":
+        return f"standard:{case_id}:{explanation}"
+    return f"guided:{case_id}"
+
+def result_test_key(result: dict) -> str:
+    return test_key(str(result.get("kind") or ""), str(result.get("case_id") or ""), result.get("explanation"))
+
+def find_resume_report(output_dir: Path) -> Path | None:
+    """Find the newest incomplete regression report."""
+    if not output_dir.exists():
+        return None
+    candidates = []
+    for path in output_dir.glob("regression_*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if data.get("run_status") != "completed":
+            candidates.append((path.stat().st_mtime, path))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return candidates[0][1]
+
+def expected_test_keys(cases: list[dict], skip_guided: bool) -> list[str]:
+    keys = []
+    for case in cases:
+        for explanation in ("off", "concise", "detailed"):
+            keys.append(test_key("standard", str(case["id"]), explanation))
+        if not skip_guided:
+            keys.append(test_key("guided", str(case["id"])))
+    return keys
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -202,6 +236,7 @@ def main() -> int:
     parser.add_argument("--health-timeout", type=float, default=10.0)
     parser.add_argument("--guided-hints", action="store_true")
     parser.add_argument("--skip-guided", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Resume the newest incomplete report, or the report named by --output.")
     args = parser.parse_args()
 
     cases_path = args.cases if args.cases.is_absolute() else ROOT / args.cases
@@ -210,34 +245,71 @@ def main() -> int:
         raise SystemExit("Cases file must contain a JSON array.")
 
     output = args.output
-    if output is None:
-        DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        output = DEFAULT_OUTPUT_DIR / f"regression_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    elif not output.is_absolute():
+    if output is not None and not output.is_absolute():
         output = ROOT / output
-    output.parent.mkdir(parents=True, exist_ok=True)
 
-    report = {
-        "schema_version": 1,
-        "started_at": now_iso(),
-        "base_url": args.base_url.rstrip("/"),
-        "cases_file": str(cases_path.relative_to(ROOT) if cases_path.is_relative_to(ROOT) else cases_path),
-        "configuration": {
-            "standard_explanations": ["off", "concise", "detailed"],
-            "guided": not args.skip_guided,
-            "guided_hints": args.guided_hints,
-            "request_timeout_seconds": args.request_timeout,
-        },
-        "health": None,
-        "results": [],
-        "summary": {},
-    }
+    if args.resume:
+        if output is None:
+            output = find_resume_report(DEFAULT_OUTPUT_DIR)
+        if output is None or not output.exists():
+            raise SystemExit("--resume requested, but no incomplete regression report was found.")
+        output = output.resolve()
+        try:
+            report = json.loads(output.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise SystemExit(f"Could not read resume report {output}: {exc}") from exc
+        if not isinstance(report, dict):
+            raise SystemExit(f"Resume report {output} is not a JSON object.")
+        if report.get("run_status") == "completed":
+            raise SystemExit(f"Cannot resume completed report: {output}")
+        existing_config = report.get("configuration") or {}
+        if bool(existing_config.get("guided", True)) != (not args.skip_guided):
+            raise SystemExit("Resume configuration mismatch: --skip-guided must match the interrupted run.")
+        if bool(existing_config.get("guided_hints", False)) != bool(args.guided_hints):
+            raise SystemExit("Resume configuration mismatch: --guided-hints must match the interrupted run.")
+        if str(report.get("base_url") or "").rstrip("/") != args.base_url.rstrip("/"):
+            raise SystemExit("Resume configuration mismatch: --base-url must match the interrupted run.")
+        if not isinstance(report.get("results"), list):
+            raise SystemExit("Resume report has no valid results list.")
+        report.setdefault("summary", {})
+        report["run_status"] = "resuming"
+        report["resumed_at"] = now_iso()
+        print(f"Resuming report: {output}", flush=True)
+    else:
+        if output is None:
+            DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            output = DEFAULT_OUTPUT_DIR / f"regression_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        output.parent.mkdir(parents=True, exist_ok=True)
 
+        report = {
+            "schema_version": 1,
+            "started_at": now_iso(),
+            "base_url": args.base_url.rstrip("/"),
+            "cases_file": str(cases_path.relative_to(ROOT) if cases_path.is_relative_to(ROOT) else cases_path),
+            "configuration": {
+                "standard_explanations": ["off", "concise", "detailed"],
+                "guided": not args.skip_guided,
+                "guided_hints": args.guided_hints,
+                "request_timeout_seconds": args.request_timeout,
+            },
+            "health": None,
+            "results": [],
+            "summary": {},
+        }
     print(f"Checking backend: {args.base_url}", flush=True)
     health = request_json(args.base_url, "/api/health", timeout=args.health_timeout)
     report["health"] = health
     total = len(cases) * 3 + (0 if args.skip_guided else len(cases))
-    update_summary(report, total, 0, "health")
+    expected_keys = expected_test_keys(cases, args.skip_guided)
+    completed_keys = {result_test_key(item) for item in report.get("results", []) if isinstance(item, dict)}
+    unknown_keys = completed_keys - set(expected_keys)
+    if unknown_keys:
+        raise SystemExit("Resume report contains tests that are not part of the current cases/configuration.")
+    if len(completed_keys) != len(report.get("results", [])):
+        raise SystemExit("Resume report contains duplicate test records; refusing to guess which run state is authoritative.")
+    if args.resume:
+        print(f"Resuming after {len(completed_keys)} completed test(s); next test will be #{len(completed_keys) + 1}.", flush=True)
+    update_summary(report, total, len(completed_keys), "health")
     persist_report(output, report)
 
     if health["exception"] or not isinstance(health["json"], dict):
@@ -249,7 +321,10 @@ def main() -> int:
         print(f"Backend unavailable. Report: {output}", flush=True)
         return 2
 
-    current = 0
+    current = len(completed_keys)
+
+    def should_run(kind: str, case_id: str, explanation: str | None = None) -> bool:
+        return test_key(kind, str(case_id), explanation) not in completed_keys
 
     def run_one(kind: str, label: str, factory) -> None:
         nonlocal current
@@ -282,13 +357,15 @@ def main() -> int:
     try:
         for case in cases:
             for explanation in ("off", "concise", "detailed"):
+                if not should_run("standard", case["id"], explanation):
+                    continue
                 run_one(
                     "standard",
                     f"STANDARD {case['id']} [{explanation}]",
                     lambda case=case, explanation=explanation:
                         standard_test(args.base_url, case, explanation, args.request_timeout),
                 )
-            if not args.skip_guided:
+            if not args.skip_guided and should_run("guided", case["id"]):
                 run_one(
                     "guided",
                     f"GUIDED   {case['id']}",
