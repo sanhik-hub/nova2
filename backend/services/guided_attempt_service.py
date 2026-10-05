@@ -19,6 +19,9 @@ class GuidedAttemptService:
 
     def __init__(self, router: ProviderRouter | None = None):
         self.router = router or ProviderRouter()
+        # Keep one reasoning service alongside the shared router so its
+        # deterministic-result cache survives across Guided requests.
+        self.reasoning = ReasoningService(router=self.router)
 
     def generate(
         self,
@@ -39,7 +42,7 @@ class GuidedAttemptService:
             return {"success": False, "error": "Question is empty."}
 
         started = perf_counter()
-        reasoning = ReasoningService(router=self.router)
+        reasoning = self.reasoning
 
         # First establish a trustworthy answer/path. For exact computational
         # questions the reasoning service can use the computational engine;
@@ -775,8 +778,7 @@ givens. Output only the requested STEP records.""".strip()
         # authoritative reasoning path only when the user explicitly requests
         # the full solution. This keeps the default Guided Attempt fast and
         # avoids exposing the low-quality one-pass solution text.
-        reasoning = ReasoningService(router=self.router)
-        result = reasoning.solve(problem, explanation="detailed")
+        result = self.reasoning.solve(problem, explanation="detailed")
         if not result.get("success"):
             return {
                 "success": False,
