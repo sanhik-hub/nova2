@@ -1309,7 +1309,12 @@ on ambiguous plain-text superscripts or spacing.
 For mathematics and physics, check the governing relation, dimensions/units,
 and required substitution internally. Never invent missing data.
 
-Output only the final result.
+Output only the requested payload itself.
+Never write a sentence such as "The answer is ...", "The result is ...",
+"The formula is ...", or "The value is ...". Do not add a label, lead-in,
+explanation, justification, or concluding sentence. If the requested result
+is a formula, equation, value, name, unit, reaction, structure, or law, output
+only that result.
 """
         elif explanation == "concise":
             final_system = r"""
