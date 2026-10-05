@@ -1251,9 +1251,9 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
     def _final_explanation(
         self,
         problem: str,
-        idea: str,
-        reasoning: list,
-        tool_results: list,
+        idea: str = "",
+        reasoning: list | None = None,
+        tool_results: list | None = None,
         explanation: str = "detailed",
         estimated_answer_tokens: int | None = None,
     ):
