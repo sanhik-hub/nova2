@@ -1435,6 +1435,9 @@ Scientific display contract:
 
         answer = str(response["result"] or "").strip()
 
+        if explanation == "off":
+            answer = self._clean_result_only_answer(answer)
+
         if not answer:
             result = self._error(
                 "The reasoning model returned no solution."
@@ -1453,6 +1456,41 @@ Scientific display contract:
         }
 
 
+    def _clean_result_only_answer(self, answer: str) -> str:
+        """Enforce the result-only presentation contract at the API boundary."""
+        text = str(answer or "").strip()
+        if not text:
+            return ""
+
+        # Remove markdown fences and keep the payload itself.
+        text = text.replace("```text", "").replace("```latex", "").replace("```markdown", "").replace("```", "").strip()
+
+        # If the model supplied displayed math, return the final displayed result
+        # rather than the explanatory sentence surrounding it.
+        blocks = re.findall(r"\$\$(.*?)\$\$|\$(.*?)\$", text, flags=re.DOTALL)
+        if blocks:
+            for first, second in reversed(blocks):
+                candidate = (first or second).strip()
+                if candidate:
+                    return ("$" + candidate + "$") if "$" in text else ("$" + candidate + "$")
+
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if len(lines) > 1:
+            text = lines[-1]
+
+        # Remove common answer wrappers.
+        text = re.sub(r"^(?:the )?(?:final )?(?:answer|result|solution) *(?:is|:|=) *", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(?:therefore|thus|hence)[, :]+", "", text, flags=re.IGNORECASE)
+
+        # Convert common one-line forms such as "The density is 4 g/cm^3"
+        # into the requested payload only.
+        match = re.match(r"^(?:the .+? )(?:is|are|equals|=) (.+?)[.!]?$", text, flags=re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            if candidate and not re.search(r"\b(?:because|since|where|which|this|that)\b", candidate, flags=re.IGNORECASE):
+                text = candidate
+
+        return text.strip()
     # =========================================================
     # JSON PARSER
     # =========================================================
