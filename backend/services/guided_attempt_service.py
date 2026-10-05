@@ -911,12 +911,7 @@ givens. Output only the requested STEP records.""".strip()
 
     @staticmethod
     def _parse_correct_index(value: Any) -> int | None:
-        """Normalize the answer-position formats commonly emitted by local models.
-
-        The guided record contract is still exactly one integer in [0, 3].
-        This helper only tolerates harmless textual wrappers around that value;
-        it never guesses from the option contents.
-        """
+        """Normalize explicit answer-position wrappers safely."""
         if isinstance(value, bool) or value is None:
             return None
 
@@ -924,26 +919,18 @@ givens. Output only the requested STEP records.""".strip()
         if not text:
             return None
 
-        # Canonical integer and integer-valued decimal forms.
-        numeric = re.fullmatch(r"[+]?([0-3])(?:\\.0+)?", text)
+        numeric = re.fullmatch(r"[+]?([0-3])(?:\.0+)?", text)
         if numeric:
             return int(numeric.group(1))
 
-        label = text.upper().strip()
-        label = re.sub(r"^[\\[\\(\\{\\s]+|[\\]\\)\\}\\s]+$", "", label)
+        label = text.upper().strip("[](){} \t\r\n")
         label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
         if label in label_map:
             return label_map[label]
 
-        # Common local-model wrappers:
-        #   CORRECT_INDEX=2
-        #   INDEX: 2
-        #   Option B
-        #   Correct option: C
-        #   The correct answer is D
         numeric_match = re.fullmatch(
-            r"(?:CORRECT[_ ]?INDEX|INDEX|OPTION|CHOICE|ANSWER|CORRECT(?:[ _-]+OPTION)?|"
-            r"CORRECT[_ ]?ANSWER)\\s*[:=\\-]?\\s*([0-3])(?:\\.0+)?",
+            r"(?:CORRECT[_ ]?INDEX|INDEX|OPTION|CHOICE|ANSWER|CORRECT(?:[ _-]+OPTION)?|CORRECT[_ ]?ANSWER)"
+            r"\s*[:=\-]?\s*([0-3])(?:\.0+)?",
             label,
         )
         if numeric_match:
@@ -951,21 +938,19 @@ givens. Output only the requested STEP records.""".strip()
 
         letter_match = re.fullmatch(
             r"(?:OPTION|CHOICE|ANSWER|CORRECT(?:[ _-]+OPTION)?|CORRECT[_ ]?ANSWER)"
-            r"\\s*(?:IS\\s*)?[:=\\-]?\\s*([ABCD])\\.?",
+            r"\s*(?:IS\s*)?[:=\-]?\s*([ABCD])\.?",
             label,
         )
         if letter_match:
             return label_map[letter_match.group(1)]
 
-        # Allow a short natural-language wrapper only when it explicitly
-        # identifies the field as the correct answer/index.
-        if re.search(r"\\b(?:correct|index|answer|option|choice)\\b", label):
-            digit_matches = re.findall(r"(?<!\\d)([0-3])(?!\\d)", label)
-            if len(digit_matches) == 1:
-                return int(digit_matches[0])
-            letter_matches = re.findall(r"(?<![A-Z])[ABCD](?![A-Z])", label)
-            if len(letter_matches) == 1:
-                return label_map[letter_matches[0]]
+        if re.search(r"\b(?:correct|index|answer|option|choice)\b", label):
+            digits = re.findall(r"(?<!\d)([0-3])(?!\d)", label)
+            if len(digits) == 1:
+                return int(digits[0])
+            letters = re.findall(r"(?<![A-Z])[ABCD](?![A-Z])", label)
+            if len(letters) == 1:
+                return label_map[letters[0]]
 
         return None
 
