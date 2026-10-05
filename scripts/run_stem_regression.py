@@ -19,6 +19,46 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def persist_report(output: Path, report: dict) -> None:
+    """Atomically persist the current report so it is inspectable mid-run."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    tmp = output.with_suffix(output.suffix + ".tmp")
+    tmp.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(output)
+
+
+def update_summary(report: dict, total: int, current: int, current_test: str | None = None) -> None:
+    results = report.get("results", [])
+    counts: dict[str, int] = {}
+    timings: dict[str, list[float]] = {}
+    for item in results:
+        status = str(item.get("status") or "unknown")
+        counts[status] = counts.get(status, 0) + 1
+        kind = str(item.get("kind") or "unknown")
+        timings.setdefault(kind, []).append(float(item.get("timing_ms") or 0.0))
+
+    report["progress"] = {
+        "completed_tests": len(results),
+        "total_tests": total,
+        "current_index": current,
+        "current_test": current_test,
+        "percent": round(len(results) * 100 / total, 2) if total else 100.0,
+    }
+    report["summary"] = {
+        "total_tests": len(results),
+        "status_counts": counts,
+        "failed_tests": sum(item.get("status") != "pass" for item in results),
+        "standard_tests": sum(item.get("kind") == "standard" for item in results),
+        "guided_tests": sum(item.get("kind") == "guided" for item in results),
+        "average_ms": {
+            k: round(sum(v) / len(v), 2) for k, v in timings.items() if v
+        },
+        "max_ms": {
+            k: round(max(v), 2) for k, v in timings.items() if v
+        },
+    }
+
+
 def request_json(base_url: str, path: str, payload: dict | None = None, timeout: float = 180.0) -> dict:
     url = base_url.rstrip("/") + path
     data = None
@@ -193,55 +233,91 @@ def main() -> int:
         "summary": {},
     }
 
-    print(f"Checking backend: {args.base_url}")
+    print(f"Checking backend: {args.base_url}", flush=True)
     health = request_json(args.base_url, "/api/health", timeout=args.health_timeout)
     report["health"] = health
+    total = len(cases) * 3 + (0 if args.skip_guided else len(cases))
+    update_summary(report, total, 0, "health")
+    persist_report(output, report)
+
     if health["exception"] or not isinstance(health["json"], dict):
         report["finished_at"] = now_iso()
-        report["summary"] = {"fatal": True, "reason": health["exception"] or "invalid health response"}
-        output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"Backend unavailable. Report: {output}")
+        report["run_status"] = "backend_unavailable"
+        report["summary"]["fatal"] = True
+        report["summary"]["reason"] = health["exception"] or "invalid health response"
+        persist_report(output, report)
+        print(f"Backend unavailable. Report: {output}", flush=True)
         return 2
 
-    total = len(cases) * 3 + (0 if args.skip_guided else len(cases))
     current = 0
 
-    for case in cases:
-        for explanation in ("off", "concise", "detailed"):
-            current += 1
-            print(f"[{current}/{total}] STANDARD {case['id']} [{explanation}]")
-            result = standard_test(args.base_url, case, explanation, args.request_timeout)
-            report["results"].append(result)
-            if result["status"] != "pass":
-                print(f"    ERROR: {result['error']}")
-        if not args.skip_guided:
-            current += 1
-            print(f"[{current}/{total}] GUIDED   {case['id']}")
-            result = guided_test(args.base_url, case, args.guided_hints, args.request_timeout)
-            report["results"].append(result)
-            if result["status"] != "pass":
-                print(f"    ERROR: {result['error']}")
+    def run_one(kind: str, label: str, factory) -> None:
+        nonlocal current
+        current += 1
+        print(f"[{current}/{total}] {label}", flush=True)
+        try:
+            result = factory()
+        except Exception as exc:
+            result = {
+                "kind": kind,
+                "case_id": case["id"],
+                "domain": case["domain"],
+                "question": case["question"],
+                "request": {},
+                "status": "runner_error",
+                "error": f"{type(exc).__name__}: {exc}",
+                "timing_ms": 0.0,
+                "http_status": None,
+                "response": None,
+                "raw_response": "",
+                "exception": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
+            }
+        report["results"].append(result)
+        update_summary(report, total, current, label)
+        persist_report(output, report)
+        if result["status"] != "pass":
+            print(f"    ERROR: {result['error']}", flush=True)
 
-    counts = {}
-    timings = {}
-    for result in report["results"]:
-        counts[result["status"]] = counts.get(result["status"], 0) + 1
-        timings.setdefault(result["kind"], []).append(result["timing_ms"])
+    try:
+        for case in cases:
+            for explanation in ("off", "concise", "detailed"):
+                run_one(
+                    "standard",
+                    f"STANDARD {case['id']} [{explanation}]",
+                    lambda case=case, explanation=explanation:
+                        standard_test(args.base_url, case, explanation, args.request_timeout),
+                )
+            if not args.skip_guided:
+                run_one(
+                    "guided",
+                    f"GUIDED   {case['id']}",
+                    lambda case=case:
+                        guided_test(args.base_url, case, args.guided_hints, args.request_timeout),
+                )
+    except KeyboardInterrupt:
+        report["finished_at"] = now_iso()
+        report["run_status"] = "interrupted"
+        update_summary(report, total, current, "interrupted")
+        persist_report(output, report)
+        print(f"Interrupted. Partial report: {output}", flush=True)
+        return 130
+    except Exception as exc:
+        report["finished_at"] = now_iso()
+        report["run_status"] = "runner_crash"
+        report["runner_exception"] = f"{type(exc).__name__}: {exc}"
+        report["runner_traceback"] = traceback.format_exc()
+        update_summary(report, total, current, "runner_crash")
+        persist_report(output, report)
+        print(f"Runner crashed. Partial report: {output}", flush=True)
+        return 1
 
     report["finished_at"] = now_iso()
-    report["summary"] = {
-        "total_tests": len(report["results"]),
-        "status_counts": counts,
-        "standard_tests": sum(r["kind"] == "standard" for r in report["results"]),
-        "guided_tests": sum(r["kind"] == "guided" for r in report["results"]),
-        "failed_tests": sum(r["status"] != "pass" for r in report["results"]),
-        "average_ms": {k: round(sum(v) / len(v), 2) for k, v in timings.items() if v},
-        "max_ms": {k: round(max(v), 2) for k, v in timings.items() if v},
-    }
-
-    output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps(report["summary"], indent=2))
-    print(f"Structured report: {output}")
+    report["run_status"] = "completed"
+    update_summary(report, total, total, None)
+    persist_report(output, report)
+    print(json.dumps(report["summary"], indent=2), flush=True)
+    print(f"Structured report: {output}", flush=True)
     return 0 if report["summary"]["failed_tests"] == 0 else 1
 
 
