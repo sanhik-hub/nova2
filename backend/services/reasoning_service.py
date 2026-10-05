@@ -555,6 +555,14 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                     f"Planner returned an invalid plan field: {field}."
                 )
 
+        # Chemistry factual/qualitative requests must remain semantic reasoning.
+        # The small planner is advisory and can occasionally hallucinate an exact
+        # operation for a chemistry prompt. Keep formula/name/balancing requests
+        # out of the symbolic Wolfram operation pipeline.
+        if self._is_semantic_chemistry_request(problem):
+            plan["needs_wolfram"] = False
+            operation = None
+            arguments = None
         # A previous planner prompt used a nested "wolfram" field. Accept that
         # legacy shape only as a narrow recovery path so a stale/partially
         # updated local model cannot turn a valid request into a hard failure.
@@ -722,6 +730,20 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         }
         return response
 
+    def _is_semantic_chemistry_request(self, problem: str) -> bool:
+        """Identify narrow chemistry requests that should use semantic reasoning."""
+        text = problem.strip().lower()
+        factual_terms = (
+            "formula of", "formula for", "chemical formula",
+            "molecular formula", "name of", "iupac name",
+        )
+        if any(term in text for term in factual_terms):
+            return True
+        if "balance" in text and (
+            "->" in text or "→" in text or "=" in text
+        ):
+            return True
+        return False
     def _detect_result_only_operation(self, problem: str):
         text = problem.strip()
         patterns = [
