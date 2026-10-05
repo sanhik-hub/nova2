@@ -202,20 +202,48 @@ def test_key(kind: str, case_id: str, explanation: str | None = None) -> str:
 def result_test_key(result: dict) -> str:
     return test_key(str(result.get("kind") or ""), str(result.get("case_id") or ""), result.get("explanation"))
 
-def find_resume_report(output_dir: Path) -> Path | None:
-    """Find the newest incomplete regression report."""
+def find_resume_report(
+    output_dir: Path,
+    *,
+    cases_file: str,
+    guided: bool,
+    guided_hints: bool,
+    base_url: str,
+) -> Path | None:
+    """Find the newest incomplete report matching the requested run configuration.
+
+    A directory can contain interrupted 60-test standard-only runs alongside
+    interrupted 80-test guided runs. Resume must select only a compatible run;
+    otherwise a newer but incompatible report can mask the correct one.
+    """
     if not output_dir.exists():
         return None
+
     candidates = []
     for path in output_dir.glob("regression_*.json"):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
-        if data.get("run_status") != "completed":
-            candidates.append((path.stat().st_mtime, path))
+
+        if data.get("run_status") == "completed":
+            continue
+
+        configuration = data.get("configuration") or {}
+        if bool(configuration.get("guided", True)) != guided:
+            continue
+        if bool(configuration.get("guided_hints", False)) != guided_hints:
+            continue
+        if str(data.get("base_url") or "").rstrip("/") != base_url.rstrip("/"):
+            continue
+        if str(data.get("cases_file") or "") != cases_file:
+            continue
+
+        candidates.append((path.stat().st_mtime, path))
+
     if not candidates:
         return None
+
     candidates.sort(reverse=True)
     return candidates[0][1]
 
@@ -250,9 +278,25 @@ def main() -> int:
 
     if args.resume:
         if output is None:
-            output = find_resume_report(DEFAULT_OUTPUT_DIR)
+            cases_key = str(
+                cases_path.relative_to(ROOT)
+                if cases_path.is_relative_to(ROOT)
+                else cases_path
+            )
+            output = find_resume_report(
+                DEFAULT_OUTPUT_DIR,
+                cases_file=cases_key,
+                guided=not args.skip_guided,
+                guided_hints=args.guided_hints,
+                base_url=args.base_url,
+            )
         if output is None or not output.exists():
-            raise SystemExit("--resume requested, but no incomplete regression report was found.")
+            mode = "guided" if not args.skip_guided else "standard-only"
+            hints = " with hints" if args.guided_hints else ""
+            raise SystemExit(
+                f"--resume requested, but no incomplete {mode}{hints} "
+                f"report matching the current cases file and backend was found."
+            )
         output = output.resolve()
         try:
             report = json.loads(output.read_text(encoding="utf-8"))
