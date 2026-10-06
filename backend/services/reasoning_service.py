@@ -167,7 +167,8 @@ class ReasoningService:
             self._cache_set(problem, response, explanation)
             return response
 
-        # ----------------------------------------------        # 4. TARGETED SCALED-NUMERIC HANDOFF
+        # -----------------------------------------------------
+        # 4. TARGETED SCALED-NUMERIC HANDOFF
         # Check explicit unit-scaled quantities before any model-driven route.
         if self._extract_scaled_numeric_values(problem):
             response = self._solve_quantitative_direct(problem, explanation)
@@ -209,7 +210,6 @@ class ReasoningService:
 
         # -----------------------------------------------------
         # 5. MODEL-DRIVEN SEMANTIC PLANNING
-
         # -----------------------------------------------------
 
         response = self._solve_complex(
