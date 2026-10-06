@@ -19,6 +19,10 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
+    # The planner only emits a small routing object. This bound applies only
+    # to the planner's routing metadata, never to the final STEM answer.
+    PLANNER_TOKENS = 220
+
     # The planner's answer_tokens field is advisory metadata only. Neither
     # planner nor final-answer generation has an application-level token cap.
 
@@ -493,7 +497,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             # previously caused severe stalls on this model. The reasoning
             # service already parses and validates the returned object, so the
             # response-format constraint is redundant here.
-            max_tokens=None,
+            max_tokens=self.PLANNER_TOKENS,
             compact=True,
         )
 
