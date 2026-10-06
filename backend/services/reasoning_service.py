@@ -1634,13 +1634,9 @@ Required format:
 
 Formatting example for the writing style:
 
-Consider a differential segment dr at distance r from the axis.
-
-The linear velocity of this segment is:
-
 v = rω
 
-The emf generated across the segment is:
+The linear velocity of a segment at distance r from the axis is:
 
 dE = Bv dr
 
@@ -1648,7 +1644,7 @@ Substituting v = rω:
 
 dE = B(rω) dr
 
-Integrating along the entire rod:
+Integrating along the rod:
 
 E = ∫₀ᴸ Bωr dr
 
@@ -1660,11 +1656,13 @@ Therefore:
 
 E = ½BωL²
 
-This example defines the STYLE only. Do not copy its subject matter into
-other problems. Use the same pattern for any STEM domain: brief necessary
-reasoning text between equation groups, followed by the relevant equations
-and transformations. Do not force the same wording, number of steps, or
-mathematical method onto another problem.
+This example defines STYLE only. Do not copy its subject matter into other
+problems. For every concise solution, the first visible content must be the
+first necessary equation, relation, transformation, or factual inference.
+Never begin with a paragraph that merely restates the problem or explains
+what the problem is about. After the first equation/group, use brief
+reasoning text only where it helps connect the next necessary equation or
+transformation.
 
 For concise output, use readable plain-text mathematical notation. Do NOT use
 LaTeX delimiters ($...$), LaTeX commands, Markdown math blocks, or raw TeX
