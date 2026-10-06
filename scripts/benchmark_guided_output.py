@@ -78,6 +78,7 @@ def inspect_payload(raw: str) -> dict:
         "errors": errors,
         "placeholder_indices": placeholder_indices,
         "verified_solution_elapsed_ms": value.get("verified_solution_elapsed_ms"),
+        "verified_solution_elapsed_ms": value.get("verified_solution_elapsed_ms"),
         "solution_generation_elapsed_ms": value.get("solution_generation_elapsed_ms"),
         "mcq_generation_elapsed_ms": value.get("mcq_generation_elapsed_ms"),
         "elapsed_ms": value.get("elapsed_ms"),
@@ -116,6 +117,11 @@ def main() -> None:
                     f"mcq={row.get('mcq_generation_elapsed_ms')} ms | "
                     f"api_total={row.get('elapsed_ms')} ms"
                 )
+                print(
+                    f"    verified={row.get('verified_solution_elapsed_ms')} ms | "
+                    f"mcq={row.get('mcq_generation_elapsed_ms')} ms | "
+                    f"api_total={row.get('elapsed_ms')} ms"
+                )
                 print(f"    errors={errors}")
                 if api_error:
                     print(f"    api_error={api_error}")
@@ -127,6 +133,8 @@ def main() -> None:
     times = [r["elapsed_ms"] for r in results if r.get("ok")]
     verified_times = [r["verified_solution_elapsed_ms"] for r in results if isinstance(r.get("verified_solution_elapsed_ms"), (int, float))]
     mcq_times = [r["mcq_generation_elapsed_ms"] for r in results if isinstance(r.get("mcq_generation_elapsed_ms"), (int, float))]
+    verified_times = [r["verified_solution_elapsed_ms"] for r in results if isinstance(r.get("verified_solution_elapsed_ms"), (int, float))]
+    mcq_times = [r["mcq_generation_elapsed_ms"] for r in results if isinstance(r.get("mcq_generation_elapsed_ms"), (int, float))]
     summary = {
         "runs": len(results),
         "valid": len(valid),
@@ -134,6 +142,12 @@ def main() -> None:
         "avg_elapsed_ms": round(statistics.mean(times), 2) if times else None,
         "median_elapsed_ms": round(statistics.median(times), 2) if times else None,
         "max_elapsed_ms": round(max(times), 2) if times else None,
+        "avg_verified_solution_ms": round(statistics.mean(verified_times), 2) if verified_times else None,
+        "median_verified_solution_ms": round(statistics.median(verified_times), 2) if verified_times else None,
+        "max_verified_solution_ms": round(max(verified_times), 2) if verified_times else None,
+        "avg_mcq_generation_ms": round(statistics.mean(mcq_times), 2) if mcq_times else None,
+        "median_mcq_generation_ms": round(statistics.median(mcq_times), 2) if mcq_times else None,
+        "max_mcq_generation_ms": round(max(mcq_times), 2) if mcq_times else None,
         "avg_verified_solution_ms": round(statistics.mean(verified_times), 2) if verified_times else None,
         "median_verified_solution_ms": round(statistics.median(verified_times), 2) if verified_times else None,
         "max_verified_solution_ms": round(max(verified_times), 2) if verified_times else None,
