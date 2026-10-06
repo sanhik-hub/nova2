@@ -1390,12 +1390,25 @@ final-answer questions.""".strip()
             # Do not spend another LLM call trying to repair this.
             seen_option_sets.add(option_set)
 
+        # A local model can phrase the same intermediate target in slightly
+        # different ways (for example, two equivalent questions about the
+        # velocity at the highest point). Keep the later occurrence rather
+        # than discarding the entire guided attempt. The final-result question
+        # is excluded here and remains authoritative after final-step ordering.
+        deduped_targets = []
         seen_targets: set[str] = set()
-        for earlier_step in normalized[:-1]:
-            key = target_key(earlier_step["question"])
+        for step in reversed(normalized[:-1]):
+            key = target_key(step["question"])
             if key and key in seen_targets:
-                return False, "Guided attempt repeats the same intermediate target."
-            seen_targets.add(key)
+                continue
+            if key:
+                seen_targets.add(key)
+            deduped_targets.append(step)
+        deduped_targets.reverse()
+        if len(deduped_targets) != len(normalized) - 1:
+            normalized = deduped_targets + [normalized[-1]]
+            if len(normalized) < 2:
+                return False, "Guided attempt did not retain enough meaningful solution stages."
 
         # Do not require a particular derivation style. A standard closed-form
         # relation is valid when it is mathematically appropriate; connectedness
