@@ -213,7 +213,7 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 5. MODEL-DRIVEN SEMANTIC PLANNING
+        # 6. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
@@ -1719,7 +1719,7 @@ Scientific display contract:
 - Keep chemical atom counts and charge balance consistent with the displayed
   structure. Do not use ambiguous plain-text superscripts for charges.
 - Do not invent structural details that are not supported by the question.
-""";;
+""";
 
         # The planner supplies request-specific advisory generation guidance.
         # It is never a hard generation ceiling.
