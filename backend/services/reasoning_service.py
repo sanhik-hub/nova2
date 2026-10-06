@@ -803,7 +803,16 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 "Return ONLY JSON with fields needs_calculation and expression. "
                 "If calculation is required, expression must contain only numbers, arithmetic "
                 "operators, parentheses, and scientific notation. Do not return the final answer "
-                "or units. Do not invent missing data."
+                "or units. Do not invent missing data. "
+                "Interpret the complete problem before constructing the expression. Preserve every "
+                "stated quantity, exponent, denominator, and mathematical operation. If a stated "
+                "quantity has a scale prefix, convert that scale explicitly into the numeric "
+                "expression instead of dropping it. Preserve powers on quantities exactly, "
+                "including squared or cubed denominators. Keep grouping explicit with parentheses. "
+                "You may introduce a required universal constant only when the calculation "
+                "requires it, but never invent a measured value or condition. Before returning "
+                "the JSON, silently recompute the expression and check that its scale and "
+                "operation structure agree with the original problem."
             ),
             temperature=0.0,
             enable_thinking=False,
