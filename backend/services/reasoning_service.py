@@ -343,7 +343,7 @@ Rules:
 - "needs_wolfram" means that the final answer genuinely benefits from exact symbolic/numeric computation or exact mathematical transformation that can be represented by one of the allowed structured operations.
 - Set "needs_wolfram" to false for factual recall, definitions, laws, units, formulas, nomenclature, identification, qualitative chemistry, conceptual physics, conceptual science, and ordinary explanations.
 - A chemistry question is NOT a Wolfram request merely because it mentions a chemical compound, reaction, element, or formula. Factual formulas, nomenclature, identification, and qualitative chemistry should use needs_wolfram=false.
-- A physics question is NOT a Wolfram request merely because it is physics. Conceptual questions such as Newton's laws, SI units, or qualitative explanations should use needs_wolfram=false.
+- A physics question is NOT a Wolfram request merely because it is physics. Conceptual laws, definitions, units, and qualitative explanations should use needs_wolfram=false.
 - Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
 - Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
 - Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
