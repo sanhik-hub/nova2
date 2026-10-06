@@ -167,7 +167,14 @@ class ReasoningService:
             self._cache_set(problem, response, explanation)
             return response
 
-        # -----------------------------------------------------
+        # ----------------------------------------------        # 4. TARGETED SCALED-NUMERIC HANDOFF
+        # Check explicit unit-scaled quantities before any model-driven route.
+        if self._extract_scaled_numeric_values(problem):
+            response = self._solve_quantitative_direct(problem, explanation)
+            response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
+            return response
+
+-------
         # 4. DIRECT SEMANTIC FAST PATH
         # -----------------------------------------------------
         #
@@ -960,14 +967,15 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         }
         # Require at least one unit character after the prefix. This avoids
         # treating ordinary values such as "0.5 m" as milli-prefixed numbers.
+        normalized = problem.replace("Μ", "μ").replace("µ", "μ")
         pattern = re.compile(
             r"(?P<number>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)"
-            r"\s*(?P<prefix>da|µ|μ|[kMGTPEZYRQdcmunpfazyr])"
+            r"\s*(?P<prefix>da|μ|[kMGTPEZYRQdcmunpfazyr])"
             r"(?P<unit>[A-Za-zΩ]+)",
             re.VERBOSE,
         )
         values: list[float] = []
-        for match in pattern.finditer(problem):
+        for match in pattern.finditer(normalized):
             prefix = match.group("prefix")
             unit = match.group("unit")
             # kg is the SI base unit rather than a kilo-prefixed gram quantity.
