@@ -434,11 +434,18 @@ Rules:
 - Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
 - Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
 - Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
+- A semantic quantitative problem may use Wolfram for an exact arithmetic
+  subcalculation while the local reasoning model remains responsible for the
+  scientific interpretation and final solution.
 - "operation" is null when exact symbolic/numeric computation is not genuinely needed.
 - "arguments" is null when "operation" is null.
 - If exact computation is needed, "operation" must be exactly one of:
-  simplify, factor, expand, differentiate, integrate, solve, limit.
+  calculate, simplify, factor, expand, differentiate, integrate, solve, limit.
+- Use "calculate" for concrete numerical arithmetic inside a semantic STEM
+  problem. Its arguments must contain one mathematical expression only; do not
+  return the final answer yourself.
 - "arguments" must be a machine-readable object appropriate to that operation.
+  For "calculate", use {"expression":"<mathematical expression>"}.
 - Wolfram arguments must contain only mathematical expressions/values from the user's request.
 - Never use natural-language instructions as computation arguments.
 - Never invent a formula, value, variable, condition, or assumption.
@@ -463,9 +470,12 @@ Rules:
     {"type":"plan","intent":"conceptual","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":80}
   - A request for a known chemical formula or name is factual chemistry:
     {"type":"plan","intent":"factual_chemistry","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":40}
+  - A quantitative semantic problem may use exact arithmetic verification:
+    {"type":"plan","intent":"quantitative","needs_wolfram":true,"operation":"calculate","arguments":{"expression":"9*10^9*(2*10^-6)*(3*10^-6)/(0.5^2)"},"answer_tokens":80}
 - Do not classify an explicit request to differentiate, integrate, factor, expand, simplify, solve, or take a limit as pure reasoning when the user supplied the concrete expression/equation needed for that exact operation.
 - "answer_tokens" is the planner's estimate of the completion tokens actually
-  required for the final answer. It is an advisory generation budget.
+  required for the final answer. It is advisory metadata only and is never a
+  hard generation ceiling.
 - For explanation "off", estimate ONLY the required result that should be shown
   to the user. Do not budget for explanations, introductions, commentary,
   headings, derivations, or summaries. An overall-reaction request should budget
@@ -476,7 +486,10 @@ Rules:
 - Always use the smallest sufficient estimate for this specific request.
 - Never inflate the estimate merely because the topic is difficult.
 
-The planner is a router, not a solver. When information needed for a formula or calculation is missing, leave Wolfram unused rather than guessing it.
+The planner is a router and computation-request builder, not the final solver.
+For a semantic quantitative problem, it may construct the exact arithmetic
+expression that the final solver needs Wolfram to evaluate, but it must not
+write the final user answer. When information needed for a formula or calculation is missing, leave Wolfram unused rather than guessing it.
 
 Important: do not infer that every math/physics/chemistry request needs Wolfram. The deciding question is whether exact computation is genuinely required for this particular request.
 """
@@ -893,6 +906,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         arguments = call.get("arguments")
 
         allowed = {
+            "calculate",
             "simplify",
             "factor",
             "expand",
@@ -958,6 +972,24 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         # -----------------------------------------------------
         # Required arguments
         # -----------------------------------------------------
+
+        if tool == "calculate":
+            expression = arguments.get("expression")
+            if not isinstance(expression, str) or not expression.strip():
+                return {
+                    "valid": False,
+                    "error": "calculate requires an expression.",
+                }
+
+            # Keep this general and structural: calculate accepts the same
+            # mathematical expression grammar as the direct CAS path, while
+            # rejecting natural-language instructions and arbitrary Wolfram
+            # code.
+            if not self._is_simple_expression(expression):
+                return {
+                    "valid": False,
+                    "error": "calculate requires a valid mathematical expression.",
+                }
 
         if tool in {
             "simplify",
@@ -1095,7 +1127,28 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
             provider = self.router.get_provider("wolfram")
 
-            if tool == "simplify":
+            if tool == "calculate":
+
+                raw = provider.calculate(
+                    normalize_expression(
+                        arguments["expression"]
+                    )
+                )
+
+                if raw.get("success"):
+                    return {
+                        "success": True,
+                        "result": raw.get("result"),
+                        "error": None,
+                    }
+
+                return {
+                    "success": False,
+                    "result": None,
+                    "error": raw.get("error"),
+                }
+
+            elif tool == "simplify":
 
                 raw = provider.engine.simplify(
                     normalize_expression(
