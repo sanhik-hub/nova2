@@ -939,7 +939,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         # treating ordinary values such as "0.5 m" as milli-prefixed numbers.
         pattern = re.compile(
             r"(?P<number>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)"
-            r"\s*(?P<prefix>da|µ|μ|[kMGTPEZYRQdcmunpfazy r])"
+            r"\s*(?P<prefix>da|µ|μ|[kMGTPEZYRQdcmunpfazyr])"
             r"(?P<unit>[A-Za-zΩ]+)",
             re.VERBOSE,
         )
