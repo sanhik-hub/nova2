@@ -1700,26 +1700,94 @@ Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the complete solution text.
 """
 
-        # Concise mode already defines its own plain-text display contract.
-        # Keep the structured scientific display contract for other modes.
-        if explanation != "concise":
-            final_system += r"""
+                # Use one common scientific-format contract across explanation modes.
+        final_system += r"""
 Scientific display contract:
 - Put mathematical expressions in $...$ and larger derivations in $...$.
 - Put chemical formulas, structures, and reaction equations in $...$ so the
   frontend can typeset element subscripts, explicit bonds, charges, and lone
   pairs unambiguously.
 - For chemical structures use upright element symbols with explicit bond
-  characters: - for single, = for double, \\equiv for triple, and
-  \\rightarrow or \\rightleftharpoons for reaction arrows.
-- Show formal charges explicitly, e.g. $\\mathrm{NH_4^+}$.
+  characters: - for single, = for double, \equiv for triple, and
+  \rightarrow or \rightleftharpoons for reaction arrows.
+- Show formal charges explicitly, e.g. $\mathrm{NH_4^+}$.
 - When lone pairs are important, show them explicitly with LaTeX such as
-  $\\overset{\\cdot\\,\\cdot}{\\mathrm{O}}$ rather than relying on
-  prose or invisible electron pairs.
+  $\overset{\cdot\,\cdot}{\mathrm{O}}$ rather than relying on prose or
+  invisible electron pairs.
 - Keep chemical atom counts and charge balance consistent with the displayed
   structure. Do not use ambiguous plain-text superscripts for charges.
 - Do not invent structural details that are not supported by the question.
-""";Remove explanatory prose when result-only generation adds it."""
+""";
+
+        # The planner supplies request-specific advisory generation guidance.
+        # It is never a hard generation ceiling.
+        if estimated_answer_tokens:
+            final_system += (
+                "\n\nInternal answer-size guidance: aim for approximately "
+                f"{estimated_answer_tokens} completion tokens. "
+                "Treat this as a target, not a hard limit. If more tokens are "
+                "mathematically necessary to complete the requested solution, "
+                "continue until the solution is complete. If fewer are "
+                "sufficient, stop when the solution is complete."
+            )
+
+        payload = {
+            "problem": problem,
+            "idea": idea,
+            "reasoning": reasoning,
+            "verified_results": tool_results,
+        }
+
+        final_llm_started = time.perf_counter()
+
+        response = self.router.generate(
+            prompt=json.dumps(
+                payload,
+                ensure_ascii=False,
+            ),
+            system_prompt=final_system,
+            # answer_tokens is advisory metadata only. Never pass it as a
+            # provider max_tokens ceiling; a difficult STEM request may need
+            # substantially more output than the planner estimates.
+            temperature=0,
+            enable_thinking=False,
+            request_timeout=None,
+        )
+
+        final_llm_ms = round(
+            (time.perf_counter() - final_llm_started) * 1000,
+            2,
+        )
+
+        if not response["success"]:
+            result = self._error(response["error"])
+            result["_final_llm_ms"] = final_llm_ms
+            return result
+
+        answer = str(response["result"] or "").strip()
+
+        if explanation == "off":
+            answer = self._sanitize_result_only_answer(answer)
+
+        if not answer:
+            result = self._error(
+                "The reasoning model returned no solution."
+            )
+            result["_final_llm_ms"] = final_llm_ms
+            return result
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm+wolfram" if tool_results else "local_llm",
+            "tool_calls": tool_results,
+            "cached": False,
+            "result_only": explanation == "off",
+            "_final_llm_ms": final_llm_ms,
+        }
+
+
+"""
         text = answer.strip()
         if not text:
             return text
