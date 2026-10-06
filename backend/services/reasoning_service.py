@@ -497,8 +497,7 @@ Rules:
   headings, derivations, or summaries. An overall-reaction request should budget
   for the reaction equation; a formula request for the formula; a name request
   for the name; a value request for the value.
-- For "concise" and "detailed", estimate the complete response including the
-  mathematics and prose required by that explanation mode.
+- For "concise" and "detailed", estimate the complete response including the  mathematics and prose required by that explanation mode.
 - Always use the smallest sufficient estimate for this specific request.
 - Never inflate the estimate merely because the topic is difficult.
 
@@ -803,17 +802,20 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 "Return ONLY JSON with fields needs_calculation and expression. "
                 "If calculation is required, expression must contain only numbers, arithmetic "
                 "operators, parentheses, and scientific notation. Do not return the final answer "
-                "or units. Do not invent missing data. "
-                "Interpret the complete problem before constructing the expression. Preserve every "
-                "stated quantity, exponent, denominator, and mathematical operation. If a stated "
-                "quantity has a scale prefix, convert that scale explicitly into the numeric "
-                "expression instead of dropping it. Preserve powers on quantities exactly, "
-                "including squared or cubed denominators. Keep grouping explicit with parentheses. "
-                "You may introduce a required universal constant only when the calculation "
-                "requires it, but never invent a measured value or condition. Before returning "
-                "the JSON, silently recompute the expression and check that its scale and "
-                "operation structure agree with the original problem."
+                "or units. Do not invent missing data. Interpret the complete problem before "
+                "constructing the expression. Preserve every stated quantity, exponent, "
+                "denominator, and mathematical operation. Convert every stated scale prefix "
+                "or unit multiplier into its numeric factor instead of dropping it. Preserve "
+                "powers on quantities exactly, including squared or cubed denominators. Keep "
+                "grouping explicit with parentheses. You may introduce a required universal "
+                "constant only when the calculation requires it, but never invent a measured "
+                "value or condition. Before returning JSON, silently recompute the expression "
+                "and check its numerical scale and operation structure against the original "
+                "problem."
             ),
+            temperature=0.0,
+            enable_thinking=False,
+            response_format={"type": "json_object"},            ),
             temperature=0.0,
             enable_thinking=False,
             response_format={"type": "json_object"},
@@ -997,8 +999,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         if tool not in allowed:
             return {
-                "valid": False,
-                "error": f"Unsupported tool: {tool}",
+                "valid": False,                "error": f"Unsupported tool: {tool}",
             }
 
         if not isinstance(arguments, dict):
@@ -1481,15 +1482,16 @@ only that result.
             final_system = r"""
 You are Nova's concise STEM solution writer.
 
-Return ONLY a compact, complete solution. Use the fewest words and equations
+Return a compact, complete solution. Use the fewest words and equations
 needed to make the reasoning understandable and reach the final answer.
 
 Rules:
 - Use mathematics/equations as the main content.
 - Show only indispensable steps: the governing relation, necessary
   substitution or transformation, and the final result.
-- A small amount of prose is allowed only when it materially improves
-  clarity. Prefer one brief sentence or short fragment over paragraphs.
+- For a derivation, proof, or multi-step calculation, include at least ONE
+  brief explanatory sentence or phrase when it helps connect the equations.
+  Keep that prose to one short sentence; do not turn it into a paragraph.
 - Do not restate the question, add an introduction, background, definitions
   of already-given quantities, alternative methods, summaries, or filler.
 - Do not explain routine algebra in prose when the equation itself is clear.
@@ -1501,13 +1503,10 @@ Rules:
 - Do not mention tools, AI, prompts, token budgets, or internal processing.
 - Return ONLY the solution text.
 
-Prefer compact equation chains such as:
-$\varepsilon=\int_0^l B\omega r\,dr
-=B\omega\left[\frac{r^2}{2}\right]_0^l
-=\frac{1}{2}B\omega l^2$
-
-with at most a short sentence such as "Using $v=\omega r$."
-Do not turn each equation into a separate explanatory paragraph.
+Prefer one short explanation followed by a compact equation chain. For example:
+"Using $v=\omega r$, the motional emf is integrated along the rod."
+Then show only the necessary equation chain. Do not turn each equation into
+a separate explanatory paragraph.
 """
         else:
             final_system = r"""
@@ -1601,6 +1600,9 @@ Scientific display contract:
 
         answer = str(response["result"] or "").strip()
 
+        if explanation == "off":
+            answer = self._sanitize_result_only_answer(answer)
+
         if not answer:
             result = self._error(
                 "The reasoning model returned no solution."
@@ -1618,6 +1620,40 @@ Scientific display contract:
             "_final_llm_ms": final_llm_ms,
         }
 
+
+    @staticmethod
+    def _sanitize_result_only_answer(answer: str) -> str:
+        """Remove explanatory prose when result-only generation adds it."""
+        text = answer.strip()
+        if not text:
+            return text
+
+        # Prefer the final fenced/displayed mathematical payload.
+        blocks = re.findall(
+            r"\`\`\`(?:math|latex)?\s*(.*?)\s*\`\`\`",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if blocks:
+            return blocks[-1].strip()
+
+        displays = re.findall(r"\$\$(.*?)\$\$", text, flags=re.DOTALL)
+        if displays:
+            return displays[-1].strip()
+
+        displays = re.findall(r"\\\[(.*?)\\\]", text, flags=re.DOTALL)
+        if displays:
+            return displays[-1].strip()
+
+        inline = re.findall(
+            r"(?<!\\)\$(?!\$)(.+?)(?<!\\)\$",
+            text,
+            flags=re.DOTALL,
+        )
+        if inline:
+            return "$" + inline[-1].strip() + "$"
+
+        return text
 
     # =========================================================
     # JSON PARSER
@@ -1750,4 +1786,3 @@ Scientific display contract:
             "tool_calls": [],
             "cached": False,
         }
-
