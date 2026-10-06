@@ -873,6 +873,26 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             if expression and re.search(r"[A-Za-z]", expression):
                 return operation, {"expression": expression, "variable": variable}
         return None
+    @staticmethod
+    def _is_safe_numeric_expression(expression: str) -> bool:
+        """Validate an extracted numeric expression without subject-specific rules."""
+        text = expression.strip()
+        if not text or len(text) > 300:
+            return False
+        # Only numeric literals, scientific notation, arithmetic operators,
+        # parentheses, decimal points, and whitespace are executable.
+        if re.search(r"[^0-9eE+\-*/().^%\s]", text):
+            return False
+        if not re.search(r"\d", text):
+            return False
+        # Alphabetic characters are permitted only as the e/E in scientific
+        # notation and must be attached to a numeric mantissa/exponent.
+        if re.search(r"(?<!\d)[eE](?![+\-]?\d)", text):
+            return False
+        if re.search(r"[A-DF-Za-df-z]", text):
+            return False
+        return True
+
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
 
