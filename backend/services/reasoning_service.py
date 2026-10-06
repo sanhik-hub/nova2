@@ -60,7 +60,7 @@ class ReasoningService:
         # exact-computation results so a malformed semantic answer can never
         # become a persistent "Cached result".
         cached = None
-        if not self._is_factual_chemistry_request(problem):
+        if not self._is_semantic_chemistry_request(problem):
             cached = self._cache_get(
                 problem,
                 explanation,
@@ -76,29 +76,14 @@ class ReasoningService:
 
 
         # -----------------------------------------------------
-        # 2. FACTUAL CHEMISTRY FAST ROUTING
+        # 2. DETERMINISTIC SYMBOLIC FAST PATH
         # -----------------------------------------------------
         #
-        # Factual chemistry requests (formula/name/IUPAC) are semantic
-        # questions, not Wolfram expressions. Route them directly to the
-        # main reasoning model before any exact-expression shortcut or
-        # planner. This prevents a weak planner or stale operation recovery
-        # from turning natural language into a bogus CAS expression.
+        # Unambiguous symbolic operations are already understood by the
+        # operation detector and can be executed directly by Wolfram. In
+        # result-only mode there is deliberately NO LLM call and the response
+        # contains only the exact computational result.
         # -----------------------------------------------------
-
-        if self._is_factual_chemistry_request(problem):
-            response = self._final_explanation(
-                problem=problem,
-                idea="",
-                reasoning=[],
-                tool_results=[],
-                explanation=explanation,
-            )
-            response["elapsed_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-            return response
 
         # -----------------------------------------------------
         # 3. DETERMINISTIC SYMBOLIC FAST PATH
@@ -598,7 +583,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         # operation for a chemistry prompt. Apply this override AFTER reading the
         # planner fields so the planner cannot immediately overwrite the override.
         # Formula/name/balancing requests must not enter the symbolic Wolfram path.
-        if self._is_factual_chemistry_request(problem):
+        if self._is_semantic_chemistry_request(problem):
             plan["needs_wolfram"] = False
             operation = None
             arguments = None
@@ -763,22 +748,20 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         }
         return response
 
-    def _is_factual_chemistry_request(self, problem: str) -> bool:
-        """Identify factual chemistry requests that must remain semantic."""
+    def _is_semantic_chemistry_request(self, problem: str) -> bool:
+        """Identify narrow chemistry requests that should use semantic reasoning."""
         text = problem.strip().lower()
         factual_terms = (
-            "formula of",
-            "formula for",
-            "chemical formula",
-            "molecular formula",
-            "name of",
-            "iupac name",
+            "formula of", "formula for", "chemical formula",
+            "molecular formula", "name of", "iupac name",
         )
-        return any(term in text for term in factual_terms)
-
-    def _is_semantic_chemistry_request(self, problem: str) -> bool:
-        """Backward-compatible alias for factual chemistry routing."""
-        return self._is_factual_chemistry_request(problem)
+        if any(term in text for term in factual_terms):
+            return True
+        if "balance" in text and (
+            "->" in text or "→" in text or "=" in text
+        ):
+            return True
+        return False
     def _detect_result_only_operation(self, problem: str):
         text = problem.strip()
         patterns = [
