@@ -1787,7 +1787,9 @@ Scientific display contract:
         }
 
 
-"""
+    @staticmethod
+    def _sanitize_result_only_answer(answer: str) -> str:
+        """Remove explanatory prose when result-only generation adds it."""
         text = answer.strip()
         if not text:
             return text
