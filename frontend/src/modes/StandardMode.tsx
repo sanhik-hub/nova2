@@ -712,7 +712,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                             {value === "off"
                               ? "Return the result without an explanation."
                               : value === "concise"
-                                ? "Short explanation with the essential working."
+                                ? "Step-by-step solution with concise prose."
                                 : "Complete explanation and derivation."}
                           </small>
                         </span>
