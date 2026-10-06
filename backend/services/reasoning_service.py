@@ -168,14 +168,18 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 4. TARGETED SCALED-NUMERIC HANDOFF
-        # Check explicit unit-scaled quantities before any model-driven route.
-        if self._extract_scaled_numeric_values(problem):
+        # 4. DIRECT QUANTITATIVE STEM HANDOFF
+        #
+        # Numerical STEM word problems are solved directly by the local
+        # reasoning model. Domain alone never selects a CAS provider.
+        # This keeps physics/chemistry calculations with the model that
+        # understands the full semantic problem and its units.
+        if self._is_direct_quantitative_request(problem):
             response = self._solve_quantitative_direct(problem, explanation)
             response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
             return response
 
-        # 4. DIRECT SEMANTIC FAST PATH
+        # 5. DIRECT SEMANTIC FAST PATH
         # -----------------------------------------------------
         #
         # Short natural-language requests that contain no concrete
@@ -791,153 +795,94 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         return response
 
     def _solve_quantitative_direct(self, problem: str, explanation: str):
-        """Extract one exact calculation, structurally verify stated scale factors, then evaluate it."""
-        extraction_system = (
-            "Extract the single exact numerical calculation required by this STEM problem. "
-            "Return ONLY JSON with fields needs_calculation and expression. "
-            "If calculation is required, expression must contain only numbers, arithmetic "
-            "operators, parentheses, and scientific notation. Do not return the final answer "
-            "or units. Do not invent missing data. Interpret the complete problem before "
-            "constructing the expression. Preserve every stated quantity, exponent, "
-            "denominator, and mathematical operation. Preserve every unit scale factor "
-            "when converting quantities into a unit-free numerical expression. For example, "
-            "a quantity written with a decimal SI prefix must retain that prefix's numerical "
-            "factor in the expression. Preserve powers on quantities exactly, including "
-            "squared or cubed quantities and denominators. Keep grouping explicit with "
-            "parentheses. You may introduce a required universal constant only when the "
-            "calculation requires it, but never invent a measured value or condition. "
-            "Before returning JSON, silently recompute the expression and check its numerical "
-            "scale and operation structure against the complete original problem."
-        )
+        """Solve a numerical STEM word problem directly with the local model.
 
-        extraction = self.router.generate(
-            prompt=problem,
-            system_prompt=extraction_system,
-            temperature=0.0,
-            enable_thinking=False,
-            response_format={"type": "json_object"},
-            request_timeout=None,
-        )
-        if not extraction.get("success"):
-            return self._error(extraction.get("error") or "Quantitative processing failed.")
+        This path deliberately does not invoke Wolfram. The model is given the
+        complete problem so it can preserve units, prefixes, powers, signs,
+        and the semantic relationship between quantities.
+        """
+        if explanation == "off":
+            style = """
+Return ONLY the final requested result. Do not include a heading, explanation,
+derivation, or sentence such as "the answer is". Include the unit when the
+requested result has a unit.
+"""
+        elif explanation == "concise":
+            style = """
+Give a compact worked solution. Use brief reasoning text between equation
+groups. Show the governing relation, substitution, important intermediate
+calculation, and final result. Do not use LaTeX delimiters or LaTeX commands.
+Use readable plain-text equations and Unicode symbols. Do not add a title or
+a separate answer section.
+"""
+        else:
+            style = """
+Give a complete worked solution. Show the governing relation, substitutions,
+units, intermediate calculations, and final result. Explain only the reasoning
+needed to make the calculation clear.
+"""
 
-        parsed = self._parse_json(extraction.get("result"))
-        expression = parsed.get("expression") if isinstance(parsed, dict) else None
+        system_prompt = """
+You are Nova's local STEM numerical solver.
 
-        if not isinstance(parsed, dict) or parsed.get("needs_calculation") is not True:
-            return self._final_explanation(
-                problem=problem,
-                idea="",
-                reasoning=[],
-                tool_results=[],
-                explanation=explanation,
-                estimated_answer_tokens=None,
-            )
+Solve the complete numerical problem yourself. Do not delegate the arithmetic
+to another tool.
 
-        if not isinstance(expression, str) or not self._is_safe_numeric_expression(expression.strip()):
-            return self._error("The reasoning model did not produce a safe calculation expression.")
+Read every stated quantity, unit, prefix, exponent, denominator, sign, and
+power before calculating. Convert units explicitly when required. Never drop
+an SI prefix: for example, micro means 10^-6, milli means 10^-3, kilo means
+10^3, and so on. Preserve powers on converted quantities. Check the numerical
+scale and dimensions before returning the answer.
 
-        expression = expression.strip()
+The problem may belong to any scientific domain. Do not assume a subject or
+formula from keywords alone. Identify the governing relation from the actual
+problem, then calculate from the supplied data. Do not invent missing values.
 
-        # Generic unit-scale guard. This is deliberately independent of any
-        # scientific subject or formula. It catches dropped SI-prefix factors
-        # before an incorrect arithmetic result can reach the final solver.
-        required_scales = self._extract_scaled_numeric_values(problem)
-        missing_scales = [
-            value
-            for value in required_scales
-            if not self._numeric_factor_present(expression, value)
-        ]
-
-        if missing_scales:
-            correction_prompt = (
-                "Reconstruct the exact numerical expression for this STEM problem. "
-                "Return ONLY JSON with fields needs_calculation and expression. "
-                "The expression must contain only numbers, arithmetic operators, "
-                "parentheses, and scientific notation. Preserve every stated quantity "
-                "and operation. The following normalized numeric factors are required "
-                "because the original problem contains explicitly scaled quantities: "
-                + ", ".join(self._format_numeric_factor(v) for v in missing_scales)
-                + ". Do not omit or alter them. Do not return the final answer or units. "
-                "Silently recompute the expression before returning it.\n\n"
-                "Original problem:\n" + problem
-            )
-            correction = self.router.generate(
-                prompt=problem,
-                system_prompt=correction_prompt,
-                temperature=0.0,
-                enable_thinking=False,
-                response_format={"type": "json_object"},
-                request_timeout=None,
-            )
-            if not correction.get("success"):
-                return self._error(correction.get("error") or "Quantitative correction failed.")
-
-            corrected = self._parse_json(correction.get("result"))
-            corrected_expression = corrected.get("expression") if isinstance(corrected, dict) else None
-            if (
-                not isinstance(corrected, dict)
-                or corrected.get("needs_calculation") is not True
-                or not isinstance(corrected_expression, str)
-                or not self._is_safe_numeric_expression(corrected_expression.strip())
-            ):
-                return self._error("The reasoning model could not produce a verified calculation expression.")
-
-            expression = corrected_expression.strip()
-
-            still_missing = [
-                value
-                for value in required_scales
-                if not self._numeric_factor_present(expression, value)
-            ]
-            if still_missing:
-                return self._error(
-                    "The reasoning model omitted a required numeric scale factor."
-                )
+""" + style
 
         started = time.perf_counter()
-        result = self._execute_tool("calculate", {"expression": expression})
-        wolfram_ms = round((time.perf_counter() - started) * 1000, 2)
-        if not result.get("success"):
-            return self._error("Wolfram verification failed: " + str(result.get("error")))
+        try:
+            response = self.router.generate(
+                prompt=problem,
+                system_prompt=system_prompt,
+                temperature=0.0,
+                enable_thinking=False,
+                request_timeout=None,
+            )
+        except Exception as exc:
+            return self._error(f"Numerical processing failed: {exc}")
 
-        tool_result = {
-            "tool": "calculate",
-            "arguments": {"expression": expression},
-            "result": result.get("result"),
-        }
+        elapsed = round((time.perf_counter() - started) * 1000, 2)
 
-        # A verified deterministic result must not be sent back through the
-        # generative model in result-only mode. That both prevents arithmetic
-        # regressions and removes an unnecessary generation pass.
+        if not response.get("success"):
+            return self._error(
+                response.get("error") or "Numerical processing failed."
+            )
+
+        answer = str(response.get("result") or "").strip()
+        if not answer:
+            return self._error("The reasoning model returned no numerical solution.")
+
         if explanation == "off":
-            response = self._cas_result_only(tool_results=[tool_result])
-            response["engine"] = "wolfram"
-            response["tool_calls"] = []
-            response["cached"] = False
-            response["timings_ms"] = {
+            answer = self._sanitize_result_only_answer(answer)
+            if not answer:
+                return self._error("The reasoning model returned no numerical result.")
+
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "local_llm",
+            "tool_calls": [],
+            "cached": False,
+            "result_only": explanation == "off",
+            "timings_ms": {
                 "planner": 0.0,
-                "wolfram": wolfram_ms,
-                "final_llm": 0.0,
-            }
-            return response
-
-        response = self._final_explanation(
-            problem=problem,
-            idea="",
-            reasoning=[],
-            tool_results=[tool_result],
-            explanation=explanation,
-            estimated_answer_tokens=None,
-        )
-        response["timings_ms"] = {
-            "planner": 0.0,
-            "wolfram": wolfram_ms,
-            "final_llm": response.pop("_final_llm_ms", 0.0),
+                "wolfram": 0.0,
+                "final_llm": elapsed,
+            },
         }
-        return response
 
-    @staticmethod
+
     def _extract_scaled_numeric_values(problem: str) -> list[float]:
         """Find explicitly prefixed numeric quantities without knowing their domain."""
         prefixes = {
