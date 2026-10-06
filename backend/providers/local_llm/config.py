@@ -27,7 +27,9 @@ class LocalLLMConfig:
     context_size: int = 32768
     threads: int = 6
 
-    # Keep generation short by default.
+    # No hard application-level generation cap. The final solver may generate
+    # as much output as the problem requires. Callers may pass an advisory
+    # provider-level value explicitly when appropriate.
     max_tokens: int | None = None
 
     # Deterministic reasoning.
