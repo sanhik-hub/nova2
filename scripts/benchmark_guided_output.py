@@ -108,7 +108,11 @@ def main() -> None:
                 f"{'HTTP OK' if response['ok'] else 'FAILED'} | {case}"
             )
             if response.get("ok"):
-                print(f"    {row.get('errors', [])}")
+                errors = row.get("errors", [])
+                api_error = row.get("api_error")
+                print(f"    errors={errors}")
+                if api_error:
+                    print(f"    api_error={api_error}")
 
     valid = [
         r for r in results
