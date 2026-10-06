@@ -202,9 +202,15 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 5. DIRECT QUANTITATIVE HANDOFF
+        # 5. TARGETED SCALED-NUMERIC HANDOFF
         # -----------------------------------------------------
-        if self._is_direct_quantitative_request(problem):
+        #
+        # Only use the fast exact-calculation path when the request contains
+        # an explicitly scaled numeric quantity. Ordinary numeric STEM
+        # questions remain on the normal semantic planner/LLM path, so
+        # Wolfram is never forced merely because digits are present.
+        # -----------------------------------------------------
+        if self._extract_scaled_numeric_values(problem):
             response = self._solve_quantitative_direct(problem, explanation)
             response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
             return response
@@ -904,15 +910,32 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         if not result.get("success"):
             return self._error("Wolfram verification failed: " + str(result.get("error")))
 
+        tool_result = {
+            "tool": "calculate",
+            "arguments": {"expression": expression},
+            "result": result.get("result"),
+        }
+
+        # A verified deterministic result must not be sent back through the
+        # generative model in result-only mode. That both prevents arithmetic
+        # regressions and removes an unnecessary generation pass.
+        if explanation == "off":
+            response = self._cas_result_only(tool_results=[tool_result])
+            response["engine"] = "wolfram"
+            response["tool_calls"] = []
+            response["cached"] = False
+            response["timings_ms"] = {
+                "planner": 0.0,
+                "wolfram": wolfram_ms,
+                "final_llm": 0.0,
+            }
+            return response
+
         response = self._final_explanation(
             problem=problem,
             idea="",
             reasoning=[],
-            tool_results=[{
-                "tool": "calculate",
-                "arguments": {"expression": expression},
-                "result": result.get("result"),
-            }],
+            tool_results=[tool_result],
             explanation=explanation,
             estimated_answer_tokens=None,
         )
@@ -1637,51 +1660,51 @@ only that result.
             final_system = r"""
 You are Nova's concise STEM solution writer.
 
-Produce a compact, genuinely step-by-step solution to the user's actual
-problem. Concise means removing unnecessary words and repetition while
-preserving the complete reasoning needed to reach the result. It does NOT
-mean giving only the governing formula and final answer.
+Write the smallest complete solution to the user's actual problem. The
+solution must still contain every necessary reasoning transformation, but
+equations should carry most of the reasoning and prose should be minimal.
 
-This instruction is domain-general and must work for mathematics, physics,
-chemistry, and general science. Do not use a fixed subject-specific recipe,
-fixed number of steps, or problem-specific template.
+This is domain-general: handle mathematics, physics, chemistry, and general
+science using whatever reasoning the actual problem requires. Never use a
+fixed subject recipe, fixed step count, or problem-specific template.
 
-Core requirements:
-- Show every necessary transformation between the given information and the
-  requested result.
-- Include the governing relation when needed, then show the actual
-  substitution, transformation, integration, differentiation, algebra,
-  balancing, unit conversion, or other necessary operation.
-- Keep each mathematically necessary intermediate equation visible. Prefer
-  a compact equation chain over explaining several transformations in prose.
-- Use brief prose only where it clarifies what the next step is doing.
-- Do not restate the question or repeat quantities merely to fill a step.
-- Do not add generic introductions, background theory, filler, alternative
-  methods, or a separate summary.
-- Do not add artificial headings such as "Define the problem", "Apply the
-  formula", "Final formula", or "Result" unless the actual solution genuinely
-  benefits from one.
-- Do not number steps merely for appearance.
-- Do not collapse distinct necessary transformations into one unexplained
-  jump just to make the response shorter.
-- Do not omit necessary intermediate work to save output length.
-- State the requested final result once, when the derivation reaches it.
+Output shape:
+- Start immediately with the first necessary relation, transformation, or
+  inference. Do not begin with a title, "Solution", "Answer", "Result", or
+  introductory paragraph.
+- Continue as a compact sequence of necessary equations and very short
+  connecting statements.
+- End immediately when the requested result has been established.
+- Do not add a summary, recap, conclusion paragraph, or second presentation
+  of the result.
+- Do not use numbered steps or markdown headings merely to organize the
+  response. Use line breaks and equation chains instead.
+
+Completeness:
+- Show the governing relation when it is needed.
+- Show actual substitution and every necessary algebraic, calculus, chemical,
+  numerical, unit, or logical transformation.
+- Keep intermediate equations that are necessary to verify the result.
+- Never replace necessary work with a vague phrase such as "simplifying" or
+  "using the formula" when the omitted transformation matters.
+- Do not restate the question or repeat given data unless needed at the point
+  of calculation.
+- Do not add background, alternative methods, filler, or generic explanation.
 - Never invent missing information or assumptions.
 
-Length and latency:
-- The response should be substantially shorter than detailed mode, but there
-  is no fixed number of steps and no hard output limit.
-- Aim for the smallest complete derivation: normally equations do most of the
-  work and prose is limited to short connecting phrases.
-- If the problem genuinely requires more work, include that work.
-- If fewer steps are sufficient, do not manufacture extra steps.
-- Never truncate, summarize, strip prose, extract only equations, or otherwise
-  post-process the completed solution because concise mode was selected.
-- Any prose you generate is part of the solution and must be returned intact.
+Conciseness:
+- Prefer an equation chain over prose whenever the equations communicate the
+  reasoning clearly.
+- Use only short phrases to identify what an equation represents or why a
+  non-obvious transformation is valid.
+- There is no fixed number of steps and no hard output limit. Stop naturally
+  once the complete derivation is finished; continue if the problem requires
+  more work.
+- Never truncate or post-process a completed solution to make it shorter.
 
-Return ONLY the complete solution text. Do not mention tools, AI, prompts,
-token budgets, generation limits, or internal processing.
+Return ONLY the complete solution text. No metadata or commentary.
 """
+
         else:
             final_system = r"""
 You are Nova's detailed STEM solution writer.
