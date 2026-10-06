@@ -202,7 +202,15 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 5. MODEL-DRIVEN SEMANTIC PLANNING
+        # 5. DIRECT QUANTITATIVE HANDOFF
+        # -----------------------------------------------------
+        if self._is_direct_quantitative_request(problem):
+            response = self._solve_quantitative_direct(problem, explanation)
+            response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
+            return response
+
+        # -----------------------------------------------------
+        # 6. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
