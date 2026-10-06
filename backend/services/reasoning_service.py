@@ -1700,24 +1700,26 @@ Do not mention tools, AI, prompts, token budgets, or internal processing.
 Return ONLY the complete solution text.
 """
 
-                # Use one common scientific-format contract across explanation modes.
-        final_system += r"""
+                # Concise mode already defines its own plain-text display contract.
+        # Keep the structured scientific display contract for other modes.
+        if explanation != "concise":
+            final_system += r"""
 Scientific display contract:
 - Put mathematical expressions in $...$ and larger derivations in $...$.
 - Put chemical formulas, structures, and reaction equations in $...$ so the
   frontend can typeset element subscripts, explicit bonds, charges, and lone
   pairs unambiguously.
 - For chemical structures use upright element symbols with explicit bond
-  characters: - for single, = for double, \equiv for triple, and
-  \rightarrow or \rightleftharpoons for reaction arrows.
-- Show formal charges explicitly, e.g. $\mathrm{NH_4^+}$.
+  characters: - for single, = for double, \\equiv for triple, and
+  \\rightarrow or \\rightleftharpoons for reaction arrows.
+- Show formal charges explicitly, e.g. $\\mathrm{NH_4^+}$.
 - When lone pairs are important, show them explicitly with LaTeX such as
-  $\overset{\cdot\,\cdot}{\mathrm{O}}$ rather than relying on prose or
-  invisible electron pairs.
+  $\\overset{\\cdot\\,\\cdot}{\\mathrm{O}}$ rather than relying on
+  prose or invisible electron pairs.
 - Keep chemical atom counts and charge balance consistent with the displayed
   structure. Do not use ambiguous plain-text superscripts for charges.
 - Do not invent structural details that are not supported by the question.
-""";
+""";;
 
         # The planner supplies request-specific advisory generation guidance.
         # It is never a hard generation ceiling.
