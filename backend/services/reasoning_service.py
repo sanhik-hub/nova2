@@ -21,7 +21,7 @@ class ReasoningService:
 
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
-    PLANNER_TOKENS = 220
+    PLANNER_TOKENS = 96
 
     # The planner's answer_tokens field is advisory metadata only. Neither
     # planner nor final-answer generation has an application-level token cap.
