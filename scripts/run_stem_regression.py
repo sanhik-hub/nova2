@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CASES = ROOT / "scripts" / "stem_regression_cases.json"
 DEFAULT_OUTPUT_DIR = ROOT / "scripts" / "results"
+STANDARD_EXPLANATIONS = ("off", "concise", "detailed")
 
 
 def now_iso() -> str:
@@ -20,7 +21,6 @@ def now_iso() -> str:
 
 
 def persist_report(output: Path, report: dict) -> None:
-    """Atomically persist the current report so it is inspectable mid-run."""
     output.parent.mkdir(parents=True, exist_ok=True)
     tmp = output.with_suffix(output.suffix + ".tmp")
     tmp.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -50,12 +50,8 @@ def update_summary(report: dict, total: int, current: int, current_test: str | N
         "failed_tests": sum(item.get("status") != "pass" for item in results),
         "standard_tests": sum(item.get("kind") == "standard" for item in results),
         "guided_tests": sum(item.get("kind") == "guided" for item in results),
-        "average_ms": {
-            k: round(sum(v) / len(v), 2) for k, v in timings.items() if v
-        },
-        "max_ms": {
-            k: round(max(v), 2) for k, v in timings.items() if v
-        },
+        "average_ms": {k: round(sum(v) / len(v), 2) for k, v in timings.items() if v},
+        "max_ms": {k: round(max(v), 2) for k, v in timings.items() if v},
     }
 
 
@@ -194,28 +190,28 @@ def guided_test(base_url: str, case: dict, include_hints: bool, timeout: float) 
 
 
 def test_key(kind: str, case_id: str, explanation: str | None = None) -> str:
-    """Return a stable identity for one regression test."""
     if kind == "standard":
         return f"standard:{case_id}:{explanation}"
     return f"guided:{case_id}"
 
+
 def result_test_key(result: dict) -> str:
-    return test_key(str(result.get("kind") or ""), str(result.get("case_id") or ""), result.get("explanation"))
+    return test_key(
+        str(result.get("kind") or ""),
+        str(result.get("case_id") or ""),
+        result.get("explanation"),
+    )
+
 
 def find_resume_report(
     output_dir: Path,
     *,
     cases_file: str,
+    explanations: tuple[str, ...],
     guided: bool,
     guided_hints: bool,
     base_url: str,
 ) -> Path | None:
-    """Find the newest incomplete report matching the requested run configuration.
-
-    A directory can contain interrupted 60-test standard-only runs alongside
-    interrupted 80-test guided runs. Resume must select only a compatible run;
-    otherwise a newer but incompatible report can mask the correct one.
-    """
     if not output_dir.exists():
         return None
 
@@ -230,6 +226,8 @@ def find_resume_report(
             continue
 
         configuration = data.get("configuration") or {}
+        if tuple(configuration.get("standard_explanations") or STANDARD_EXPLANATIONS) != explanations:
+            continue
         if bool(configuration.get("guided", True)) != guided:
             continue
         if bool(configuration.get("guided_hints", False)) != guided_hints:
@@ -247,14 +245,21 @@ def find_resume_report(
     candidates.sort(reverse=True)
     return candidates[0][1]
 
-def expected_test_keys(cases: list[dict], skip_guided: bool) -> list[str]:
+
+def expected_test_keys(
+    cases: list[dict],
+    explanations: tuple[str, ...],
+    skip_guided: bool,
+) -> list[str]:
     keys = []
     for case in cases:
-        for explanation in ("off", "concise", "detailed"):
+        for explanation in explanations:
             keys.append(test_key("standard", str(case["id"]), explanation))
         if not skip_guided:
             keys.append(test_key("guided", str(case["id"])))
     return keys
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -262,10 +267,22 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--request-timeout", type=float, default=180.0)
     parser.add_argument("--health-timeout", type=float, default=10.0)
+    parser.add_argument(
+        "--explanation",
+        choices=STANDARD_EXPLANATIONS,
+        default=None,
+        help="Run only one standard explanation mode. Omit to run all three.",
+    )
     parser.add_argument("--guided-hints", action="store_true")
     parser.add_argument("--skip-guided", action="store_true")
-    parser.add_argument("--resume", action="store_true", help="Resume the newest incomplete report, or the report named by --output.")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume the newest incomplete report, or the report named by --output.",
+    )
     args = parser.parse_args()
+
+    explanations = (args.explanation,) if args.explanation else STANDARD_EXPLANATIONS
 
     cases_path = args.cases if args.cases.is_absolute() else ROOT / args.cases
     cases = json.loads(cases_path.read_text(encoding="utf-8"))
@@ -276,26 +293,24 @@ def main() -> int:
     if output is not None and not output.is_absolute():
         output = ROOT / output
 
+    cases_key = str(
+        cases_path.relative_to(ROOT) if cases_path.is_relative_to(ROOT) else cases_path
+    )
+
     if args.resume:
         if output is None:
-            cases_key = str(
-                cases_path.relative_to(ROOT)
-                if cases_path.is_relative_to(ROOT)
-                else cases_path
-            )
             output = find_resume_report(
                 DEFAULT_OUTPUT_DIR,
                 cases_file=cases_key,
+                explanations=explanations,
                 guided=not args.skip_guided,
                 guided_hints=args.guided_hints,
                 base_url=args.base_url,
             )
         if output is None or not output.exists():
             mode = "guided" if not args.skip_guided else "standard-only"
-            hints = " with hints" if args.guided_hints else ""
             raise SystemExit(
-                f"--resume requested, but no incomplete {mode}{hints} "
-                f"report matching the current cases file and backend was found."
+                f"--resume requested, but no incomplete {mode} report matching the current cases, explanation mode, and backend was found."
             )
         output = output.resolve()
         try:
@@ -306,7 +321,13 @@ def main() -> int:
             raise SystemExit(f"Resume report {output} is not a JSON object.")
         if report.get("run_status") == "completed":
             raise SystemExit(f"Cannot resume completed report: {output}")
+
         existing_config = report.get("configuration") or {}
+        existing_explanations = tuple(
+            existing_config.get("standard_explanations") or STANDARD_EXPLANATIONS
+        )
+        if existing_explanations != explanations:
+            raise SystemExit("Resume configuration mismatch: explanation mode must match the interrupted run.")
         if bool(existing_config.get("guided", True)) != (not args.skip_guided):
             raise SystemExit("Resume configuration mismatch: --skip-guided must match the interrupted run.")
         if bool(existing_config.get("guided_hints", False)) != bool(args.guided_hints):
@@ -315,6 +336,7 @@ def main() -> int:
             raise SystemExit("Resume configuration mismatch: --base-url must match the interrupted run.")
         if not isinstance(report.get("results"), list):
             raise SystemExit("Resume report has no valid results list.")
+
         report.setdefault("summary", {})
         report["run_status"] = "resuming"
         report["resumed_at"] = now_iso()
@@ -322,16 +344,19 @@ def main() -> int:
     else:
         if output is None:
             DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-            output = DEFAULT_OUTPUT_DIR / f"regression_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            suffix = "_" + args.explanation if args.explanation else ""
+            output = DEFAULT_OUTPUT_DIR / (
+                f"regression_{datetime.now().strftime('%Y%m%d_%H%M%S')}{suffix}.json"
+            )
         output.parent.mkdir(parents=True, exist_ok=True)
 
         report = {
             "schema_version": 1,
             "started_at": now_iso(),
             "base_url": args.base_url.rstrip("/"),
-            "cases_file": str(cases_path.relative_to(ROOT) if cases_path.is_relative_to(ROOT) else cases_path),
+            "cases_file": cases_key,
             "configuration": {
-                "standard_explanations": ["off", "concise", "detailed"],
+                "standard_explanations": list(explanations),
                 "guided": not args.skip_guided,
                 "guided_hints": args.guided_hints,
                 "request_timeout_seconds": args.request_timeout,
@@ -340,19 +365,35 @@ def main() -> int:
             "results": [],
             "summary": {},
         }
+
     print(f"Checking backend: {args.base_url}", flush=True)
     health = request_json(args.base_url, "/api/health", timeout=args.health_timeout)
     report["health"] = health
-    total = len(cases) * 3 + (0 if args.skip_guided else len(cases))
-    expected_keys = expected_test_keys(cases, args.skip_guided)
-    completed_keys = {result_test_key(item) for item in report.get("results", []) if isinstance(item, dict)}
+
+    total = len(cases) * len(explanations) + (0 if args.skip_guided else len(cases))
+    expected_keys = expected_test_keys(cases, explanations, args.skip_guided)
+    completed_keys = {
+        result_test_key(item)
+        for item in report.get("results", [])
+        if isinstance(item, dict)
+    }
+
     unknown_keys = completed_keys - set(expected_keys)
     if unknown_keys:
-        raise SystemExit("Resume report contains tests that are not part of the current cases/configuration.")
+        raise SystemExit(
+            "Resume report contains tests that are not part of the current cases/configuration."
+        )
     if len(completed_keys) != len(report.get("results", [])):
-        raise SystemExit("Resume report contains duplicate test records; refusing to guess which run state is authoritative.")
+        raise SystemExit(
+            "Resume report contains duplicate test records; refusing to guess which run state is authoritative."
+        )
+
     if args.resume:
-        print(f"Resuming after {len(completed_keys)} completed test(s); next test will be #{len(completed_keys) + 1}.", flush=True)
+        print(
+            f"Resuming after {len(completed_keys)} completed test(s); next test will be #{len(completed_keys) + 1}.",
+            flush=True,
+        )
+
     update_summary(report, total, len(completed_keys), "health")
     persist_report(output, report)
 
@@ -400,7 +441,7 @@ def main() -> int:
 
     try:
         for case in cases:
-            for explanation in ("off", "concise", "detailed"):
+            for explanation in explanations:
                 if not should_run("standard", case["id"], explanation):
                     continue
                 run_one(
