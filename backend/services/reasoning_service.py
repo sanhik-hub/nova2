@@ -786,6 +786,60 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         }
         return response
 
+    def _solve_quantitative_direct(self, problem: str, explanation: str):
+        """Extract one exact calculation with the main reasoning model, then verify it."""
+        extraction = self.router.generate(
+            prompt=problem,
+            system_prompt=(
+                "Extract the single exact numerical calculation required by this STEM problem. "
+                "Return ONLY JSON with fields needs_calculation and expression. "
+                "If calculation is required, expression must contain only numbers, arithmetic "
+                "operators, parentheses, and scientific notation. Do not return the final answer "
+                "or units. Do not invent missing data."
+            ),
+            temperature=0.0,
+            enable_thinking=False,
+            response_format={"type": "json_object"},
+            request_timeout=None,
+        )
+        if not extraction.get("success"):
+            return self._error(extraction.get("error") or "Quantitative processing failed.")
+
+        parsed = self._parse_json(extraction.get("result"))
+        expression = parsed.get("expression") if isinstance(parsed, dict) else None
+        if not isinstance(parsed, dict) or parsed.get("needs_calculation") is not True:
+            return self._final_explanation(
+                problem=problem, idea="", reasoning=[], tool_results=[], explanation=explanation,
+                estimated_answer_tokens=None,
+            )
+        if not isinstance(expression, str) or not self._is_simple_expression(expression.strip()):
+            return self._error("The reasoning model did not produce a safe calculation expression.")
+
+        started = time.perf_counter()
+        result = self._execute_tool("calculate", {"expression": expression.strip()})
+        wolfram_ms = round((time.perf_counter() - started) * 1000, 2)
+        if not result.get("success"):
+            return self._error("Wolfram verification failed: " + str(result.get("error")))
+
+        response = self._final_explanation(
+            problem=problem,
+            idea="",
+            reasoning=[],
+            tool_results=[{
+                "tool": "calculate",
+                "arguments": {"expression": expression.strip()},
+                "result": result.get("result"),
+            }],
+            explanation=explanation,
+            estimated_answer_tokens=None,
+        )
+        response["timings_ms"] = {
+            "planner": 0.0,
+            "wolfram": wolfram_ms,
+            "final_llm": response.pop("_final_llm_ms", 0.0),
+        }
+        return response
+
     def _detect_result_only_operation(self, problem: str):
         text = problem.strip()
         patterns = [
