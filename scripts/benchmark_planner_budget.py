@@ -58,11 +58,30 @@ def post(url: str, payload: dict, timeout: int = 120) -> dict:
 
 def parse_plan(raw: str) -> tuple[bool, str]:
     try:
-        value = json.loads(raw)
+        envelope = json.loads(raw)
     except json.JSONDecodeError:
         return False, "invalid_json"
+
+    # llama.cpp's OpenAI-compatible endpoint returns an envelope:
+    # {"choices":[{"message":{"content":"{...planner JSON...}"}}]}.
+    # Validate the actual generated planner content, not the transport wrapper.
+    if not isinstance(envelope, dict):
+        return False, "not_envelope"
+    choices = envelope.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return False, "missing_choices"
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, str) or not content.strip():
+        return False, "missing_content"
+
+    try:
+        value = json.loads(content.strip())
+    except json.JSONDecodeError:
+        return False, "invalid_plan_json"
     if not isinstance(value, dict):
-        return False, "not_object"
+        return False, "plan_not_object"
+
     required = {"type", "operation", "provider", "reasoning", "idea", "answer_tokens"}
     if not required.issubset(value):
         return False, "missing_fields"
