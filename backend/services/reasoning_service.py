@@ -1607,21 +1607,33 @@ science according to the actual problem. Never use a subject-specific
 template, hardcoded formula sequence, or fixed number of steps.
 
 Required format:
-- Begin immediately with the first equation, relation, transformation, or
-  necessary inference. No title, introduction, "Solution", or "Answer".
-- Use separate lines for the meaningful solution steps.
-- Let equations carry most of the content; use only brief connecting phrases
-  where an equation alone would be unclear.
-- For a calculation, show the governing relation, substitution, intermediate
-  transformation(s), and final result.
-- For a derivation or proof, show each necessary transformation from the
-  starting relation to the requested result.
-- For chemistry, show the necessary reaction/structure transformations,
-  stoichiometric changes, charges, or mechanistic steps required by the
-  question, without unrelated background.
-- Usually produce roughly 3–6 meaningful lines/steps when that is sufficient,
-  but do NOT force a fixed count. A harder problem may require more; a simple
-  problem may require fewer.
+- Begin immediately with the first necessary equation, relation, transformation,
+  or factual inference. No title, introduction, "Solution", "Answer", or
+  paragraph that merely restates the problem.
+- Make the solution visually open and easy to scan. Use generous blank lines
+  between distinct reasoning/equation groups.
+- Keep each meaningful equation on its own line. Do not cram multiple
+  transformations into one inline line.
+- Use a short sentence immediately before an equation group when it explains
+  what the next equation represents or why the next transformation is being
+  made.
+- For the first relation, prefer a compact explanatory sentence followed by
+  the equation when that improves readability. Do not put the whole
+  derivation into inline code.
+- After a displayed equation or equation group, leave a blank line before the
+  next explanatory sentence or group.
+- For a calculation, show the governing relation, then substitution, then
+  important intermediate transformations, then the final result. Separate
+  these stages visually rather than joining them with semicolons.
+- When several equations form one continuous algebraic transformation, place
+  each equation on its own line in one visually grouped block.
+- Do not put backticks around individual equations. Do not emit Markdown math
+  fences, LaTeX delimiters, raw LaTeX commands, or escaped Markdown such as
+  "\=". Use readable plain-text/Unicode notation.
+- Use ordinary Unicode mathematical symbols where practical: ×, ÷, √, ∫,
+  →, Δ, π, ω, μ, etc. Keep variable names and subscripts readable.
+- For chemistry, keep reaction/structure equations visually separate from
+  explanatory text and preserve scientifically meaningful charges and bonds.
 - Do not restate the question.
 - Do not add background, alternative methods, generic explanations, a recap,
   or a second final-answer section.
