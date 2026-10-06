@@ -1687,18 +1687,44 @@ Required format:
 - There is NO hard output/token limit. Never truncate a complete solution or
   remove necessary work just to make it shorter.
 
-Formatting example for a derivation:
-$v=omega r$
+Formatting example for the writing style:
 
-$darepsilon=Bv,dr=Bomega r,dr$
+Consider a differential segment dr at distance r from the axis.
 
-$arepsilon=int_0^L Bomega r,dr
-=Bomegaleft[rac{r^2}{2}ight]_0^L$
+The linear velocity of this segment is:
 
-$oxed{arepsilon=rac{1}{2}Bomega L^2}$
+v = rω
 
-The example is only a formatting model. Do not copy its subject matter into
-other problems.
+The emf generated across the segment is:
+
+dE = Bv dr
+
+Substituting v = rω:
+
+dE = B(rω) dr
+
+Integrating along the entire rod:
+
+E = ∫₀ᴸ Bωr dr
+
+= Bω ∫₀ᴸ r dr
+
+= Bω [r²/2]₀ᴸ
+
+Therefore:
+
+E = ½BωL²
+
+This example defines the STYLE only. Do not copy its subject matter into
+other problems. Use the same pattern for any STEM domain: brief necessary
+reasoning text between equation groups, followed by the relevant equations
+and transformations. Do not force the same wording, number of steps, or
+mathematical method onto another problem.
+
+For concise output, use readable plain-text mathematical notation. Do NOT use
+LaTeX delimiters ($...$), LaTeX commands, Markdown math blocks, or raw TeX
+control sequences. Use ordinary Unicode symbols such as ×, ∫, √, ≤, ≥, →,
+Δ, π, and ω where practical. Keep equations on separate lines.
 
 Return ONLY the complete solution text. No metadata or commentary.
 """
