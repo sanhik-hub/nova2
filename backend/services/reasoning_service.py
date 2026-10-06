@@ -859,7 +859,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         # LIMIT
         match = re.match(
-            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(?:of\s+)?(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
@@ -1325,6 +1325,14 @@ on ambiguous plain-text superscripts or spacing.
 
 For mathematics and physics, check the governing relation, dimensions/units,
 and required substitution internally. Never invent missing data.
+
+When explanation is off, an instruction such as "derive", "prove", "show",
+"calculate", or "explain" does NOT authorize a derivation or explanatory
+sentence in the response. Perform the reasoning internally and emit only the
+requested final payload. For a requested formula, emit only the formula. For a
+requested value, emit only the value with its unit when the unit is part of the
+requested result. For a requested equation or reaction, emit only that equation
+or reaction.
 
 Output only the requested payload itself.
 Never write a sentence such as "The answer is ...", "The result is ...",
