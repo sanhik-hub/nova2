@@ -815,9 +815,6 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             ),
             temperature=0.0,
             enable_thinking=False,
-            response_format={"type": "json_object"},            ),
-            temperature=0.0,
-            enable_thinking=False,
             response_format={"type": "json_object"},
             request_timeout=None,
         )
