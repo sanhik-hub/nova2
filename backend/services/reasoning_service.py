@@ -1,4 +1,4 @@
-﻿import json
+import json
 import re
 import time
 from collections import OrderedDict
@@ -174,7 +174,6 @@ class ReasoningService:
             response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
             return response
 
--------
         # 4. DIRECT SEMANTIC FAST PATH
         # -----------------------------------------------------
         #
@@ -209,21 +208,8 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 5. TARGETED SCALED-NUMERIC HANDOFF
-        # -----------------------------------------------------
-        #
-        # Only use the fast exact-calculation path when the request contains
-        # an explicitly scaled numeric quantity. Ordinary numeric STEM
-        # questions remain on the normal semantic planner/LLM path, so
-        # Wolfram is never forced merely because digits are present.
-        # -----------------------------------------------------
-        if self._extract_scaled_numeric_values(problem):
-            response = self._solve_quantitative_direct(problem, explanation)
-            response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
-            return response
+        # 5. MODEL-DRIVEN SEMANTIC PLANNING
 
-        # -----------------------------------------------------
-        # 6. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
