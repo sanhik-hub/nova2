@@ -411,7 +411,7 @@ Scientific display contract:
 
     def _is_direct_quantitative_request(self, problem: str) -> bool:
         text = problem.strip()
-        if not text or len(text) > 500 or not re.search(r"\\d", text):
+        if not text or len(text) > 500 or not re.search(r"\d", text):
             return False
         if self._is_simple_expression(text) or self._detect_explicit_operation(text) is not None:
             return False
