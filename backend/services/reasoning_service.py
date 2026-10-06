@@ -488,7 +488,13 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 ensure_ascii=False,
             ),
             system_prompt=planner_system,
+            # The lightweight planner must use ordinary JSON-object output
+            # rather than constrained JSON decoding. Constrained decoding has
+            # previously caused severe stalls on this model. The reasoning
+            # service already parses and validates the returned object, so the
+            # response-format constraint is redundant here.
             max_tokens=None,
+            compact=True,
         )
 
         planner_ms = round(
