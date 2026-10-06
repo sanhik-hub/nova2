@@ -794,25 +794,28 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         return response
 
     def _solve_quantitative_direct(self, problem: str, explanation: str):
-        """Extract one exact calculation with the main reasoning model, then verify it."""
+        """Extract one exact calculation, structurally verify stated scale factors, then evaluate it."""
+        extraction_system = (
+            "Extract the single exact numerical calculation required by this STEM problem. "
+            "Return ONLY JSON with fields needs_calculation and expression. "
+            "If calculation is required, expression must contain only numbers, arithmetic "
+            "operators, parentheses, and scientific notation. Do not return the final answer "
+            "or units. Do not invent missing data. Interpret the complete problem before "
+            "constructing the expression. Preserve every stated quantity, exponent, "
+            "denominator, and mathematical operation. Preserve every unit scale factor "
+            "when converting quantities into a unit-free numerical expression. For example, "
+            "a quantity written with a decimal SI prefix must retain that prefix's numerical "
+            "factor in the expression. Preserve powers on quantities exactly, including "
+            "squared or cubed quantities and denominators. Keep grouping explicit with "
+            "parentheses. You may introduce a required universal constant only when the "
+            "calculation requires it, but never invent a measured value or condition. "
+            "Before returning JSON, silently recompute the expression and check its numerical "
+            "scale and operation structure against the complete original problem."
+        )
+
         extraction = self.router.generate(
             prompt=problem,
-            system_prompt=(
-                "Extract the single exact numerical calculation required by this STEM problem. "
-                "Return ONLY JSON with fields needs_calculation and expression. "
-                "If calculation is required, expression must contain only numbers, arithmetic "
-                "operators, parentheses, and scientific notation. Do not return the final answer "
-                "or units. Do not invent missing data. Interpret the complete problem before "
-                "constructing the expression. Preserve every stated quantity, exponent, "
-                "denominator, and mathematical operation. Convert every stated scale prefix "
-                "or unit multiplier into its numeric factor instead of dropping it. Preserve "
-                "powers on quantities exactly, including squared or cubed denominators. Keep "
-                "grouping explicit with parentheses. You may introduce a required universal "
-                "constant only when the calculation requires it, but never invent a measured "
-                "value or condition. Before returning JSON, silently recompute the expression "
-                "and check its numerical scale and operation structure against the original "
-                "problem."
-            ),
+            system_prompt=extraction_system,
             temperature=0.0,
             enable_thinking=False,
             response_format={"type": "json_object"},
@@ -823,16 +826,80 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
 
         parsed = self._parse_json(extraction.get("result"))
         expression = parsed.get("expression") if isinstance(parsed, dict) else None
+
         if not isinstance(parsed, dict) or parsed.get("needs_calculation") is not True:
             return self._final_explanation(
-                problem=problem, idea="", reasoning=[], tool_results=[], explanation=explanation,
+                problem=problem,
+                idea="",
+                reasoning=[],
+                tool_results=[],
+                explanation=explanation,
                 estimated_answer_tokens=None,
             )
+
         if not isinstance(expression, str) or not self._is_safe_numeric_expression(expression.strip()):
             return self._error("The reasoning model did not produce a safe calculation expression.")
 
+        expression = expression.strip()
+
+        # Generic unit-scale guard. This is deliberately independent of any
+        # scientific subject or formula. It catches dropped SI-prefix factors
+        # before an incorrect arithmetic result can reach the final solver.
+        required_scales = self._extract_scaled_numeric_values(problem)
+        missing_scales = [
+            value
+            for value in required_scales
+            if not self._numeric_factor_present(expression, value)
+        ]
+
+        if missing_scales:
+            correction_prompt = (
+                "Reconstruct the exact numerical expression for this STEM problem. "
+                "Return ONLY JSON with fields needs_calculation and expression. "
+                "The expression must contain only numbers, arithmetic operators, "
+                "parentheses, and scientific notation. Preserve every stated quantity "
+                "and operation. The following normalized numeric factors are required "
+                "because the original problem contains explicitly scaled quantities: "
+                + ", ".join(self._format_numeric_factor(v) for v in missing_scales)
+                + ". Do not omit or alter them. Do not return the final answer or units. "
+                "Silently recompute the expression before returning it.\n\n"
+                "Original problem:\n" + problem
+            )
+            correction = self.router.generate(
+                prompt=problem,
+                system_prompt=correction_prompt,
+                temperature=0.0,
+                enable_thinking=False,
+                response_format={"type": "json_object"},
+                request_timeout=None,
+            )
+            if not correction.get("success"):
+                return self._error(correction.get("error") or "Quantitative correction failed.")
+
+            corrected = self._parse_json(correction.get("result"))
+            corrected_expression = corrected.get("expression") if isinstance(corrected, dict) else None
+            if (
+                not isinstance(corrected, dict)
+                or corrected.get("needs_calculation") is not True
+                or not isinstance(corrected_expression, str)
+                or not self._is_safe_numeric_expression(corrected_expression.strip())
+            ):
+                return self._error("The reasoning model could not produce a verified calculation expression.")
+
+            expression = corrected_expression.strip()
+
+            still_missing = [
+                value
+                for value in required_scales
+                if not self._numeric_factor_present(expression, value)
+            ]
+            if still_missing:
+                return self._error(
+                    "The reasoning model omitted a required numeric scale factor."
+                )
+
         started = time.perf_counter()
-        result = self._execute_tool("calculate", {"expression": expression.strip()})
+        result = self._execute_tool("calculate", {"expression": expression})
         wolfram_ms = round((time.perf_counter() - started) * 1000, 2)
         if not result.get("success"):
             return self._error("Wolfram verification failed: " + str(result.get("error")))
@@ -843,7 +910,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             reasoning=[],
             tool_results=[{
                 "tool": "calculate",
-                "arguments": {"expression": expression.strip()},
+                "arguments": {"expression": expression},
                 "result": result.get("result"),
             }],
             explanation=explanation,
@@ -855,6 +922,77 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
         return response
+
+    @staticmethod
+    def _extract_scaled_numeric_values(problem: str) -> list[float]:
+        """Find explicitly prefixed numeric quantities without knowing their domain."""
+        prefixes = {
+            "da": 1e1, "h": 1e2, "k": 1e3, "M": 1e6, "G": 1e9,
+            "T": 1e12, "P": 1e15, "E": 1e18, "Z": 1e21, "Y": 1e24,
+            "R": 1e27, "Q": 1e30,
+            "d": 1e-1, "c": 1e-2, "m": 1e-3,
+            "µ": 1e-6, "μ": 1e-6, "u": 1e-6, "n": 1e-9, "p": 1e-12,
+            "f": 1e-15, "a": 1e-18, "z": 1e-21, "y": 1e-24,
+            "r": 1e-27, "q": 1e-30,
+        }
+        # Require at least one unit character after the prefix. This avoids
+        # treating ordinary values such as "0.5 m" as milli-prefixed numbers.
+        pattern = re.compile(
+            r"(?P<number>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)"
+            r"\s*(?P<prefix>da|µ|μ|[kMGTPEZYRQdcmnu npfazy r])"
+            r"(?P<unit>[A-Za-zΩ]+)",
+            re.VERBOSE,
+        )
+        values: list[float] = []
+        for match in pattern.finditer(problem):
+            prefix = match.group("prefix")
+            unit = match.group("unit")
+            # kg is the SI base unit rather than a kilo-prefixed gram quantity.
+            # Do not force a conversion merely because its spelling contains k.
+            if prefix == "k" and unit == "g":
+                continue
+            try:
+                base = float(match.group("number"))
+            except ValueError:
+                continue
+            values.append(base * prefixes[prefix])
+        return values
+
+    @staticmethod
+    def _numeric_factor_present(expression: str, value: float) -> bool:
+        """Check whether an extracted expression explicitly retains a numeric factor."""
+        text = re.sub(r"\s+", "", expression).lower()
+        if value == 0:
+            return bool(re.search(r"(?<![\d.])0(?:\.0*)?(?![\d.])", text))
+
+        # Accept ordinary scientific notation and explicit 10^n notation.
+        scientific = format(value, ".15g").lower()
+        if scientific in text:
+            return True
+
+        coefficient = abs(value)
+        exponent = 0
+        if coefficient:
+            mantissa, exp_text = f"{coefficient:.15e}".split("e")
+            exponent = int(exp_text)
+            mantissa = mantissa.rstrip("0").rstrip(".")
+            variants = {
+                mantissa + "e" + str(exponent),
+                mantissa + "*10^" + str(exponent),
+                mantissa + "*10**" + str(exponent),
+                "(" + mantissa + "*10^" + str(exponent) + ")",
+                "(" + mantissa + "*10**" + str(exponent) + ")",
+            }
+            if any(v in text for v in variants):
+                return True
+
+        # Also accept the exact decimal representation for modest values.
+        decimal = f"{value:.15f}".rstrip("0").rstrip(".")
+        return decimal in text
+
+    @staticmethod
+    def _format_numeric_factor(value: float) -> str:
+        return f"{value:.15g}"
 
     def _detect_result_only_operation(self, problem: str):
         text = problem.strip()
@@ -1504,56 +1642,45 @@ problem. Concise means removing unnecessary words and repetition while
 preserving the complete reasoning needed to reach the result. It does NOT
 mean giving only the governing formula and final answer.
 
-This instruction is domain-general. Apply the same reasoning standard to
-mathematics, physics, chemistry, and general science. Do not use a fixed
-subject-specific recipe, fixed number of steps, or problem-specific template.
+This instruction is domain-general and must work for mathematics, physics,
+chemistry, and general science. Do not use a fixed subject-specific recipe,
+fixed number of steps, or problem-specific template.
 
 Core requirements:
 - Show every necessary transformation between the given information and the
   requested result.
-- Include the governing relation when it is needed, then show the actual
+- Include the governing relation when needed, then show the actual
   substitution, transformation, integration, differentiation, algebra,
   balancing, unit conversion, or other necessary operation.
-- If an intermediate equation follows directly from the previous one, show it
-  as an equation rather than replacing the chain with prose.
-- Use brief prose only where it clarifies what the next mathematical or
-  scientific step is doing.
-- Keep the derivation visually compact: short sentences, bullets when useful,
-  and equation chains are preferred over paragraphs.
-- Do not restate information already given merely to fill a step.
-- Do not add generic introductions such as "To solve this problem..." or
-  background theory that is not needed for the derivation.
-- Do not add artificial section headings such as "Define the problem",
-  "Apply the formula", or "Final formula" unless a heading is genuinely
-  useful for the actual solution.
-- Do not number steps merely for appearance. Use numbered steps only when
-  numbering genuinely improves the solution.
-- Do not combine multiple necessary mathematical transformations into one
-  unexplained jump just to make the answer shorter.
-- Do not omit a necessary intermediate result merely to save output length.
-- Do not repeat the final result in a separate summary after deriving it.
-  State it once when the derivation reaches it.
+- Keep each mathematically necessary intermediate equation visible. Prefer
+  a compact equation chain over explaining several transformations in prose.
+- Use brief prose only where it clarifies what the next step is doing.
+- Do not restate the question or repeat quantities merely to fill a step.
+- Do not add generic introductions, background theory, filler, alternative
+  methods, or a separate summary.
+- Do not add artificial headings such as "Define the problem", "Apply the
+  formula", "Final formula", or "Result" unless the actual solution genuinely
+  benefits from one.
+- Do not number steps merely for appearance.
+- Do not collapse distinct necessary transformations into one unexplained
+  jump just to make the response shorter.
+- Do not omit necessary intermediate work to save output length.
+- State the requested final result once, when the derivation reaches it.
 - Never invent missing information or assumptions.
 
-Output-length policy:
-- The desired output is shorter than detailed mode, but there is NO hard
-  minimum or maximum length and NO fixed number of steps.
-- Use the fewest words and equations that still make the derivation
-  independently understandable.
-- If the actual problem requires more intermediate work, include it.
-- If the actual problem is simple, do not manufacture extra steps.
+Length and latency:
+- The response should be substantially shorter than detailed mode, but there
+  is no fixed number of steps and no hard output limit.
+- Aim for the smallest complete derivation: normally equations do most of the
+  work and prose is limited to short connecting phrases.
+- If the problem genuinely requires more work, include that work.
+- If fewer steps are sufficient, do not manufacture extra steps.
 - Never truncate, summarize, strip prose, extract only equations, or otherwise
-  post-process a completed solution because concise mode was selected.
-- Any prose you generate is part of the solution and must be returned.
+  post-process the completed solution because concise mode was selected.
+- Any prose you generate is part of the solution and must be returned intact.
 
-Formatting:
-- Prefer a compact sequence of short statements and equations.
-- Keep related equations together as a derivation chain.
-- Use standard mathematical notation and clear scientific notation.
-- For chemistry, preserve necessary formulas, structures, charges, bonds,
-  stoichiometry, and reaction transformations.
-- Return ONLY the solution text. Do not mention tools, AI, prompts, token
-  budgets, generation limits, or internal processing.
+Return ONLY the complete solution text. Do not mention tools, AI, prompts,
+token budgets, generation limits, or internal processing.
 """
         else:
             final_system = r"""
