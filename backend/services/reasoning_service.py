@@ -76,7 +76,7 @@ class ReasoningService:
 
 
         # -----------------------------------------------------
-        # 3. DETERMINISTIC SYMBOLIC FAST PATH
+        # 2. DETERMINISTIC SYMBOLIC FAST PATH
         # -----------------------------------------------------
         #
         # Unambiguous symbolic operations are already understood by the
@@ -124,7 +124,7 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 4. DIRECT EXPRESSION FAST PATH
+        # 3. DIRECT EXPRESSION FAST PATH
         # -----------------------------------------------------
         #
         # Bare mathematical expressions are also exact CAS requests. Keep
@@ -166,7 +166,7 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 5. MODEL-DRIVEN SEMANTIC PLANNING
+        # 4. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
