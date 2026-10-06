@@ -76,16 +76,6 @@ class ReasoningService:
 
 
         # -----------------------------------------------------
-        # 2. DETERMINISTIC SYMBOLIC FAST PATH
-        # -----------------------------------------------------
-        #
-        # Unambiguous symbolic operations are already understood by the
-        # operation detector and can be executed directly by Wolfram. In
-        # result-only mode there is deliberately NO LLM call and the response
-        # contains only the exact computational result.
-        # -----------------------------------------------------
-
-        # -----------------------------------------------------
         # 3. DETERMINISTIC SYMBOLIC FAST PATH
         # -----------------------------------------------------
         #
