@@ -164,7 +164,41 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 4. MODEL-DRIVEN SEMANTIC PLANNING
+        # 4. DIRECT SEMANTIC FAST PATH
+        # -----------------------------------------------------
+        #
+        # Short natural-language requests that contain no concrete
+        # computational payload do not need the 0.5B planner first. The
+        # planner is valuable when routing exact computation, but using it
+        # for simple factual/conceptual requests adds a complete model
+        # generation before the actual answer generation.
+        #
+        # This is deliberately structural rather than domain-specific:
+        # there are no chemistry/physics/math subject words here.
+        # -----------------------------------------------------
+
+        if self._is_direct_semantic_request(problem):
+            response = self._final_explanation(
+                problem=problem,
+                idea="",
+                reasoning=[],
+                tool_results=[],
+                explanation=explanation,
+                estimated_answer_tokens=None,
+            )
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            response["timings_ms"] = {
+                "planner": 0.0,
+                "wolfram": 0.0,
+                "final_llm": response.pop("_final_llm_ms", 0.0),
+            }
+            return response
+
+        # -----------------------------------------------------
+        # 5. MODEL-DRIVEN SEMANTIC PLANNING
         # -----------------------------------------------------
 
         response = self._solve_complex(
@@ -313,6 +347,55 @@ Scientific display contract:
         # Require a mathematical atom. This also prevents punctuation-only
         # strings from reaching the CAS.
         return bool(re.search(r"[0-9A-Za-zπ∞√]", text))
+
+    def _is_direct_semantic_request(self, problem: str) -> bool:
+        """
+        Identify short natural-language requests that do not contain a
+        concrete computational payload.
+
+        This classifier is intentionally domain-agnostic. It does not contain
+        chemistry, physics, or mathematics vocabulary. Explicit deterministic
+        operations and bare mathematical expressions have already been
+        handled before this method is reached.
+
+        The planner remains responsible for requests that contain numerical or
+        symbolic data because those may require exact computation.
+        """
+        text = problem.strip()
+
+        if not text or len(text) > 180:
+            return False
+
+        # Numerical data is a strong signal that the request may require
+        # exact computation, so leave it for semantic planning/tool routing.
+        if re.search(r"\d", text):
+            return False
+
+        # Operators commonly introduce an actual symbolic computation.
+        if re.search(r"[=^*/+]", text):
+            return False
+
+        # A standalone subtraction sign is ambiguous in prose, so only treat
+        # it as computational when it occurs between symbolic/numeric atoms.
+        if re.search(r"[A-Za-z)]\s*-\s*[A-Za-z(]", text):
+            return False
+
+        # Explicit deterministic operations were already checked by solve().
+        if self._detect_explicit_operation(text) is not None:
+            return False
+
+        # Require ordinary natural-language structure rather than punctuation
+        # or an isolated identifier.
+        words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)
+        if len(words) < 2 or len(words) > 24:
+            return False
+
+        # A very long single sentence is more likely to contain a hidden
+        # multi-step problem; let the planner inspect it.
+        if len(text.split()) > 24:
+            return False
+
+        return True
 
     # =========================================================
     # COMPLEX COMPUTATIONAL PIPELINE
@@ -1517,5 +1600,4 @@ Scientific display contract:
             "tool_calls": [],
             "cached": False,
         }
-
 
