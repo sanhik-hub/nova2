@@ -449,9 +449,7 @@ Rules:
 - Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
 - Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
 - Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
-- A semantic quantitative problem may use Wolfram for an exact arithmetic
-  subcalculation while the local reasoning model remains responsible for the
-  scientific interpretation and final solution.
+- For a quantitative problem that supplies concrete numerical values and explicitly asks for a calculated numerical result, exact arithmetic is genuinely required. Prefer a supported exact calculation operation for the arithmetic subcalculation while the local reasoning model remains responsible for the scientific interpretation and final solution. Do not route such a request as a formula-only or factual response.
 - "operation" is null when exact symbolic/numeric computation is not genuinely needed.
 - "arguments" is null when "operation" is null.
 - If exact computation is needed, "operation" must be exactly one of:
