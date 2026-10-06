@@ -828,7 +828,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
                 problem=problem, idea="", reasoning=[], tool_results=[], explanation=explanation,
                 estimated_answer_tokens=None,
             )
-        if not isinstance(expression, str) or not self._is_simple_expression(expression.strip()):
+        if not isinstance(expression, str) or not self._is_safe_numeric_expression(expression.strip()):
             return self._error("The reasoning model did not produce a safe calculation expression.")
 
         started = time.perf_counter()
