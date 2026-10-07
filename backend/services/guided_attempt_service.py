@@ -98,7 +98,7 @@ Create a Guided Attempt by converting the actual stages of this verified
 solution into progressive MCQs. {count_instruction}
 
 Output one line per stage in exactly this format:
-STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2{hint_field}
+STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3{hint_field}
 
 Rules:
 - Treat the verified solution above as authoritative. Do not re-solve the
@@ -115,9 +115,10 @@ Rules:
   question is testing a transformation that genuinely uses that supplied value.
 - CORRECT_ANSWER must be the answer to that stage's question and must agree
   with the verified solution.
-- Provide two plausible, clearly incorrect distractors for each question.
-- Python will add a third distractor from another generated stage answer when
-  needed, so do not spend output on a third distractor.
+- Provide three plausible, clearly incorrect distractors for each question.
+- All three distractors must test the same stage and must be independently
+  relevant to that question. Never reuse an answer from another stage merely
+  to fill an option slot.
 - Distractors should test the actual stage, not unrelated facts.
 - Do not output a correct-index, answer letter, option position, or schema label.
 - The final meaningful question should establish the requested result.
@@ -912,13 +913,13 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 continue
 
             fields = [field.strip() for field in line.split("|||")]
-            expected_fields = 6 if include_hints else 5
+            expected_fields = 7 if include_hints else 6
             if len(fields) != expected_fields or fields[0].upper() != "STEP":
                 continue
 
             question = fields[1]
             correct = fields[2]
-            distractors = fields[3:5]
+            distractors = fields[3:6]
             hint = fields[5] if include_hints else None
 
             if (
@@ -964,30 +965,15 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 "Guided generator returned fewer than two valid step records."
             )
 
-        # Build the complete candidate answer pool before constructing options,
-        # so the first stage can also receive a deterministic third distractor.
-        all_stage_answers = [
-            record["stage_answer"]
-            for record in parsed
-            if record.get("stage_answer")
-        ]
-
+        # The model supplies three stage-specific distractors. Python owns
+        # option ordering and correct_index, but never injects an answer from
+        # another stage because that creates irrelevant choices.
         steps: list[dict[str, Any]] = []
         for record in parsed:
             correct = record["stage_answer"]
             distractors = list(record["distractors"])
-            third_distractor = next(
-                (
-                    candidate
-                    for candidate in all_stage_answers
-                    if candidate != correct and candidate not in distractors
-                ),
-                "",
-            )
-            if not third_distractor:
-                continue
 
-            option_texts = [correct, *distractors, third_distractor]
+            option_texts = [correct, *distractors]
             if len(set(option_texts)) != 4:
                 continue
 
