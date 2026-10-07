@@ -964,7 +964,7 @@ The problem may belong to any scientific domain. Do not assume a subject or
 formula from keywords alone. Identify the governing relation from the actual
 problem, then calculate from the supplied data. Do not invent missing values.
 
-""" + style
+""" + final_system
 
         started = time.perf_counter()
         try:
