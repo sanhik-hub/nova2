@@ -1,5 +1,4 @@
 import json
-import re
 import urllib.request
 import urllib.error
 from typing import Any, Optional
