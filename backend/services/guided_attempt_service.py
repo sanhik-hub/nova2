@@ -22,6 +22,10 @@ class GuidedAttemptService:
         # Keep one reasoning service alongside the shared router so its
         # deterministic-result cache survives across Guided requests.
         self.reasoning = ReasoningService(router=self.router)
+        # The authoritative solution is already generated before MCQ
+        # generation. Keep it available for the lazy full-solution request so
+        # the same question is not solved a second time.
+        self._verified_solution_cache: dict[str, str] = {}
 
     def generate(
         self,
@@ -56,6 +60,8 @@ class GuidedAttemptService:
             }
 
         verified_answer = str(verified.get("answer") or "").strip()
+        if verified_answer:
+            self._verified_solution_cache[problem.casefold()] = verified_answer
         if not verified_answer:
             return {
                 "success": False,
@@ -769,34 +775,43 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
         self,
         query: str,
         steps: list[dict[str, Any]],
+        verified_solution: str | None = None,
     ) -> dict[str, Any]:
-        """Generate the optional full solution lazily through the solver."""
+        """Return the authoritative solution already produced for the attempt."""
         problem = query.strip()
         if not problem:
             return {"success": False, "error": "Question is empty."}
         if not isinstance(steps, list) or not steps:
             return {"success": False, "error": "Guided attempt has no solution path."}
 
-        # Do not generate this unless the UI explicitly requested it. When it
-        # is requested, use the normal concise solution presentation so the
-        # displayed solution matches Nova's concise solution mode.
-        result = self.reasoning.solve(problem, explanation="concise")
-        if not result.get("success"):
-            return {
-                "success": False,
-                "error": result.get("error") or "Unable to generate the full solution.",
-            }
-
-        answer = str(result.get("answer") or "").strip()
+        answer = str(verified_solution or "").strip()
         if not answer:
-            return {"success": False, "error": "The solution model returned no solution."}
+            answer = self._verified_solution_cache.get(problem.casefold(), "").strip()
+
+        # Backward compatibility for older clients: if the verified solution
+        # was not carried in the request and is no longer in this process,
+        # recover it once through the normal solver.
+        if not answer:
+            result = self.reasoning.solve(problem, explanation="concise")
+            if not result.get("success"):
+                return {
+                    "success": False,
+                    "error": result.get("error") or "Unable to generate the full solution.",
+                }
+            answer = str(result.get("answer") or "").strip()
+            if not answer:
+                return {"success": False, "error": "The solution model returned no solution."}
+
+        self._verified_solution_cache[problem.casefold()] = answer
 
         return {
             "success": True,
             "answer": answer,
-            "engine": result.get("engine") or "local_llm",
-            "tool_calls": result.get("tool_calls", []),
-            "cached": bool(result.get("cached", False)),
+            "full_solution": answer,
+            "source": "verified_solution",
+            "engine": "local_llm",
+            "tool_calls": [],
+            "cached": True,
         }
 
     @staticmethod
