@@ -1771,6 +1771,15 @@ Required format:
 - End immediately after the requested result has been established.
 - There is NO hard output/token limit. Never truncate a complete solution or
   remove necessary work just to make it shorter.
+- Before writing the answer, perform a private adversarial verification pass:
+  independently recompute the requested result from the original problem,
+  challenge the most likely assumption or error, and reconcile any discrepancy
+  before emitting the solution.
+- For scientific transformations, verify the stated starting entities,
+  transformations, intermediate states, final entities, quantities, units,
+  conservation relationships, charges, and structural constraints against the
+  original request. Do not infer a result merely because it sounds plausible;
+  apply the governing rule that actually applies.
 
 Example of the intended visual structure:
 
