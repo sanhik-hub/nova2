@@ -38,7 +38,7 @@ class GuidedAttemptService:
         reasoning = self.reasoning
 
         verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="off")
+        verified = reasoning.solve(problem, explanation="concise")
         verified_elapsed_ms = (perf_counter() - verified_started) * 1000
         if not verified.get("success"):
             return {
@@ -68,6 +68,8 @@ class GuidedAttemptService:
             }
 
         # Advisory complexity only: never converted into a model token/time cap.
+        # The verified concise solution is the authoritative stage representation;
+        # the MCQ model should convert those stages, not solve the problem again.
         estimated_steps, advisory_tokens = self._estimate_guided_complexity(problem)
         requested = (
             max(2, min(8, int(step_count)))
@@ -83,42 +85,58 @@ class GuidedAttemptService:
         prompt = f"""Original problem:
 {problem}
 
-Verified result from the solver:
+Authoritative verified solution:
 {verified_answer}
 
-Create a Guided Attempt from this verified result. {count_instruction}
+Create a Guided Attempt by converting the actual stages of this verified
+solution into progressive MCQs. {count_instruction}
 
 Output one line per stage in exactly this format:
 STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3{hint_field}
 
 Rules:
-- The verified result above is authoritative. Do not contradict it or invent data.
-- Each question must test one distinct, necessary stage of the solution.
-- Questions must be progressive: prerequisites first, requested result last when applicable.
-- Never repeat a question, target quantity, calculation, or final-result request.
-- Never ask for a quantity that is explicitly given in the original problem.
-- CORRECT_ANSWER must be the answer to that stage's question.
-- Provide exactly three plausible, clearly incorrect distractors.
+- Treat the verified solution above as authoritative. Do not re-solve the
+  problem with a different method and do not contradict any established result.
+- Each MCQ must correspond to one concrete equation, relationship,
+  transformation, or necessary inference already present in the verified
+  solution.
+- Work in the same logical order as the verified solution: prerequisite
+  stages first and the requested result last when applicable.
+- Do not invent artificial stages just to reach the estimate.
+- Do not repeat a target quantity or ask the same mathematical/scientific
+  question in different wording.
+- Never ask for a value that is explicitly supplied as input unless the
+  question is testing a transformation that genuinely uses that supplied value.
+- CORRECT_ANSWER must be the answer to that stage's question and must agree
+  with the verified solution.
+- Provide exactly three plausible, clearly incorrect distractors for each
+  question.
+- Distractors should test the actual stage, not unrelated facts.
 - Do not output a correct-index, answer letter, option position, or schema label.
-- The final meaningful question must establish the requested result.
-- Keep questions and options concise but specific to this problem.
+- The final meaningful question should establish the requested result.
+- Keep questions and options concise and specific to this problem.
 - {"Include one short hint per question, without revealing the answer." if include_hints else "Do not generate hints."}
 - Do not output solutions, explanations, headings, JSON, Markdown, or blank lines.
-- Use ASCII-safe scientific notation where practical; preserve unambiguous equations.
+- Preserve unambiguous mathematical/scientific notation. LaTeX is allowed inside
+  an individual question or option when needed for an equation.
 """.strip()
 
         system_prompt = """You are Nova's Guided Attempt designer.
 
-The supplied result has already been established by the computational/reasoning
-layer. Turn it into a short, accurate sequence of progressive MCQs.
+The computational/reasoning layer has already produced an authoritative concise
+solution. Your job is NOT to solve the original problem again. Convert the
+actual solution stages into a short, accurate sequence of progressive MCQs.
 
-For every STEP record, emit the correct answer explicitly before the three
-distractors. Never emit a correct-index field: Python will assign and shuffle
-the correct option position. Do not independently change the verified result.
+Every question must map to a genuine stage in the supplied solution. The
+correct answer must agree with that supplied solution. Generate plausible
+distractors for the same stage, not generic alternatives.
 
-Distinctness and accuracy are more important than artificial step count. Prefer
-one useful question per genuine reasoning stage and avoid repeated formula or
-final-answer questions.""".strip()
+For every STEP record, emit the semantic correct answer explicitly before the
+three distractors. Never emit a correct-index field: Python owns option
+ordering and correct_index.
+
+Distinctness and solution alignment are more important than artificial step
+count. Avoid repeated targets and repeated final-result questions.""".strip()
 
         generation_started = perf_counter()
         response = self.router.generate(
@@ -411,7 +429,7 @@ final-answer questions.""".strip()
         # Start with a useful minimum for a guided STEM solution, then add
         # stages only for concrete signs of multi-step work. This is metadata
         # only; it never limits the main MCQ generation call.
-        steps = 4
+        steps = 3
 
         complexity_markers = (
             # Count operations that genuinely add a solution stage. Do not
@@ -443,7 +461,7 @@ final-answer questions.""".strip()
         if len(re.findall(r"\\b(?:x|y|z|t|m|M|L|r|R|v|u|a|q|p|V|T|P|I|omega|\\u03c9)\\b", problem)) >= 4:
             steps += 1
 
-        steps = max(2, min(8, steps))
+        steps = max(2, min(6, steps))
 
         # Advisory completion size scales with the number of generated MCQs.
         # It is telemetry/UI guidance only and is deliberately not passed as
@@ -1249,82 +1267,10 @@ final-answer questions.""".strip()
         # requested result naturally; the deterministic ordering pass moves the
         # best matching final-result question to the end without another LLM call.
 
-        # Reject only questions whose actual target is an explicitly supplied
-        # quantity. Merely mentioning a supplied quantity is valid: formulas such
-        # as L = I*omega must use the given angular velocity.
-        supplied_terms = set()
-        supplied_patterns = (
-            r"\b(?:length|mass|radius|time|speed|velocity|acceleration|"
-            r"angular velocity|frequency|charge|voltage|current|pressure|"
-            r"temperature|density)\s+(?:is|=|of)\b",
-            r"\b(?:with|having|at)\s+(?:a\s+)?(?:length|mass|radius|time|speed|"
-            r"velocity|acceleration|angular velocity|frequency|charge|voltage|"
-            r"current|pressure|temperature|density)\b",
-        )
-        quantity_names = (
-            "angular velocity", "acceleration", "velocity", "frequency",
-            "length", "mass", "radius", "time", "speed", "charge",
-            "voltage", "current", "pressure", "temperature", "density",
-        )
-        for pattern in supplied_patterns:
-            for match in re.finditer(pattern, problem, flags=re.IGNORECASE):
-                phrase = match.group(0).lower()
-                for quantity in quantity_names:
-                    if quantity in phrase:
-                        supplied_terms.add(quantity)
-
-        def question_target(question: str) -> str:
-            # Extract the quantity actually being requested, not every quantity
-            # mentioned in the question's context. For example:
-            # "What is the moment of inertia ... with angular velocity omega?"
-            # targets "moment of inertia", not "angular velocity".
-            match = re.search(
-                r"\b(?:what is|find|determine|calculate|evaluate)\s+"
-                r"(?:the\s+)?(.+?)(?:\?|$)",
-                question.lower(),
-            )
-            if not match:
-                return ""
-
-            target = match.group(1)
-            # Context normally begins at these boundaries. Keep the first
-            # quantity phrase rather than treating later givens as the target.
-            target = re.split(
-                r"\s+(?:of|for|about|using|with|where|when|given|from|"
-                r"in terms of|in)\s+",
-                target,
-                maxsplit=1,
-            )[0]
-            target = re.sub(
-                r"\b(?:the|a|an|value|expression|result)\b",
-                " ",
-                target,
-            )
-            return re.sub(r"\s+", " ", target).strip()
-
-        redundant_supplied_indices: set[int] = set()
-        for index, earlier_step in enumerate(normalized[:-1]):
-            target = question_target(earlier_step["question"])
-            if target and any(
-                re.search(rf"\b{re.escape(quantity)}\b", target)
-                for quantity in supplied_terms
-            ):
-                # This is an unnecessary stage, not a reason to discard the
-                # whole guided attempt. Remove it deterministically so the
-                # student never gets asked to identify data already supplied.
-                redundant_supplied_indices.add(index)
-
-        if redundant_supplied_indices:
-            normalized = [
-                step
-                for index, step in enumerate(normalized)
-                if index not in redundant_supplied_indices
-            ]
-            if len(normalized) < 2:
-                return False, (
-                    "Guided attempt did not retain enough meaningful solution stages."
-                )
-
+        # The generated path is grounded in the verified solution. Do not
+        # maintain a subject-specific list of "given" quantity names here:
+        # the guided architecture must remain domain-general.
+        
         # Generic-law filtering is intentionally not performed here. The
         # path-first generation contract already requires every MCQ to correspond
         # one-for-one to a concrete solution-path stage. Keeping the old lexical
@@ -1396,7 +1342,7 @@ final-answer questions.""".strip()
         # is excluded here and remains authoritative after final-step ordering.
         deduped_targets = []
         seen_targets: set[str] = set()
-        for step in reversed(normalized[:-1]):
+        for step in reversed(normalized):
             key = target_key(step["question"])
             if key and key in seen_targets:
                 continue
@@ -1404,8 +1350,8 @@ final-answer questions.""".strip()
                 seen_targets.add(key)
             deduped_targets.append(step)
         deduped_targets.reverse()
-        if len(deduped_targets) != len(normalized) - 1:
-            normalized = deduped_targets + [normalized[-1]]
+        if len(deduped_targets) != len(normalized):
+            normalized = deduped_targets
             if len(normalized) < 2:
                 return False, "Guided attempt did not retain enough meaningful solution stages."
 
