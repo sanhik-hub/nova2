@@ -125,9 +125,14 @@ Rules:
 - {"Include one short hint per question, without revealing the answer." if include_hints else "Do not generate hints."}
 - Do not output solutions, explanations, headings, JSON, Markdown, or blank lines.
 - Preserve unambiguous mathematical/scientific notation.
-- Prefer ASCII scientific notation for transport safety: use x^2, H2O, CH3,
-  ->, and omega instead of Unicode subscripts, superscripts, arrows, or Greek
-  symbols.
+- Use transport-safe scientific notation. Never emit raw Unicode subscript or
+  superscript digits, Greek letters, reaction arrows, or special mathematical
+  symbols in questions or options. Use ASCII forms such as x^2, H2O, CH3,
+  ->, and omega, or plain ASCII words when unambiguous.
+- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
+  These characters must not appear in generated questions, answers, options,
+  or hints. Do not attempt to approximate a scientific symbol with a damaged
+  Unicode fragment.
 """.strip()
 
         system_prompt = """You are Nova's Guided Attempt designer.
