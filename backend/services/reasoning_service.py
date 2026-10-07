@@ -853,7 +853,7 @@ Important: do not infer that every math/physics/chemistry request needs Wolfram.
         and the semantic relationship between quantities.
         """
         if explanation == "off":
-            style = """
+            final_system = """
 Return ONLY the final requested result. Do not include a heading, explanation,
 derivation, or sentence such as "the answer is". Include the unit when the
 requested result has a unit.
@@ -942,7 +942,7 @@ transformation, or factual inference.
 Return ONLY the complete solution text. No metadata or commentary.
 """
         else:
-            style = """
+            final_system = """
 Give a complete worked solution. Show the governing relation, substitutions,
 units, intermediate calculations, and final result. Explain only the reasoning
 needed to make the calculation clear.
