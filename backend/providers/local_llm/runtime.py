@@ -1,4 +1,5 @@
 import json
+import re
 import urllib.request
 import urllib.error
 from typing import Any, Optional
@@ -103,9 +104,27 @@ class LocalLLMRuntime:
             "Â¹": "¹",
             "â‰¤": "≤",
             "â‰¥": "≥",
+            # Common Windows/ANSI corruption of UTF-8 subscript digits.
+            "â‚€": "₀",
+            "â‚": "₁",
+            "â‚‚": "₂",
+            "â‚ƒ": "₃",
+            "â‚„": "₄",
+            "â‚…": "₅",
+            "â‚†": "₆",
+            "â‚‡": "₇",
+            "â‚ˆ": "₈",
+            "â‚‰": "₉",
         }
         for broken, correct in replacements.items():
             text = text.replace(broken, correct)
+
+        # A damaged UTF-8 sequence can occasionally reach this layer after
+        # its continuation bytes have already been discarded, leaving only
+        # the leading "â" marker. That character is not meaningful by itself.
+        # Remove only a standalone damaged marker; do not globally rewrite
+        # valid Unicode or invent domain-specific content.
+        text = re.sub(r"â(?=[A-Za-z0-9])", "", text)
 
         return text
 
