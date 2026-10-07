@@ -759,11 +759,10 @@ final-answer questions.""".strip()
         if not isinstance(steps, list) or not steps:
             return {"success": False, "error": "Guided attempt has no solution path."}
 
-        # Do not ask the MCQ designer to write the final solution. Re-run the
-        # authoritative reasoning path only when the user explicitly requests
-        # the full solution. This keeps the default Guided Attempt fast and
-        # avoids exposing the low-quality one-pass solution text.
-        result = self.reasoning.solve(problem, explanation="detailed")
+        # Do not generate this unless the UI explicitly requested it. When it
+        # is requested, use the normal concise solution presentation so the
+        # displayed solution matches Nova's concise solution mode.
+        result = self.reasoning.solve(problem, explanation="concise")
         if not result.get("success"):
             return {
                 "success": False,
