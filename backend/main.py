@@ -245,6 +245,7 @@ def generate_guided_solution(payload: dict):
         result = guided_attempts.generate_solution(
             query=query,
             steps=payload.get("steps") or [],
+            verified_solution=str(payload.get("verified_solution") or "").strip() or None,
         )
     except Exception as exc:
         result = {
