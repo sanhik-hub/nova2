@@ -564,6 +564,10 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
             return value
         text = GuidedAttemptService._clean_mojibake(value)
         text = text.replace("∗", "*")
+        text = text.replace("→", "->").replace("⇒", "->").replace("⇌", "<->")
+        text = text.replace("ω", "omega").replace("Ω", "ohm")
+        text = text.replace("²", "^2").replace("³", "^3").replace("¹", "^1")
+        text = re.sub(r"\s*\|\s*$", "", text)
         text = re.sub(r"\bsmallelement\b", "small element", text, flags=re.IGNORECASE)
         return text.strip()
 
@@ -918,7 +922,32 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 for value in distractors
             ]
 
-            option_texts = [normalized_correct, *normalized_distractors]
+            # Keep model output compact: it supplies two distractors.
+            # Select a third deterministically from another stage answer.
+            stage_answers = [
+                GuidedAttemptService._normalize_generated_text(
+                    existing.get("stage_answer", "")
+                )
+                for existing in steps
+            ]
+            stage_answers.append(normalized_correct)
+            third_distractor = next(
+                (
+                    candidate for candidate in stage_answers
+                    if candidate
+                    and candidate != normalized_correct
+                    and candidate not in normalized_distractors
+                ),
+                "",
+            )
+            if not third_distractor:
+                continue
+
+            option_texts = [
+                normalized_correct,
+                *normalized_distractors,
+                third_distractor,
+            ]
             if len(set(option_texts)) != 4:
                 continue
 
