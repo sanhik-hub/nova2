@@ -496,18 +496,29 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
         if not isinstance(value, str):
             return value
         text = value
+        markers = ("Â", "Ã", "Î", "Ï", "â", "ð", "�")
         for _ in range(2):
-            if not any(marker in text for marker in ("Â", "Ã", "Î", "Ï", "â")):
+            if not any(marker in text for marker in markers):
                 break
-            try:
-                repaired = text.encode("latin1").decode("utf-8")
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                break
-            if repaired == text:
-                break
-            bad = sum(text.count(marker) for marker in ("Â", "Ã", "Î", "Ï", "â"))
-            new_bad = sum(repaired.count(marker) for marker in ("Â", "Ã", "Î", "Ï", "â"))
-            if new_bad >= bad:
+
+            repaired = None
+            bad = sum(text.count(marker) for marker in markers)
+
+            # cp1252 is important for partially decoded UTF-8 sequences such
+            # as â‚‚ (₂), where the byte 0x82 is represented by the cp1252
+            # character ‚ and therefore cannot be encoded with latin1.
+            for encoding in ("cp1252", "latin1"):
+                try:
+                    candidate = text.encode(encoding).decode("utf-8")
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    continue
+
+                new_bad = sum(candidate.count(marker) for marker in markers)
+                if new_bad < bad:
+                    repaired = candidate
+                    break
+
+            if repaired is None or repaired == text:
                 break
             text = repaired
         # Some local model/runtime paths produce partially decoded UTF-8,
@@ -528,6 +539,9 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
         # mojibake. The frontend math renderer can interpret these forms.
         text = text.replace("ω", "omega")
         text = text.replace("²", "^2").replace("³", "^3").replace("¹", "^1")
+        text = text.replace("₀", "0").replace("₁", "1").replace("₂", "2").replace("₃", "3")
+        text = text.replace("₄", "4").replace("₅", "5").replace("₆", "6").replace("₇", "7")
+        text = text.replace("₈", "8").replace("₉", "9")
         text = text.replace("·", "*").replace("×", "*")
         # Normalize the stable label variants emitted by small local models.
         text = re.sub(r"^SOLUTION(?:_STEP|_step|\s+STEP)\s*:\s*", "", text, flags=re.IGNORECASE)
