@@ -869,18 +869,18 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
         raw: Any,
         include_hints: bool,
     ) -> list[dict[str, Any]]:
-        """Parse STEP records and assign correct option positions in Python.
+        """Parse compact STEP records and assign correct positions in Python.
 
         Model contract:
-        STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3[|||HINT]
+        STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2[|||HINT]
 
-        The model supplies the semantic correct answer, but never its position.
-        Python then assigns and varies the correct option position.
+        The model supplies the semantic correct answer and two distractors.
+        Python adds one stage-derived distractor and owns correct_index.
         """
         if not isinstance(raw, str):
             raise ValueError("Expected guided STEP records.")
 
-        steps: list[dict[str, Any]] = []
+        parsed: list[dict[str, Any]] = []
         for raw_line in raw.strip().splitlines():
             line = raw_line.strip()
             if not line:
@@ -893,19 +893,19 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 continue
 
             fields = [field.strip() for field in line.split("|||")]
-            expected_fields = 7 if include_hints else 6
+            expected_fields = 6 if include_hints else 5
             if len(fields) != expected_fields or fields[0].upper() != "STEP":
                 continue
 
             question = fields[1]
             correct = fields[2]
-            distractors = fields[3:6]
-            hint = fields[6] if include_hints else None
+            distractors = fields[3:5]
+            hint = fields[5] if include_hints else None
 
             if (
                 not question
                 or not correct
-                or len(distractors) != 3
+                or len(distractors) != 2
                 or any(not value for value in distractors)
             ):
                 continue
@@ -925,32 +925,50 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 for value in distractors
             ]
 
-            # Keep model output compact: it supplies two distractors.
-            # Select a third deterministically from another stage answer.
-            stage_answers = [
-                GuidedAttemptService._normalize_generated_text(
-                    existing.get("stage_answer", "")
-                )
-                for existing in steps
-            ]
-            stage_answers.append(normalized_correct)
+            if len(set([normalized_correct, *normalized_distractors])) != 3:
+                continue
+
+            record: dict[str, Any] = {
+                "question": normalized_question,
+                "stage_answer": normalized_correct,
+                "distractors": normalized_distractors,
+            }
+            if include_hints:
+                record["hint"] = GuidedAttemptService._normalize_generated_text(hint)
+            parsed.append(record)
+
+            if len(parsed) >= 8:
+                break
+
+        if len(parsed) < 2:
+            raise ValueError(
+                "Guided generator returned fewer than two valid step records."
+            )
+
+        # Build the complete candidate answer pool before constructing options,
+        # so the first stage can also receive a deterministic third distractor.
+        all_stage_answers = [
+            record["stage_answer"]
+            for record in parsed
+            if record.get("stage_answer")
+        ]
+
+        steps: list[dict[str, Any]] = []
+        for record in parsed:
+            correct = record["stage_answer"]
+            distractors = list(record["distractors"])
             third_distractor = next(
                 (
-                    candidate for candidate in stage_answers
-                    if candidate
-                    and candidate != normalized_correct
-                    and candidate not in normalized_distractors
+                    candidate
+                    for candidate in all_stage_answers
+                    if candidate != correct and candidate not in distractors
                 ),
                 "",
             )
             if not third_distractor:
                 continue
 
-            option_texts = [
-                normalized_correct,
-                *normalized_distractors,
-                third_distractor,
-            ]
+            option_texts = [correct, *distractors, third_distractor]
             if len(set(option_texts)) != 4:
                 continue
 
@@ -960,21 +978,19 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
             options.insert(target_index, correct_option)
 
             normalized: dict[str, Any] = {
-                "question": normalized_question,
-                "stage_answer": normalized_correct,
+                "question": record["question"],
+                "stage_answer": correct,
                 "options": options,
                 "correct_index": target_index,
             }
             if include_hints:
-                normalized["hint"] = GuidedAttemptService._normalize_generated_text(hint)
+                normalized["hint"] = record["hint"]
 
             steps.append(normalized)
-            if len(steps) >= 8:
-                break
 
         if len(steps) < 2:
             raise ValueError(
-                "Guided generator returned fewer than two valid step records."
+                "Guided generator could not construct four distinct options."
             )
 
         return steps
