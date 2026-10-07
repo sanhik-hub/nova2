@@ -751,8 +751,7 @@ export function StandardMode({ savedGuidedAttempt = null, onSavedGuidedOpened }:
                   >
                     <span className="choice-radio">{includeFullSolution ? "●" : "○"}</span>
                     <span>
-                      <strong>Full solution</strong>
-                      <small>Generate it in the background while you attempt the MCQs.</small>
+                      <strong>Display Full Solution</strong>
                     </span>
                   </button>
 
