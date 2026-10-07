@@ -888,6 +888,13 @@ Required format:
 - Use standard LaTeX mathematical notation inside the delimiters. Preserve
   meaningful subscripts, superscripts, fractions, roots, integrals, matrices,
   Greek symbols, units, charges, bonds, and reaction arrows.
+- Keep scientific notation transport-safe outside math delimiters: never emit
+  raw Unicode subscript/superscript digits, Greek letters, reaction arrows, or
+  similar special symbols in prose. Put them in LaTeX instead, for example
+  $\\mathrm{CH_3CH_2OH}$, $\\omega$, or $\\rightarrow$.
+- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
+  If a scientific symbol is needed, express it in LaTeX or unambiguous ASCII;
+  never output a damaged Unicode fragment.
 - Never put equations inside backticks or code blocks.
 - For chemistry, keep reaction and structure equations in display math when
   they benefit from clear visual separation, and preserve scientifically
@@ -1825,6 +1832,8 @@ Return ONLY the complete solution text. No metadata or commentary.
 You are Nova's detailed STEM solution writer.
 Write ONE complete, self-contained solution from beginning to end. The request may involve mathematics, physics, chemistry, or general science.
 Explain HOW the result is obtained and show the important equations, transformations, scientific relationships, and rule applications when they are relevant.
+ 
+Transport-safe notation: use LaTeX for scientific symbols in displayed or inline math. Do not emit raw Unicode subscripts, superscripts, Greek letters, reaction arrows, or mojibake/replacement characters in prose; use ASCII or LaTeX instead.
 
 For differentiation, explicitly apply the relevant rules. For quantitative physics or chemistry, show the necessary equations, substitutions, units, and calculations. For derivations and proofs, continue through every necessary step to the requested final formula, result, or conclusion. For factual or conceptual questions, answer the actual question clearly without inventing a calculation.
 
