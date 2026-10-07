@@ -1765,6 +1765,13 @@ Required format:
 - Use standard LaTeX mathematical notation inside the delimiters. Preserve
   meaningful subscripts, superscripts, fractions, roots, integrals, matrices,
   Greek symbols, units, charges, bonds, and reaction arrows.
+- Keep scientific notation transport-safe outside math delimiters: never emit
+  raw Unicode subscript/superscript digits, Greek letters, reaction arrows, or
+  similar special symbols in prose. Put them in LaTeX instead, for example
+  $\\mathrm{CH_3CH_2OH}$, $\\omega$, or $\\rightarrow$.
+- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
+  If a scientific symbol is needed, express it in LaTeX or unambiguous ASCII;
+  never output a damaged Unicode fragment.
 - Never put equations inside backticks or code blocks.
 - For chemistry, keep reaction and structure equations in display math when
   they benefit from clear visual separation, and preserve scientifically
