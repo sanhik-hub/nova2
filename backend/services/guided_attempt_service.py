@@ -42,7 +42,7 @@ class GuidedAttemptService:
         reasoning = self.reasoning
 
         verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="concise")
+        verified = reasoning.solve(problem, explanation="detailed")
         verified_elapsed_ms = (perf_counter() - verified_started) * 1000
         if not verified.get("success"):
             return {
@@ -438,15 +438,11 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
         steps = 3
 
         complexity_markers = (
-            # Count operations that genuinely add a solution stage. Do not
-            # count verbs such as "determine", "find", or "calculate" because
-            # those commonly describe the single requested result itself.
+            # Structural indicators only; no subject/domain vocabulary.
             "derive", "derivation", "prove", "proof", "show that",
             "integrate", "integration", "differentiate", "differentiation",
             "solve", "equation", "equations", "substitute", "substitution",
             "simplify", "simplification", "limit", "series",
-            "stoichiometry", "mechanism", "equilibrium", "titration",
-            "moles", "reaction", "kinetic", "thermodynamic",
         )
         for marker in complexity_markers:
             if marker in text:
