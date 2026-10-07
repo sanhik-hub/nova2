@@ -179,7 +179,34 @@ class ReasoningService:
             response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
             return response
 
-        # 5. DIRECT SEMANTIC FAST PATH
+        # 5. DIRECT DERIVATION / PROOF FAST PATH
+        # -----------------------------------------------------
+        # Equation-backed derivations and proofs do not need the planner to
+        # decide whether exact tool execution is useful. They are already
+        # explicit reasoning tasks, so send them directly to the final
+        # reasoning model. Classification is generic and domain-agnostic.
+        if self._is_direct_derivation_request(problem):
+            response = self._final_explanation(
+                problem=problem,
+                idea="",
+                reasoning=[],
+                tool_results=[],
+                explanation=explanation,
+                estimated_answer_tokens=None,
+            )
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            response["timings_ms"] = {
+                "planner": 0.0,
+                "wolfram": 0.0,
+                "final_llm": response.pop("_final_llm_ms", 0.0),
+            }
+            return response
+
+        # -----------------------------------------------------
+        # 6. DIRECT SEMANTIC FAST PATH
         # -----------------------------------------------------
         #
         # Short natural-language requests that contain no concrete
@@ -417,6 +444,30 @@ Scientific display contract:
         if not text or len(text) > 500 or not re.search(r"\d", text):
             return False
         if self._is_simple_expression(text) or self._detect_explicit_operation(text) is not None:
+            return False
+        return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)) >= 3
+
+    def _is_direct_derivation_request(self, problem: str) -> bool:
+        """Identify explicit derivation/proof tasks with symbolic structure."""
+        text = problem.strip()
+        if not text or len(text) > 700:
+            return False
+        if self._is_simple_expression(text) or self._detect_explicit_operation(text) is not None:
+            return False
+        intent = re.search(
+            r"\b(?:derive|derivation|prove|proof|demonstrate|demonstration|deduce|deduction|show\s+(?:that|how)|obtain)\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not intent:
+            return False
+        has_symbolic_structure = bool(
+            re.search(
+                r"(?:[A-Za-z]\s*[A-Za-z]?\s*=|[A-Za-z0-9)]\s*[+\-*/^]\s*[A-Za-z0-9(]|[∫∑√∞∂Δωπ]|\b(?:d[A-Za-z]+|[A-Za-z]+\s*\([^)]*\))\b)",
+                text,
+            )
+        )
+        if not has_symbolic_structure:
             return False
         return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)) >= 3
 
