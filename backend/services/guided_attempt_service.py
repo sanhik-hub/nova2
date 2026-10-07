@@ -42,7 +42,7 @@ class GuidedAttemptService:
         reasoning = self.reasoning
 
         verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="detailed")
+        verified = reasoning.solve(problem, explanation="concise")
         verified_elapsed_ms = (perf_counter() - verified_started) * 1000
         if not verified.get("success"):
             return {
@@ -98,7 +98,7 @@ Create a Guided Attempt by converting the actual stages of this verified
 solution into progressive MCQs. {count_instruction}
 
 Output one line per stage in exactly this format:
-STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3{hint_field}
+STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2{hint_field}
 
 Rules:
 - Treat the verified solution above as authoritative. Do not re-solve the
@@ -115,16 +115,19 @@ Rules:
   question is testing a transformation that genuinely uses that supplied value.
 - CORRECT_ANSWER must be the answer to that stage's question and must agree
   with the verified solution.
-- Provide exactly three plausible, clearly incorrect distractors for each
-  question.
+- Provide two plausible, clearly incorrect distractors for each question.
+- Python will add a third distractor from another generated stage answer when
+  needed, so do not spend output on a third distractor.
 - Distractors should test the actual stage, not unrelated facts.
 - Do not output a correct-index, answer letter, option position, or schema label.
 - The final meaningful question should establish the requested result.
 - Keep questions and options concise and specific to this problem.
 - {"Include one short hint per question, without revealing the answer." if include_hints else "Do not generate hints."}
 - Do not output solutions, explanations, headings, JSON, Markdown, or blank lines.
-- Preserve unambiguous mathematical/scientific notation. LaTeX is allowed inside
-  an individual question or option when needed for an equation.
+- Preserve unambiguous mathematical/scientific notation.
+- Prefer ASCII scientific notation for transport safety: use x^2, H2O, CH3,
+  ->, and omega instead of Unicode subscripts, superscripts, arrows, or Greek
+  symbols.
 """.strip()
 
         system_prompt = """You are Nova's Guided Attempt designer.
@@ -138,7 +141,7 @@ correct answer must agree with that supplied solution. Generate plausible
 distractors for the same stage, not generic alternatives.
 
 For every STEP record, emit the semantic correct answer explicitly before the
-three distractors. Never emit a correct-index field: Python owns option
+two distractors. Never emit a correct-index field: Python owns option
 ordering and correct_index.
 
 Distinctness and solution alignment are more important than artificial step
