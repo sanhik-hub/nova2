@@ -832,9 +832,8 @@ Required format:
   before an equation group when it explains what the next equation represents
   or why the next transformation is being made.
 - Use $...$ for short inline mathematical expressions inside prose.
-- For a continuous algebraic transformation, use one display block with an
-  aligned or gathered structure when appropriate rather than cramming
-  equations into prose.
+- For continuous algebraic transformations, use a display block with aligned
+  or gathered equations when appropriate.
 - Use standard LaTeX mathematical notation inside the delimiters. Preserve
   meaningful subscripts, superscripts, fractions, roots, integrals, matrices,
   Greek symbols, units, charges, bonds, and reaction arrows.
@@ -876,10 +875,6 @@ Integrating along the rod:
 
 $$
 E = \int_0^L B\omega r\,dr
-$$
-
-$$
-E = B\omega\left[\frac{r^2}{2}\right]_0^L
 $$
 
 Therefore,
