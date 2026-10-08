@@ -107,8 +107,10 @@
         "elapsed_ms": 0.03
       },
       "raw": "{\"success\":true,\"answer\":\"0 == 7 - 10*x + 12*x^3\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":true,\"elapsed_ms\":0.03}",
-      "display_output": "Answer: 0 == 7 - 10*x + 12*x^3\nResult Only: Yes\nEngine: wolfram\nCached: Yes\nElapsed Ms: 0.03",
-      "error": null
+      "display_output": "0 == 7 - 10*x + 12*x^3",
+      "error": null,
+      "structured_output": "0 == 7 - 10*x + 12*x^3",
+      "accuracy_audit": "Presentation/normalization issue: the CAS returned an equivalent equation form, `0 == 7 - 10*x + 12*x^3`, rather than the requested derivative alone. Mathematically equivalent to 12x^3 - 10x + 7."
     },
     {
       "kind": "standard",
@@ -135,8 +137,9 @@
         "elapsed_ms": 12305.69
       },
       "raw": "{\"success\":true,\"answer\":\"Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\\n\\nTherefore,\\n\\n$$\\n\\\\boxed{\\\\frac{dy}{dx} = 12x^3 - 10x + 7}\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"0 == 7 - 10*x + 12*x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":12301.65,\"elapsed_ms\":12305.69}",
-      "display_output": "Answer: Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nTherefore,\n\n$$\n\\boxed{\\frac{dy}{dx} = 12x^3 - 10x + 7}\n$$\nEngine: local_llm+wolfram\nTool Calls: 1. Result: 0 == 7 - 10*x + 12*x^3\nCached: No\nResult Only: No\n Final Llm Ms: 12301.65\nElapsed Ms: 12305.69",
-      "error": null
+      "display_output": "Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nTherefore,\n\n$$\n\\boxed{\\frac{dy}{dx} = 12x^3 - 10x + 7}\n$$",
+      "error": null,
+      "structured_output": "Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nTherefore,\n\n$$\n\\boxed{\\frac{dy}{dx} = 12x^3 - 10x + 7}\n$$"
     },
     {
       "kind": "standard",
@@ -163,8 +166,9 @@
         "elapsed_ms": 36523.12
       },
       "raw": "{\"success\":true,\"answer\":\"To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\\n\\nWe differentiate each term of the function individually:\\n\\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\\\cdot 3x^3 = 12x^3 $.\\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\\\cdot (-5)x = -10x $.\\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\\n\\nAdding these derivatives together, we get:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\\n\\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"0 == 7 - 10*x + 12*x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":36519.79,\"elapsed_ms\":36523.12}",
-      "display_output": "Answer: To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\nWe differentiate each term of the function individually:\n\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\cdot 3x^3 = 12x^3 $.\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\cdot (-5)x = -10x $.\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\nEngine: local_llm+wolfram\nTool Calls: 1. Result: 0 == 7 - 10*x + 12*x^3\nCached: No\nResult Only: No\n Final Llm Ms: 36519.79\nElapsed Ms: 36523.12",
-      "error": null
+      "display_output": "To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\nWe differentiate each term of the function individually:\n\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\cdot 3x^3 = 12x^3 $.\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\cdot (-5)x = -10x $.\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$",
+      "error": null,
+      "structured_output": "To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\nWe differentiate each term of the function individually:\n\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\cdot 3x^3 = 12x^3 $.\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\cdot (-5)x = -10x $.\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$"
     },
     {
       "kind": "guided",
@@ -190,12 +194,13 @@
         "mcq_elapsed_ms": 75700.55
       },
       "raw": "{\"success\":false,\"query\":\"Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":14817.38,\"mcq_generation_elapsed_ms\":75700.55,\"hint_elapsed_ms\":75700.55,\"elapsed_ms\":90519.07,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":75700.55}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -213,15 +218,17 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 8520.5
         },
         "elapsed_ms": 8528.82
       },
       "raw": "{\"success\":true,\"answer\":\"-1/4\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":8520.5},\"elapsed_ms\":8528.82}",
-      "display_output": "Answer: -1/4\nEngine: local_llm\nCached: No\nResult Only: Yes\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 8520.5\nElapsed Ms: 8528.82",
-      "error": null
+      "display_output": "-1/4",
+      "error": null,
+      "structured_output": "-1/4",
+      "accuracy_audit": "INCORRECT: returned -1/4; the correct value is -1/9."
     },
     {
       "kind": "standard",
@@ -239,15 +246,16 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 113982.07
         },
         "elapsed_ms": 113982.17
       },
       "raw": "{\"success\":true,\"answer\":\"We evaluate the integral using integration by parts. Let $ u = \\\\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\\\frac{1}{x} dx $ and $ v = \\\\frac{x^3}{3} $.\\n\\nUsing the integration by parts formula:\\n\\n$$\\n\\\\int u\\\\,dv = uv - \\\\int v\\\\,du\\n$$\\n\\nWe have:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left. \\\\frac{x^3}{3} \\\\ln(x) \\\\right|_0^1 - \\\\int_0^1 \\\\frac{x^3}{3} \\\\cdot \\\\frac{1}{x} dx\\n$$\\n\\nSimplifying:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left. \\\\frac{x^3}{3} \\\\ln(x) \\\\right|_0^1 - \\\\int_0^1 \\\\frac{x^2}{3} dx\\n$$\\n\\nEvaluating the boundary terms and the integral:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left( \\\\frac{1^3}{3} \\\\ln(1) - \\\\lim_{x \\\\to 0^+} \\\\frac{x^3}{3} \\\\ln(x) \\\\right) - \\\\frac{1}{3} \\\\int_0^1 x^2 dx\\n$$\\n\\nSince $ \\\\ln(1) = 0 $ and $ \\\\lim_{x \\\\to 0^+} x^3 \\\\ln(x) = 0 $, we have:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = - \\\\frac{1}{3} \\\\int_0^1 x^2 dx\\n$$\\n\\nEvaluating the remaining integral:\\n\\n$$\\n\\\\int_0^1 x^2 dx = \\\\left. \\\\frac{x^3}{3} \\\\right|_0^1 = \\\\frac{1}{3}\\n$$\\n\\nTherefore:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = - \\\\frac{1}{3} \\\\cdot \\\\frac{1}{3} = -\\\\frac{1}{9}\\n$$\\n\\n$$\\n\\\\boxed{-\\\\frac{1}{9}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":113982.07},\"elapsed_ms\":113982.17}",
-      "display_output": "Answer: We evaluate the integral using integration by parts. Let $ u = \\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\frac{1}{x} dx $ and $ v = \\frac{x^3}{3} $.\n\nUsing the integration by parts formula:\n\n$$\n\\int u\\,dv = uv - \\int v\\,du\n$$\n\nWe have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^3}{3} \\cdot \\frac{1}{x} dx\n$$\n\nSimplifying:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^2}{3} dx\n$$\n\nEvaluating the boundary terms and the integral:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left( \\frac{1^3}{3} \\ln(1) - \\lim_{x \\to 0^+} \\frac{x^3}{3} \\ln(x) \\right) - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nSince $ \\ln(1) = 0 $ and $ \\lim_{x \\to 0^+} x^3 \\ln(x) = 0 $, we have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nEvaluating the remaining integral:\n\n$$\n\\int_0^1 x^2 dx = \\left. \\frac{x^3}{3} \\right|_0^1 = \\frac{1}{3}\n$$\n\nTherefore:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\cdot \\frac{1}{3} = -\\frac{1}{9}\n$$\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 113982.07\nElapsed Ms: 113982.17",
-      "error": null
+      "display_output": "We evaluate the integral using integration by parts. Let $ u = \\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\frac{1}{x} dx $ and $ v = \\frac{x^3}{3} $.\n\nUsing the integration by parts formula:\n\n$$\n\\int u\\,dv = uv - \\int v\\,du\n$$\n\nWe have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^3}{3} \\cdot \\frac{1}{x} dx\n$$\n\nSimplifying:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^2}{3} dx\n$$\n\nEvaluating the boundary terms and the integral:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left( \\frac{1^3}{3} \\ln(1) - \\lim_{x \\to 0^+} \\frac{x^3}{3} \\ln(x) \\right) - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nSince $ \\ln(1) = 0 $ and $ \\lim_{x \\to 0^+} x^3 \\ln(x) = 0 $, we have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nEvaluating the remaining integral:\n\n$$\n\\int_0^1 x^2 dx = \\left. \\frac{x^3}{3} \\right|_0^1 = \\frac{1}{3}\n$$\n\nTherefore:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\cdot \\frac{1}{3} = -\\frac{1}{9}\n$$\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$",
+      "error": null,
+      "structured_output": "We evaluate the integral using integration by parts. Let $ u = \\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\frac{1}{x} dx $ and $ v = \\frac{x^3}{3} $.\n\nUsing the integration by parts formula:\n\n$$\n\\int u\\,dv = uv - \\int v\\,du\n$$\n\nWe have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^3}{3} \\cdot \\frac{1}{x} dx\n$$\n\nSimplifying:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^2}{3} dx\n$$\n\nEvaluating the boundary terms and the integral:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left( \\frac{1^3}{3} \\ln(1) - \\lim_{x \\to 0^+} \\frac{x^3}{3} \\ln(x) \\right) - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nSince $ \\ln(1) = 0 $ and $ \\lim_{x \\to 0^+} x^3 \\ln(x) = 0 $, we have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nEvaluating the remaining integral:\n\n$$\n\\int_0^1 x^2 dx = \\left. \\frac{x^3}{3} \\right|_0^1 = \\frac{1}{3}\n$$\n\nTherefore:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\cdot \\frac{1}{3} = -\\frac{1}{9}\n$$\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$"
     },
     {
       "kind": "standard",
@@ -265,15 +273,16 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 88989.75
         },
         "elapsed_ms": 88989.92
       },
       "raw": "{\"success\":true,\"answer\":\"To evaluate the definite integral $\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx$, we use integration by parts. The formula for integration by parts is:\\n\\n$$\\n\\\\int u \\\\, dv = uv - \\\\int v \\\\, du\\n$$\\n\\nLet:\\n- $u = \\\\ln(x)$, so $du = \\\\frac{1}{x} dx$\\n- $dv = x^2 dx$, so $v = \\\\frac{x^3}{3}$\\n\\nNow apply the integration by parts formula:\\n\\n$$\\n\\\\int x^2 \\\\ln(x) \\\\, dx = \\\\ln(x) \\\\cdot \\\\frac{x^3}{3} - \\\\int \\\\frac{x^3}{3} \\\\cdot \\\\frac{1}{x} \\\\, dx\\n$$\\n\\nSimplify the integral:\\n\\n$$\\n\\\\int x^2 \\\\ln(x) \\\\, dx = \\\\frac{x^3}{3} \\\\ln(x) - \\\\int \\\\frac{x^2}{3} \\\\, dx\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{1}{3} \\\\int x^2 \\\\, dx\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{1}{3} \\\\cdot \\\\frac{x^3}{3} + C\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} + C\\n$$\\n\\nNow evaluate the definite integral from 0 to 1:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx = \\\\left[ \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} \\\\right]_0^1\\n$$\\n\\nAt $x = 1$:\\n\\n$$\\n\\\\frac{1^3}{3} \\\\ln(1) - \\\\frac{1^3}{9} = 0 - \\\\frac{1}{9} = -\\\\frac{1}{9}\\n$$\\n\\nAt $x = 0$:\\n\\n$$\\n\\\\lim_{x \\\\to 0^+} \\\\left( \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} \\\\right)\\n$$\\n\\nAs $x \\\\to 0^+$, $\\\\ln(x) \\\\to -\\\\infty$, but $x^3 \\\\to 0$. The term $\\\\frac{x^3}{3} \\\\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\\\ln(x)$ approaches $-\\\\infty$. Similarly, $\\\\frac{x^3}{9} \\\\to 0$. So the limit is 0.\\n\\nThus, the definite integral is:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx = -\\\\frac{1}{9} - 0 = -\\\\frac{1}{9}\\n$$\\n\\n**Final Answer:**\\n\\n$$\\n\\\\boxed{-\\\\frac{1}{9}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":88989.75},\"elapsed_ms\":88989.92}",
-      "display_output": "Answer: To evaluate the definite integral $\\int_0^1 x^2 \\ln(x) \\, dx$, we use integration by parts. The formula for integration by parts is:\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\n\nLet:\n- $u = \\ln(x)$, so $du = \\frac{1}{x} dx$\n- $dv = x^2 dx$, so $v = \\frac{x^3}{3}$\n\nNow apply the integration by parts formula:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\ln(x) \\cdot \\frac{x^3}{3} - \\int \\frac{x^3}{3} \\cdot \\frac{1}{x} \\, dx\n$$\n\nSimplify the integral:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\frac{x^3}{3} \\ln(x) - \\int \\frac{x^2}{3} \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\int x^2 \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\cdot \\frac{x^3}{3} + C\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} + C\n$$\n\nNow evaluate the definite integral from 0 to 1:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = \\left[ \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right]_0^1\n$$\n\nAt $x = 1$:\n\n$$\n\\frac{1^3}{3} \\ln(1) - \\frac{1^3}{9} = 0 - \\frac{1}{9} = -\\frac{1}{9}\n$$\n\nAt $x = 0$:\n\n$$\n\\lim_{x \\to 0^+} \\left( \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right)\n$$\n\nAs $x \\to 0^+$, $\\ln(x) \\to -\\infty$, but $x^3 \\to 0$. The term $\\frac{x^3}{3} \\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\ln(x)$ approaches $-\\infty$. Similarly, $\\frac{x^3}{9} \\to 0$. So the limit is 0.\n\nThus, the definite integral is:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = -\\frac{1}{9} - 0 = -\\frac{1}{9}\n$$\n\n**Final Answer:**\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 88989.75\nElapsed Ms: 88989.92",
-      "error": null
+      "display_output": "To evaluate the definite integral $\\int_0^1 x^2 \\ln(x) \\, dx$, we use integration by parts. The formula for integration by parts is:\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\n\nLet:\n- $u = \\ln(x)$, so $du = \\frac{1}{x} dx$\n- $dv = x^2 dx$, so $v = \\frac{x^3}{3}$\n\nNow apply the integration by parts formula:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\ln(x) \\cdot \\frac{x^3}{3} - \\int \\frac{x^3}{3} \\cdot \\frac{1}{x} \\, dx\n$$\n\nSimplify the integral:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\frac{x^3}{3} \\ln(x) - \\int \\frac{x^2}{3} \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\int x^2 \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\cdot \\frac{x^3}{3} + C\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} + C\n$$\n\nNow evaluate the definite integral from 0 to 1:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = \\left[ \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right]_0^1\n$$\n\nAt $x = 1$:\n\n$$\n\\frac{1^3}{3} \\ln(1) - \\frac{1^3}{9} = 0 - \\frac{1}{9} = -\\frac{1}{9}\n$$\n\nAt $x = 0$:\n\n$$\n\\lim_{x \\to 0^+} \\left( \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right)\n$$\n\nAs $x \\to 0^+$, $\\ln(x) \\to -\\infty$, but $x^3 \\to 0$. The term $\\frac{x^3}{3} \\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\ln(x)$ approaches $-\\infty$. Similarly, $\\frac{x^3}{9} \\to 0$. So the limit is 0.\n\nThus, the definite integral is:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = -\\frac{1}{9} - 0 = -\\frac{1}{9}\n$$\n\n**Final Answer:**\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$",
+      "error": null,
+      "structured_output": "To evaluate the definite integral $\\int_0^1 x^2 \\ln(x) \\, dx$, we use integration by parts. The formula for integration by parts is:\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\n\nLet:\n- $u = \\ln(x)$, so $du = \\frac{1}{x} dx$\n- $dv = x^2 dx$, so $v = \\frac{x^3}{3}$\n\nNow apply the integration by parts formula:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\ln(x) \\cdot \\frac{x^3}{3} - \\int \\frac{x^3}{3} \\cdot \\frac{1}{x} \\, dx\n$$\n\nSimplify the integral:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\frac{x^3}{3} \\ln(x) - \\int \\frac{x^2}{3} \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\int x^2 \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\cdot \\frac{x^3}{3} + C\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} + C\n$$\n\nNow evaluate the definite integral from 0 to 1:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = \\left[ \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right]_0^1\n$$\n\nAt $x = 1$:\n\n$$\n\\frac{1^3}{3} \\ln(1) - \\frac{1^3}{9} = 0 - \\frac{1}{9} = -\\frac{1}{9}\n$$\n\nAt $x = 0$:\n\n$$\n\\lim_{x \\to 0^+} \\left( \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right)\n$$\n\nAs $x \\to 0^+$, $\\ln(x) \\to -\\infty$, but $x^3 \\to 0$. The term $\\frac{x^3}{3} \\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\ln(x)$ approaches $-\\infty$. Similarly, $\\frac{x^3}{9} \\to 0$. So the limit is 0.\n\nThus, the definite integral is:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = -\\frac{1}{9} - 0 = -\\frac{1}{9}\n$$\n\n**Final Answer:**\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$"
     },
     {
       "kind": "guided",
@@ -299,12 +308,13 @@
         "mcq_elapsed_ms": 83743.18
       },
       "raw": "{\"success\":false,\"query\":\"Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":68634.21,\"mcq_generation_elapsed_ms\":83743.18,\"hint_elapsed_ms\":83743.18,\"elapsed_ms\":152377.59,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":83743.18}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -322,15 +332,16 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 33353.14
         },
         "elapsed_ms": 33353.27
       },
       "raw": "{\"success\":true,\"answer\":\"I = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":33353.14},\"elapsed_ms\":33353.27}",
-      "display_output": "Answer: I = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\nEngine: local_llm\nCached: No\nResult Only: Yes\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 33353.14\nElapsed Ms: 33353.27",
-      "error": null
+      "display_output": "I = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}",
+      "error": null,
+      "structured_output": "I = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}"
     },
     {
       "kind": "standard",
@@ -348,15 +359,16 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 26029.98
         },
         "elapsed_ms": 26030.09
       },
       "raw": "{\"success\":true,\"answer\":\"The integral $ I = \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\\\Gamma(4) $, where $ \\\\Gamma $ is the gamma function.\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4)\\n$$\\n\\nWe know that:\\n\\n$$\\n\\\\Gamma(4) = 3! = 6\\n$$\\n\\n$$\\n\\\\zeta(4) = \\\\frac{\\\\pi^4}{90}\\n$$\\n\\nTherefore:\\n\\n$$\\nI = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\\n$$\\n\\n$$\\n\\\\boxed{I = \\\\frac{\\\\pi^4}{15}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":26029.98},\"elapsed_ms\":26030.09}",
-      "display_output": "Answer: The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\Gamma(4) $, where $ \\Gamma $ is the gamma function.\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\nWe know that:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n$$\n\\zeta(4) = \\frac{\\pi^4}{90}\n$$\n\nTherefore:\n\n$$\nI = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 26029.98\nElapsed Ms: 26030.09",
-      "error": null
+      "display_output": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\Gamma(4) $, where $ \\Gamma $ is the gamma function.\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\nWe know that:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n$$\n\\zeta(4) = \\frac{\\pi^4}{90}\n$$\n\nTherefore:\n\n$$\nI = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$",
+      "error": null,
+      "structured_output": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\Gamma(4) $, where $ \\Gamma $ is the gamma function.\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\nWe know that:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n$$\n\\zeta(4) = \\frac{\\pi^4}{90}\n$$\n\nTherefore:\n\n$$\nI = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$"
     },
     {
       "kind": "standard",
@@ -374,15 +386,16 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 72325.29
         },
         "elapsed_ms": 72325.4
       },
       "raw": "{\"success\":true,\"answer\":\"The integral $ I = \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\\n\\n$$\\n\\\\int_0^\\\\infty \\\\frac{x^{s-1}}{e^x - 1} \\\\, dx = \\\\Gamma(s) \\\\zeta(s)\\n$$\\n\\nwhere $ \\\\Gamma(s) $ is the **gamma function** and $ \\\\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4)\\n$$\\n\\n### Step 1: Evaluate $ \\\\Gamma(4) $\\n\\nThe gamma function is defined as:\\n\\n$$\\n\\\\Gamma(s) = \\\\int_0^\\\\infty t^{s-1} e^{-t} \\\\, dt\\n$$\\n\\nFor integer $ n \\\\geq 1 $, $ \\\\Gamma(n) = (n-1)! $. Therefore:\\n\\n$$\\n\\\\Gamma(4) = 3! = 6\\n$$\\n\\n### Step 2: Evaluate $ \\\\zeta(4) $\\n\\nThe Riemann zeta function is defined as:\\n\\n$$\\n\\\\zeta(s) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^s}\\n$$\\n\\nFor $ s = 4 $, we have:\\n\\n$$\\n\\\\zeta(4) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^4} = \\\\frac{\\\\pi^4}{90}\\n$$\\n\\nThis is a known result from the **Basel problem** for $ s = 4 $.\\n\\n### Step 3: Combine the results\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4) = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\\n$$\\n\\n### Final Answer:\\n\\n$$\\n\\\\boxed{I = \\\\frac{\\\\pi^4}{15}}\\n$$\\n\\n### Justification:\\n\\nThe integral $ \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\\\Gamma(4) = 6 $ and $ \\\\zeta(4) = \\\\frac{\\\\pi^4}{90} $, the exact value of the integral is $ \\\\frac{\\\\pi^4}{15} $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":72325.29},\"elapsed_ms\":72325.4}",
-      "display_output": "Answer: The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $.\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 72325.29\nElapsed Ms: 72325.4",
-      "error": null
+      "display_output": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $.",
+      "error": null,
+      "structured_output": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $."
     },
     {
       "kind": "guided",
@@ -408,12 +421,13 @@
         "mcq_elapsed_ms": 65254.41
       },
       "raw": "{\"success\":false,\"query\":\"Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":36088.43,\"mcq_generation_elapsed_ms\":65254.41,\"hint_elapsed_ms\":65254.41,\"elapsed_ms\":101343.25,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":65254.41}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -431,8 +445,8 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 12333.36
         },
         "elapsed_ms": 12334.47
@@ -440,7 +454,8 @@
       "raw": "{\"success\":true,\"answer\":\"$t = \\\\frac{2v}{g} = \\\\frac{2 \\\\times 20}{10} = 4$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":12333.36},\"elapsed_ms\":12334.47}",
       "display_output": "$t = \\frac{2v}{g} = \\frac{2 \\times 20}{10} = 4$",
       "structured_output": "$t = \\frac{2v}{g} = \\frac{2 \\times 20}{10} = 4$",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCOMPLETE: returned only the total time expression/result and omitted the requested maximum height."
     },
     {
       "kind": "standard",
@@ -458,8 +473,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 29199.56
         },
         "elapsed_ms": 29199.63
@@ -467,7 +482,8 @@
       "raw": "{\"success\":true,\"answer\":\"The maximum height $ h $ of a projectile launched vertically upward is given by:\\n\\n$$\\nh = \\\\frac{v^2}{2g}\\n$$\\n\\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\\n\\n$$\\nh = \\\\frac{20^2}{2 \\\\cdot 10} = \\\\frac{400}{20} = 20 \\\\text{ m}\\n$$\\n\\nThe total time of flight $ t $ for a vertically projected object is given by:\\n\\n$$\\nt = \\\\frac{v}{g}\\n$$\\n\\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\\n\\n$$\\nt = \\\\frac{20}{10} = 2 \\\\text{ s}\\n$$\\n\\nTherefore, the maximum height is $ \\\\boxed{20} $ meters and the total time of flight is $ \\\\boxed{2} $ seconds.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":29199.56},\"elapsed_ms\":29199.63}",
       "display_output": "The maximum height $ h $ of a projectile launched vertically upward is given by:\n\n$$\nh = \\frac{v^2}{2g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nh = \\frac{20^2}{2 \\cdot 10} = \\frac{400}{20} = 20 \\text{ m}\n$$\n\nThe total time of flight $ t $ for a vertically projected object is given by:\n\n$$\nt = \\frac{v}{g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nt = \\frac{20}{10} = 2 \\text{ s}\n$$\n\nTherefore, the maximum height is $ \\boxed{20} $ meters and the total time of flight is $ \\boxed{2} $ seconds.",
       "structured_output": "The maximum height $ h $ of a projectile launched vertically upward is given by:\n\n$$\nh = \\frac{v^2}{2g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nh = \\frac{20^2}{2 \\cdot 10} = \\frac{400}{20} = 20 \\text{ m}\n$$\n\nThe total time of flight $ t $ for a vertically projected object is given by:\n\n$$\nt = \\frac{v}{g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nt = \\frac{20}{10} = 2 \\text{ s}\n$$\n\nTherefore, the maximum height is $ \\boxed{20} $ meters and the total time of flight is $ \\boxed{2} $ seconds.",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCORRECT: states total time of flight as 2 s. The correct total time is 4 s; the height calculation is correct."
     },
     {
       "kind": "standard",
@@ -485,8 +501,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 62042.06
         },
         "elapsed_ms": 62042.11
@@ -520,12 +536,13 @@
         "mcq_elapsed_ms": 72570.69
       },
       "raw": "{\"success\":false,\"query\":\"A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":28045.7,\"mcq_generation_elapsed_ms\":72570.69,\"hint_elapsed_ms\":72570.69,\"elapsed_ms\":100616.55,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":72570.69}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -544,8 +561,8 @@
         "result_only": true,
         "elapsed_ms": 36763.06,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 36762.15
         }
       },
@@ -571,8 +588,8 @@
         "result_only": false,
         "elapsed_ms": 29776.29,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 29776.16
         }
       },
@@ -598,8 +615,8 @@
         "result_only": false,
         "elapsed_ms": 113103.25,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 113103.13
         }
       },
@@ -632,12 +649,13 @@
         "mcq_elapsed_ms": 96358.49
       },
       "raw": "{\"success\":false,\"query\":\"A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":24938.13,\"mcq_generation_elapsed_ms\":96358.49,\"hint_elapsed_ms\":96358.49,\"elapsed_ms\":121301.46,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":96358.49}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -656,7 +674,7 @@
         "result_only": true,
         "timings_ms": {
           "planner": 13425.1,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 28976.7
         },
         "elapsed_ms": 42402.09
@@ -664,7 +682,8 @@
       "raw": "{\"success\":true,\"answer\":\"v_e = \\\\sqrt{2} v_o\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":13425.1,\"wolfram\":0.0,\"final_llm\":28976.7},\"elapsed_ms\":42402.09}",
       "display_output": "v_e = \\sqrt{2} v_o",
       "structured_output": "v_e = \\sqrt{2} v_o",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCOMPLETE: returned only the escape/orbital-speed relation and omitted orbital speed, kinetic energy, and total mechanical energy."
     },
     {
       "kind": "standard",
@@ -683,7 +702,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 3026.27,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 47825.62
         },
         "elapsed_ms": 50852.38
@@ -710,7 +729,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 2626.78,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 105085.19
         },
         "elapsed_ms": 107712.28
@@ -744,12 +763,13 @@
         "mcq_elapsed_ms": 115847.22
       },
       "raw": "{\"success\":false,\"query\":\"A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":48392.74,\"mcq_generation_elapsed_ms\":115847.22,\"hint_elapsed_ms\":115847.22,\"elapsed_ms\":164240.09,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":115847.22}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -767,8 +787,8 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 10341.9
         },
         "elapsed_ms": 10342.09
@@ -776,7 +796,8 @@
       "raw": "{\"success\":true,\"answer\":\"The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":10341.9},\"elapsed_ms\":10342.09}",
       "display_output": "The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.",
       "structured_output": "The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCORRECT: electron-pair geometry was stated as trigonal pyramidal. It is tetrahedral; molecular geometry is trigonal pyramidal."
     },
     {
       "kind": "standard",
@@ -794,8 +815,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 64772.88
         },
         "elapsed_ms": 64772.94
@@ -803,7 +824,8 @@
       "raw": "{\"success\":true,\"answer\":\"The Lewis structure of NH$_3$ is:\\n\\n$$\\n\\\\mathrm{N} \\\\ with \\\\ three \\\\ H \\\\ atoms \\\\ bonded \\\\ to \\\\ it \\\\ and \\\\ one \\\\ lone \\\\ pair \\\\ of \\\\ electrons\\n$$\\n\\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\\n\\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\\n\\nThe approximate bond angle of NH$_3$ is $107^\\\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\\\circ$ due to the lone pair on the nitrogen atom causing repulsion.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":64772.88},\"elapsed_ms\":64772.94}",
       "display_output": "The Lewis structure of NH$_3$ is:\n\n$$\n\\mathrm{N} \\ with \\ three \\ H \\ atoms \\ bonded \\ to \\ it \\ and \\ one \\ lone \\ pair \\ of \\ electrons\n$$\n\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\n\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\n\nThe approximate bond angle of NH$_3$ is $107^\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\circ$ due to the lone pair on the nitrogen atom causing repulsion.",
       "structured_output": "The Lewis structure of NH$_3$ is:\n\n$$\n\\mathrm{N} \\ with \\ three \\ H \\ atoms \\ bonded \\ to \\ it \\ and \\ one \\ lone \\ pair \\ of \\ electrons\n$$\n\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\n\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\n\nThe approximate bond angle of NH$_3$ is $107^\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\circ$ due to the lone pair on the nitrogen atom causing repulsion.",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCORRECT: electron-pair geometry was stated as trigonal pyramidal. It is tetrahedral; molecular geometry is trigonal pyramidal."
     },
     {
       "kind": "standard",
@@ -821,8 +843,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 68134.81
         },
         "elapsed_ms": 68134.88
@@ -856,12 +878,13 @@
         "mcq_elapsed_ms": 73311.97
       },
       "raw": "{\"success\":false,\"query\":\"Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":23129.57,\"mcq_generation_elapsed_ms\":73311.97,\"hint_elapsed_ms\":73311.97,\"elapsed_ms\":96441.65,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":73311.97}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -879,8 +902,8 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 55014.93
         },
         "elapsed_ms": 55015.04
@@ -906,8 +929,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 106091.48
         },
         "elapsed_ms": 106091.54
@@ -933,8 +956,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 99463.32
         },
         "elapsed_ms": 99463.39
@@ -968,12 +991,13 @@
         "mcq_elapsed_ms": 109893.2
       },
       "raw": "{\"success\":false,\"query\":\"A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":96324.85,\"mcq_generation_elapsed_ms\":109893.2,\"hint_elapsed_ms\":109893.2,\"elapsed_ms\":206218.19,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":109893.2}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -991,8 +1015,8 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 57613.29
         },
         "elapsed_ms": 57613.45
@@ -1018,8 +1042,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 80820.16
         },
         "elapsed_ms": 80820.23
@@ -1045,8 +1069,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 135522.52
         },
         "elapsed_ms": 135522.6
@@ -1080,12 +1104,13 @@
         "mcq_elapsed_ms": 151851.85
       },
       "raw": "{\"success\":false,\"query\":\"For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":78096.12,\"mcq_generation_elapsed_ms\":151851.85,\"hint_elapsed_ms\":151851.85,\"elapsed_ms\":229948.18,\"guided_estimated_steps\":5,\"guided_advisory_tokens\":350,\"mcq_elapsed_ms\":151851.85}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -1103,8 +1128,8 @@
         "cached": false,
         "result_only": true,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 2572.91
         },
         "elapsed_ms": 2573.04
@@ -1112,7 +1137,8 @@
       "raw": "{\"success\":true,\"answer\":\"O(n) and O(1)\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":2572.91},\"elapsed_ms\":2573.04}",
       "display_output": "O(n) and O(1)",
       "structured_output": "O(n) and O(1)",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCOMPLETE/notation: gives O(n) and O(1) rather than the requested tight Θ(n) and Θ(1) bounds."
     },
     {
       "kind": "standard",
@@ -1130,8 +1156,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 57065.62
         },
         "elapsed_ms": 57065.73
@@ -1139,7 +1165,8 @@
       "raw": "{\"success\":true,\"answer\":\"The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \\n\\nThe time complexity is $O(n)$ because the loop runs $n$ times.\\n\\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \\n\\n$$\\n\\\\text{Time complexity: } O(n)\\n$$\\n$$\\n\\\\text{Auxiliary space complexity: } O(1)\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":57065.62},\"elapsed_ms\":57065.73}",
       "display_output": "The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \n\nThe time complexity is $O(n)$ because the loop runs $n$ times.\n\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \n\n$$\n\\text{Time complexity: } O(n)\n$$\n$$\n\\text{Auxiliary space complexity: } O(1)\n$$",
       "structured_output": "The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \n\nThe time complexity is $O(n)$ because the loop runs $n$ times.\n\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \n\n$$\n\\text{Time complexity: } O(n)\n$$\n$$\n\\text{Auxiliary space complexity: } O(1)\n$$",
-      "error": null
+      "error": null,
+      "accuracy_audit": "Notation issue: gives O(n) and O(1) rather than tight Θ(n) and Θ(1) bounds; otherwise reasoning is correct."
     },
     {
       "kind": "standard",
@@ -1157,8 +1184,8 @@
         "cached": false,
         "result_only": false,
         "timings_ms": {
-          "planner": 0.0,
-          "wolfram": 0.0,
+          "planner": 0,
+          "wolfram": 0,
           "final_llm": 31677.9
         },
         "elapsed_ms": 31677.99
@@ -1192,12 +1219,13 @@
         "mcq_elapsed_ms": 54153.87
       },
       "raw": "{\"success\":false,\"query\":\"For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":10964.29,\"mcq_generation_elapsed_ms\":54153.87,\"hint_elapsed_ms\":54153.87,\"elapsed_ms\":65118.32,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":54153.87}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -1216,7 +1244,7 @@
         "result_only": true,
         "timings_ms": {
           "planner": 3096.71,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 27117.48
         },
         "elapsed_ms": 30215.51
@@ -1224,7 +1252,8 @@
       "raw": "{\"success\":true,\"answer\":\"$\\\\\\\\text{Binary Search}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":3096.71,\"wolfram\":0.0,\"final_llm\":27117.48},\"elapsed_ms\":30215.51}",
       "display_output": "$\\\\text{Binary Search}$",
       "structured_output": "$\\\\text{Binary Search}$",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCOMPLETE: returned only the words `Binary Search`; no algorithm, complexity, or explanation."
     },
     {
       "kind": "standard",
@@ -1243,7 +1272,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 2223.46,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 39231.15
         },
         "elapsed_ms": 41454.73
@@ -1270,7 +1299,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 1872.97,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 68524.97
         },
         "elapsed_ms": 70398.12
@@ -1304,12 +1333,13 @@
         "mcq_elapsed_ms": 69648.32
       },
       "raw": "{\"success\":false,\"query\":\"A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":24175.5,\"mcq_generation_elapsed_ms\":69648.32,\"hint_elapsed_ms\":69648.32,\"elapsed_ms\":93823.97,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":69648.32}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     },
     {
       "kind": "standard",
@@ -1328,7 +1358,7 @@
         "result_only": true,
         "timings_ms": {
           "planner": 2923.11,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 36710.32
         },
         "elapsed_ms": 39633.64
@@ -1336,7 +1366,8 @@
       "raw": "{\"success\":true,\"answer\":\"$O(\\\\log V)$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2923.11,\"wolfram\":0.0,\"final_llm\":36710.32},\"elapsed_ms\":39633.64}",
       "display_output": "$O(\\log V)$",
       "structured_output": "$O(\\log V)$",
-      "error": null
+      "error": null,
+      "accuracy_audit": "INCOMPLETE: returned only O(log V), which is not the requested correctness argument, full complexity, or negative-edge analysis."
     },
     {
       "kind": "standard",
@@ -1355,7 +1386,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 2948.8,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 39061.72
         },
         "elapsed_ms": 42010.63
@@ -1363,7 +1394,8 @@
       "raw": "{\"success\":true,\"answer\":\"Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\\n\\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\\\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\\n\\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2948.8,\"wolfram\":0.0,\"final_llm\":39061.72},\"elapsed_ms\":42010.63}",
       "display_output": "Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\n\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\n\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.",
       "structured_output": "Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\n\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\n\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.",
-      "error": null
+      "error": null,
+      "accuracy_audit": "Conceptual wording issue: a negative-weight edge does not by itself create an infinitely decreasing cycle; that requires a negative-weight cycle. The Dijkstra complexity/correctness discussion otherwise addresses the requested points."
     },
     {
       "kind": "standard",
@@ -1382,7 +1414,7 @@
         "result_only": false,
         "timings_ms": {
           "planner": 2732.47,
-          "wolfram": 0.0,
+          "wolfram": 0,
           "final_llm": 80017.51
         },
         "elapsed_ms": 82750.12
@@ -1390,7 +1422,8 @@
       "raw": "{\"success\":true,\"answer\":\"$\\\\\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\\n\\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\\n\\n$\\\\\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\\n\\n$\\\\\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\\n\\n$\\\\\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\\n\\n$\\\\\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2732.47,\"wolfram\":0.0,\"final_llm\":80017.51},\"elapsed_ms\":82750.12}",
       "display_output": "$\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\n\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\n\n$\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\n\n$\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\n\n$\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\n\n$\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$",
       "structured_output": "$\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\n\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\n\n$\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\n\n$\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\n\n$\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\n\n$\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$",
-      "error": null
+      "error": null,
+      "accuracy_audit": "Conceptual wording issue: a negative-weight edge does not by itself create an infinitely decreasing cycle; that requires a negative-weight cycle. The main Dijkstra correctness and complexity discussion is otherwise substantially correct."
     },
     {
       "kind": "guided",
@@ -1416,14 +1449,23 @@
         "mcq_elapsed_ms": 87626.28
       },
       "raw": "{\"success\":false,\"query\":\"Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":45536.32,\"mcq_generation_elapsed_ms\":87626.28,\"hint_elapsed_ms\":87626.28,\"elapsed_ms\":133162.72,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":87626.28}",
-      "display_guided": "",
+      "display_guided": "FAILED — Guided generator returned fewer than two valid step records.",
       "solution": null,
       "solution_raw": "",
       "display_solution": "",
       "solution_ms": 0,
-      "error": "backend failure"
+      "error": "Guided generator returned fewer than two valid step records.",
+      "accuracy_audit": "FAILURE: guided generation produced fewer than two valid step records. No valid MCQs were available for evaluation, and no full solution was generated."
     }
   ],
   "status": "completed",
-  "finished_at": "2026-10-08T06:34:25.511511+00:00"
+  "finished_at": "2026-10-08T06:34:25.511511+00:00",
+  "presentation": {
+    "format": "structured_rendered_text",
+    "source_results_preserved": true,
+    "raw_response_fields_preserved": true,
+    "display_fields_use_answer_text_only": true,
+    "grouped_by_question": true,
+    "audit_added": true
+  }
 }
