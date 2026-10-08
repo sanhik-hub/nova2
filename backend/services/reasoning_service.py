@@ -600,12 +600,22 @@ Return no markdown, no prose outside the JSON object, and no code fences.
                 formulation.get("error") or "Computational formulation failed."
             )
 
-        plan = self._parse_json(formulation.get("result"))
+        formulation_text = formulation.get("result")
+        plan = self._parse_json(formulation_text)
         expression = (
             plan.get("expression")
             if isinstance(plan, dict)
             else None
         )
+
+        # Recover the expression from lightly wrapped/escaped JSON before
+        # rejecting an otherwise valid local-model formulation. Wolfram still
+        # validates and executes the recovered expression below.
+        if not isinstance(expression, str):
+            expression = self._extract_json_string_field(
+                formulation_text,
+                "expression",
+            )
 
         if (
             not isinstance(expression, str)
@@ -1060,6 +1070,19 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return False
         return True
 
+    @staticmethod
+    def _is_clean_symbolic_argument(value: str, allow_equals: bool = False) -> bool:
+        """Accept standalone symbolic input, not prose or chained commands."""
+        text = value.strip()
+        if not text or len(text) > 500 or ";" in text or chr(96) in text:
+            return False
+        allowed = r"A-Za-z0-9_+\-*/^%().,\[\]{}\s"
+        if allow_equals:
+            allowed += "="
+        if re.search(rf"[^{allowed}]", text):
+            return False
+        return bool(re.search(r"[A-Za-z0-9]", text))
+
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
 
@@ -1075,6 +1098,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             expression = expression.strip("`").strip()
             # If written as y = ..., differentiate the right-hand side.
             expression = re.sub(r"(?is)^y\s*=\s*", "", expression).strip()
+            if not self._is_clean_symbolic_argument(expression, allow_equals=True):
+                return None
             expression = normalize_expression(expression)
             expression = re.sub(
                 r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
@@ -1121,6 +1146,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 variable = variable_match.group(1)
                 expression = expression[:variable_match.start()].strip()
             expression = re.sub(r"[.!?]+$", "", expression).strip()
+            if not self._is_clean_symbolic_argument(expression):
+                return None
             expression = normalize_expression(expression)
             return ("integrate", {
                 "expression": expression,
@@ -1136,6 +1163,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             match = re.match(pattern, text)
             if match:
                 expression = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
+                if not self._is_clean_symbolic_argument(expression):
+                    continue
                 return (operation, {"expression": expression})
 
         # SOLVE
@@ -1144,8 +1173,14 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             text,
         )
         if match:
-            equation = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
-            equation = re.sub(r"\s*=\s*", " == ", equation)
+            raw_equation = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
+            # Keep clean symbolic solve requests on the exact fast path.
+            # Noisy/semicolon-separated input is handed to the planner so it
+            # can produce structured Wolfram arguments instead of sending
+            # natural-language text directly to Wolfram.
+            if not self._is_clean_symbolic_argument(raw_equation, allow_equals=True):
+                return None
+            equation = re.sub(r"\s*=\s*", " == ", raw_equation)
             if "==" not in equation:
                 equation = f"{equation} == 0"
             return ("solve", {
@@ -1202,7 +1237,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # Allow arithmetic, comparisons, function calls, With/local
         # assignments, lists, and immediate rules.
-        if re.search(r"[^A-Za-z0-9_+\-*/^%().,\[\]{}=<>;@\s]", text):
+        if re.search(r"[^A-Za-z0-9_+\-*/^%().,\[\]{}=<>;@π∞√\s]", text):
             return False
 
         return bool(re.search(r"\d|[A-Za-z]", text))
@@ -2004,6 +2039,40 @@ Scientific display contract:
     # =========================================================
     # JSON PARSER
     # =========================================================
+
+    @staticmethod
+    def _extract_json_string_field(text: Any, field: str) -> str | None:
+        """Recover one JSON string field from lightly wrapped model output."""
+        if not isinstance(text, str) or not text.strip():
+            return None
+
+        value = text.strip()
+        value = re.sub(r"^<think>.*?</think>\s*", "", value, flags=re.I | re.S)
+
+        start = value.find("{")
+        end = value.rfind("}")
+        if start >= 0 and end > start:
+            try:
+                parsed = json.loads(value[start:end + 1])
+                if isinstance(parsed, dict) and isinstance(parsed.get(field), str):
+                    return parsed[field].strip()
+            except json.JSONDecodeError:
+                pass
+
+        match = re.search(
+            rf'"{re.escape(field)}"\s*:\s*("(?:\\.|[^"\\])*")',
+            value,
+            flags=re.S,
+        )
+        if match:
+            try:
+                parsed_value = json.loads(match.group(1))
+                if isinstance(parsed_value, str):
+                    return parsed_value.strip()
+            except json.JSONDecodeError:
+                pass
+
+        return None
 
     def _parse_json(self, text: str):
 
