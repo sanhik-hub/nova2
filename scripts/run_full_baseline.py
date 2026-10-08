@@ -252,11 +252,20 @@ def safe_text(value):
     text = html.unescape(text)
     # Remove Markdown/HTML transport artifacts before writing to Word.
     text = text.replace("\r\n", "\n").replace("\\r\\n", "\n").replace("\\n", "\n")
+    # Remove transport artifacts both before and after HTML entity decoding.
+    text = re.sub(
+        r"(?m)^\s*\|\s*(?:(?:&#x20;|&nbsp;)\s*)+\|\s*$",
+        "",
+        text,
+    )
     text = re.sub(r"&#x20;|&nbsp;", " ", text)
     text = re.sub(r"(?m)^\s*\|\s*\|\s*$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*(?:-+\s*\|\s*)+$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*(.*?)\s*\|\s*$", r"\1", text)
+    # A second pass catches entities introduced by upstream escaping.
+    text = re.sub(r"(?m)^\s*\|\s*(?:(?:&#x20;|&nbsp;)\s*)+\|\s*$", "", text)
+    text = re.sub(r"(?m)^\s*\|\s*\|\s*$", "", text)
     text = re.sub(r"(?m)^\s*#{1,6}\s*", "", text)
     text = re.sub(r"(?m)^\s*\*{3,}\s*$", "", text)
     text = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", text)
