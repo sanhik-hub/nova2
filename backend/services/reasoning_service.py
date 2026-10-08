@@ -89,14 +89,6 @@ class ReasoningService:
 
         explicit_operation = self._detect_explicit_operation(problem)
 
-        # A request can contain a clean symbolic operation followed by a
-        # natural-language instruction (for example, "solve x^2-5x+4 = 0;
-        # find the roots"). Normalize only the explicit symbolic prefix before
-        # invoking the semantic planner. This keeps deterministic CAS requests
-        # fast without introducing subject-specific routing rules.
-        if explicit_operation is None:
-            explicit_operation = self._detect_normalized_explicit_operation(problem)
-
         # Result-only mode may also use the exact CAS path for clear natural-language calculus requests.
         if explanation == "off" and explicit_operation is None:
             explicit_operation = self._detect_result_only_operation(problem)
@@ -464,6 +456,24 @@ Scientific display contract:
 
         return True
 
+    def _has_explicit_operation_intent(self, problem: str) -> bool:
+        """Detect a supported operation request that needs model normalization.
+
+        This is intentionally structural. It does not inspect subject/domain
+        vocabulary and does not normalize punctuation or connective phrases.
+        Clean forms are handled by the deterministic fast path; malformed or
+        natural-language forms go to the main local reasoning model.
+        """
+        text = problem.strip()
+        if not text or len(text) > 1200:
+            return False
+        return bool(
+            re.match(
+                r"(?is)^\\s*(?:differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\\b",
+                text,
+            )
+        )
+
     def _is_complex_computational_request(self, problem: str) -> bool:
         """
         Detect a natural-language request that contains an explicit
@@ -476,11 +486,19 @@ Scientific display contract:
             return False
         if self._detect_explicit_operation(text) is not None:
             return False
-        if not re.search(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", text):
+
+        # An explicit computational operation whose deterministic parser could
+        # not safely normalize is handed to the main local LLM. The model
+        # returns a structured operation/arguments object; Python validates it
+        # before anything reaches Wolfram.
+        if self._has_explicit_operation_intent(text):
+            return True
+
+        if not re.search(r"(?<![A-Za-z])[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?", text):
             return False
 
         computational_intent = re.search(
-            r"\b(?:calculate|compute|determine|evaluate|find|obtain|work\s+out|how\s+much|how\s+many|what\s+is|what\s+are)\b",
+            r"\\b(?:calculate|compute|determine|evaluate|find|obtain|work\\s+out|how\\s+much|how\\s+many|what\\s+is|what\\s+are)\\b",
             text,
             flags=re.IGNORECASE,
         )
@@ -524,22 +542,20 @@ Scientific display contract:
 
     def _solve_llm_wolfram(self, problem: str, explanation: str = "detailed"):
         """
-        Use the local reasoning model to formulate a natural-language STEM
-        computation, then use Wolfram for the exact calculation.
+        Use the main local reasoning model to translate a computational request
+        into a validated structured Wolfram tool call.
 
-        The LLM interprets the problem and constructs the equations; it is
-        never trusted to supply the numerical result. Wolfram is the source
-        of truth for the computed values. In explanation-off mode the verified
-        CAS payload is returned directly, so no second generation pass is
-        required.
+        The model may return either a supported operation plus structured
+        arguments or a calculate operation containing a self-contained Wolfram
+        expression. Python owns validation and execution; Wolfram remains the
+        source of truth for computed results.
         """
         formulation_system = r"""
 You are Nova's STEM computational formulation engine.
 
-The user has supplied a natural-language quantitative STEM problem. Your job
-is ONLY to translate that problem into ONE executable Wolfram Language
-expression. Do not solve it in prose and do not return numerical answers
-yourself.
+The user supplied a computational STEM request. Your ONLY job is to translate
+the request into one structured tool call for Wolfram. Do not solve it in
+prose and do not return numerical answers yourself.
 
 First reason internally about:
 - every quantity explicitly given;
@@ -547,37 +563,49 @@ First reason internally about:
 - the governing mathematical/scientific relationships;
 - units and necessary conversions;
 - initial conditions, geometry, constraints, and signs;
-- whether several requested quantities can be computed together.
+- whether the request is a direct symbolic operation or a natural-language
+  quantitative problem.
 
-Then return ONLY one JSON object:
-{"expression":"...","requested":"..."}
+Return ONLY one JSON object in exactly this form:
+{"operation":"...","arguments":{...}}
 
-The expression must be a SINGLE self-contained Wolfram Language expression
-that computes EVERY requested result from the stated data.
+Supported operations and argument shapes:
+- {"operation":"calculate","arguments":{"expression":"..."}}
+- {"operation":"simplify","arguments":{"expression":"..."}}
+- {"operation":"factor","arguments":{"expression":"..."}}
+- {"operation":"expand","arguments":{"expression":"..."}}
+- {"operation":"differentiate","arguments":{"expression":"...","variable":"x"}}
+- {"operation":"integrate","arguments":{"expression":"...","variable":"x"}}
+- {"operation":"integrate_definite","arguments":{"expression":"...","variable":"x","lower":"...","upper":"..."}}
+- {"operation":"solve","arguments":{"equation":"...","variable":"x"}}
+- {"operation":"limit","arguments":{"expression":"...","variable":"x","value":"..."}}
 
-For multiple requested results, return a list of immediate rules, for example:
-{timeOfFlight -> N[...], maximumHeight -> N[...], range -> N[...], impactSpeed -> N[...]}
+Choose the operation that actually matches the user's request. For a
+natural-language quantitative STEM problem, use calculate and construct ONE
+self-contained Wolfram Language expression that computes EVERY explicitly
+requested result.
 
-Use simple Wolfram symbols for result labels, preferably lowerCamelCase such as
-timeOfFlight, maximumHeight, horizontalRange, or impactSpeed. NEVER use
-snake_case or underscores in Wolfram symbols: underscore is Wolfram's pattern
-syntax. Do not use strings in the Wolfram expression. Prefer With[...] to define intermediate quantities and
-make all substitutions explicit. Use standard Wolfram functions such as N,
-Sqrt, Sin, Cos, Tan, Exp, Log, Abs, Solve, and With when needed.
+For multiple requested results, a calculate expression may return a list of
+immediate rules, for example:
+{timeOfFlight -> N[...], maximumHeight -> N[...], horizontalRange -> N[...], impactSpeed -> N[...]}
 
-Do not invent data, formulas, assumptions, or unstated conditions. Use the
-problem's stated reference frame and initial conditions. If the problem is
-physically/mathematically determinate, encode the actual governing equations,
-not a rough approximation or a single intermediate equation.
+Use simple lowerCamelCase result labels. NEVER use snake_case or underscores
+in Wolfram symbols: underscore is Wolfram's pattern syntax.
 
-The expression must calculate the requested final quantities, not merely
-define a governing equation. If the user asks for four quantities, the
-expression must return four corresponding results.
+For direct operations, translate the user's actual expression/equation into
+valid Wolfram syntax. For example, a request such as
+"solve : x^2-5x+4 = 0" should become:
+{"operation":"solve","arguments":{"equation":"x^2 - 5*x + 4 == 0","variable":"x"}}
 
-The "requested" field should be a short comma-separated description of the
-requested result labels only. It is metadata and is not executed.
+Do not invent data, formulas, assumptions, or unstated conditions. Preserve
+the user's variables, quantities, units, constraints, initial conditions, and
+requested outputs.
 
-Return no markdown, no prose outside the JSON object, and no code fences.
+The arguments must contain only executable Wolfram content, never natural-
+language instructions. Do not use strings inside Wolfram expressions,
+external functions, files, URLs, or programming side effects.
+
+Return no markdown, prose, or code fences outside the JSON object.
 """
         formulation_prompt = json.dumps(
             {
@@ -610,82 +638,81 @@ Return no markdown, no prose outside the JSON object, and no code fences.
 
         formulation_text = formulation.get("result")
         plan = self._parse_json(formulation_text)
-        expression = (
-            plan.get("expression")
-            if isinstance(plan, dict)
-            else None
-        )
 
-        # Recover the expression from lightly wrapped/escaped JSON before
-        # rejecting an otherwise valid local-model formulation. Wolfram still
-        # validates and executes the recovered expression below.
-        if not isinstance(expression, str):
-            expression = self._extract_json_string_field(
-                formulation_text,
-                "expression",
+        if not isinstance(plan, dict):
+            return self._error(
+                "The reasoning model did not produce a valid structured computational request."
             )
 
-        if (
-            not isinstance(expression, str)
-            or not self._is_planner_calculate_expression(expression)
-        ):
+        operation = plan.get("operation")
+        arguments = plan.get("arguments")
+
+        # Backward-compatible recovery for a model that still emits the older
+        # {"expression":"..."} contract. New generations are explicitly
+        # instructed to use operation + arguments.
+        if operation is None and isinstance(plan.get("expression"), str):
+            operation = "calculate"
+            arguments = {"expression": plan["expression"]}
+
+        if not isinstance(operation, str) or not isinstance(arguments, dict):
             return self._error(
-                "The reasoning model did not produce a valid computational expression."
+                "The reasoning model did not produce a valid structured computational request."
             )
 
         validated = self._validate_tool_call(
             {
-                "tool": "calculate",
-                "arguments": {"expression": expression},
+                "tool": operation,
+                "arguments": arguments,
             }
         )
         if not validated.get("valid"):
             return self._error(
                 validated.get("error")
-                or "The computational expression was rejected."
+                or "The structured computational request was rejected."
             )
 
+        operation = validated["tool"]
+        arguments = validated["arguments"]
+
         wolfram_started = time.perf_counter()
-        result = self._execute_tool(
-            "calculate",
-            {"expression": expression},
-        )
+        result = self._execute_tool(operation, arguments)
         wolfram_ms = round(
             (time.perf_counter() - wolfram_started) * 1000,
             2,
         )
 
         if not result.get("success"):
-            # The LLM may produce a syntactically valid-looking expression
-            # that Wolfram rejects. Give it one targeted repair pass using the
-            # actual Wolfram failure, rather than falling back to an unverified
-            # numerical answer.
+            # Repair the structured tool call using the actual Wolfram error.
+            # This remains a main-LLM formulation pass; it never asks the model
+            # to provide an unverified numerical answer.
             repair_system = r"""
-You are repairing a Wolfram Language expression generated from a STEM word
+You are repairing a structured Wolfram tool call generated from a STEM
 problem.
 
-The expression was rejected by Wolfram. Return ONLY one JSON object:
-{"expression":"..."}
+Return ONLY one JSON object:
+{"operation":"...","arguments":{...}}
+
+Use only these operations:
+calculate, simplify, factor, expand, differentiate, integrate,
+integrate_definite, solve, limit.
 
 Preserve the original problem and all requested quantities. Correct the
-expression's Wolfram syntax and mathematical formulation. Do not answer the
+operation/arguments so Wolfram can execute the request. Do not answer the
 problem yourself.
 
-Critical Wolfram syntax rules:
-- Never use underscores in symbols. "_" is pattern syntax in Wolfram Language.
-- Use simple lowerCamelCase symbols for result labels, or return a plain list
-  if labels are unnecessary.
-- The expression must be one executable Wolfram Language expression.
-- It must compute EVERY explicitly requested result, not merely an intermediate
-  equation.
-- Do not use strings, external functions, files, URLs, or programming side
-  effects.
-- Do not invent data or assumptions.
+For calculate, the expression must be one executable Wolfram Language
+expression. For solve, return an executable equation and variable. For limit,
+return expression, variable, and value. Do not use natural-language
+instructions, strings, external functions, files, URLs, or programming side
+effects. Never use underscores in Wolfram symbols.
 """
             repair_prompt = json.dumps(
                 {
                     "user_request": problem,
-                    "previous_expression": expression,
+                    "previous_tool_call": {
+                        "operation": operation,
+                        "arguments": arguments,
+                    },
                     "wolfram_error": str(result.get("error") or "unknown error"),
                 },
                 ensure_ascii=False,
@@ -710,36 +737,55 @@ Critical Wolfram syntax rules:
                 if repaired.get("success")
                 else None
             )
-            repaired_expression = (
-                repaired_plan.get("expression")
+            repaired_operation = (
+                repaired_plan.get("operation")
                 if isinstance(repaired_plan, dict)
                 else None
             )
+            repaired_arguments = (
+                repaired_plan.get("arguments")
+                if isinstance(repaired_plan, dict)
+                else None
+            )
+
             if (
-                not isinstance(repaired_expression, str)
-                or not self._is_planner_calculate_expression(repaired_expression)
+                not isinstance(repaired_operation, str)
+                or not isinstance(repaired_arguments, dict)
             ):
-                return self._error(
-                    "Wolfram verification failed: "
-                    + str(result.get("error") or "unknown error")
-                )
+                # Also accept the legacy expression shape during repair.
+                if (
+                    isinstance(repaired_plan, dict)
+                    and isinstance(repaired_plan.get("expression"), str)
+                ):
+                    repaired_operation = "calculate"
+                    repaired_arguments = {
+                        "expression": repaired_plan["expression"]
+                    }
+                else:
+                    return self._error(
+                        "Wolfram verification failed: "
+                        + str(result.get("error") or "unknown error")
+                    )
 
             repair_validation = self._validate_tool_call(
                 {
-                    "tool": "calculate",
-                    "arguments": {"expression": repaired_expression},
+                    "tool": repaired_operation,
+                    "arguments": repaired_arguments,
                 }
             )
             if not repair_validation.get("valid"):
                 return self._error(
                     repair_validation.get("error")
-                    or "The repaired computational expression was rejected."
+                    or "The repaired computational request was rejected."
                 )
+
+            repaired_operation = repair_validation["tool"]
+            repaired_arguments = repair_validation["arguments"]
 
             wolfram_retry_started = time.perf_counter()
             result = self._execute_tool(
-                "calculate",
-                {"expression": repaired_expression},
+                repaired_operation,
+                repaired_arguments,
             )
             wolfram_ms += round(
                 (time.perf_counter() - wolfram_retry_started) * 1000,
@@ -750,12 +796,13 @@ Critical Wolfram syntax rules:
                     "Wolfram verification failed: "
                     + str(result.get("error") or "unknown error")
                 )
-            expression = repaired_expression
+            operation = repaired_operation
+            arguments = repaired_arguments
 
         tool_results = [
             {
-                "tool": "calculate",
-                "arguments": {"expression": expression},
+                "tool": operation,
+                "arguments": arguments,
                 "result": result.get("result"),
             }
         ]
@@ -1091,51 +1138,6 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return False
         return bool(re.search(r"[A-Za-z0-9]", text))
 
-    def _detect_normalized_explicit_operation(self, problem: str):
-        """Recover a clean explicit operation from noisy trailing instructions.
-
-        This is intentionally structural: it only strips separators/connectors
-        after an explicit operation and accepts a candidate when the existing
-        deterministic operation detector can validate it. It does not infer a
-        STEM domain or invent mathematical content.
-        """
-        text = problem.strip()
-        if not text or len(text) > 500:
-            return None
-
-        # Only attempt normalization when the request explicitly starts with
-        # one of the deterministic operation forms already understood below.
-        prefix = re.match(
-            r"(?is)^\s*(differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\b",
-            text,
-        )
-        if not prefix:
-            return None
-
-        # Try progressively shorter candidates. A semicolon is the strongest
-        # structural separator; then handle common connective phrases without
-        # requiring any domain vocabulary.
-        candidates = [text]
-        body = text[prefix.end():].strip()
-        for pattern in (
-            r"\s*;\s*",
-            r"\s+(?:and then|then|and)\s+",
-        ):
-            parts = re.split(pattern, body, maxsplit=1, flags=re.IGNORECASE)
-            if len(parts) == 2 and parts[0].strip():
-                candidates.append(text[:prefix.end()] + " " + parts[0].strip())
-
-        # For phrases such as "solve ... ; find ...", the first candidate
-        # above is enough. For nested punctuation, progressively trim at each
-        # separator and retain only candidates that the existing detector
-        # accepts as a complete symbolic request.
-        for candidate in candidates[1:]:
-            detected = self._detect_explicit_operation(candidate)
-            if detected is not None:
-                return detected
-
-        return None
-
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
 
@@ -1227,10 +1229,9 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         )
         if match:
             raw_equation = re.sub(r"[.!?]+$", "", match.group(1).strip()).strip()
-            # Keep clean symbolic solve requests on the exact fast path.
-            # Noisy/semicolon-separated input is handed to the planner so it
-            # can produce structured Wolfram arguments instead of sending
-            # natural-language text directly to Wolfram.
+            # Clean symbolic solve requests stay on the exact fast path.
+            # Anything that cannot be safely parsed is handled by the main
+            # local LLM structured-tool path in solve().
             if not self._is_clean_symbolic_argument(raw_equation, allow_equals=True):
                 return None
             equation = re.sub(r"\s*=\s*", " == ", raw_equation)
@@ -1294,6 +1295,20 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return False
 
         return bool(re.search(r"\d|[A-Za-z]", text))
+
+    @staticmethod
+    def _is_safe_structured_argument(value: str, allow_equals: bool = False) -> bool:
+        text = value.strip()
+        if not text or len(text) > 500:
+            return False
+        if re.search(r"""["'\\#    def _validate_tool_call(self, call: dict):?|:]""", text):
+            return False
+        allowed = r"A-Za-z0-9_+\\-*/^%().,\\[\\]{}\\sπ∞√"
+        if allow_equals:
+            allowed += "="
+        if re.search(rf"[^{allowed}]", text):
+            return False
+        return bool(re.search(r"[A-Za-z0-9]", text))
 
     def _validate_tool_call(self, call: dict):
 
@@ -1382,13 +1397,33 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                     "error": "calculate requires an expression.",
                 }
 
-            # Planner-generated calculations may use named variables, With
-            # scopes, lists, and rules, so the bare-expression grammar is too
-            # narrow for this validation step.
             if not self._is_planner_calculate_expression(expression):
                 return {
                     "valid": False,
                     "error": "calculate requires a valid computational expression.",
+                }
+
+        # Direct structured operations carry Wolfram fragments rather than
+        # arbitrary natural-language text. Keep the grammar conservative before
+        # execution while still allowing the normal symbolic syntax.
+        symbolic_fields = {
+            "expression",
+            "equation",
+            "variable",
+            "lower",
+            "upper",
+            "value",
+        }
+        for key, value in arguments.items():
+            if key not in symbolic_fields or not isinstance(value, str):
+                continue
+            if not self._is_safe_structured_argument(
+                value,
+                allow_equals=(tool == "solve" and key == "equation"),
+            ):
+                return {
+                    "valid": False,
+                    "error": f"{tool} argument '{key}' contains invalid Wolfram syntax.",
                 }
 
         if tool in {
