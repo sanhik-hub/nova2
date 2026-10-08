@@ -168,9 +168,27 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 4. MODEL-DRIVEN SEMANTIC PLANNING
-        # Numerical word problems use the planner/tool pipeline instead of
-        # being handed blindly to the final local model.
+        # 4. LLM + EXACT CAS FOR NATURAL-LANGUAGE COMPUTATION
+        # -----------------------------------------------------
+        # Numerical STEM word problems require semantic formulation before
+        # exact computation. Let the local reasoning model translate the
+        # request into a self-contained Wolfram expression, then let Wolfram
+        # perform the actual calculation. This is deliberately separate from
+        # the lightweight planner used for general routing.
+        # -----------------------------------------------------
+        if self._is_complex_computational_request(problem):
+            response = self._solve_llm_wolfram(
+                problem,
+                explanation=explanation,
+            )
+            response["elapsed_ms"] = round(
+                (time.perf_counter() - started) * 1000,
+                2,
+            )
+            if response.get("success"):
+                self._cache_set(problem, response, explanation)
+            return response
+
         # -----------------------------------------------------
         # 5. DIRECT DERIVATION / PROOF FAST PATH
         # -----------------------------------------------------
@@ -493,6 +511,174 @@ Scientific display contract:
         return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)) >= 3
 
     # =========================================================
+    # LLM + EXACT CAS COMPUTATIONAL PIPELINE
+    # =========================================================
+
+    def _solve_llm_wolfram(self, problem: str, explanation: str = "detailed"):
+        """
+        Use the local reasoning model to formulate a natural-language STEM
+        computation, then use Wolfram for the exact calculation.
+
+        The LLM interprets the problem and constructs the equations; it is
+        never trusted to supply the numerical result. Wolfram is the source
+        of truth for the computed values. In explanation-off mode the verified
+        CAS payload is returned directly, so no second generation pass is
+        required.
+        """
+        formulation_system = r"""
+You are Nova's STEM computational formulation engine.
+
+The user has supplied a natural-language quantitative STEM problem. Your job
+is ONLY to translate that problem into ONE executable Wolfram Language
+expression. Do not solve it in prose and do not return numerical answers
+yourself.
+
+First reason internally about:
+- every quantity explicitly given;
+- every quantity explicitly requested;
+- the governing mathematical/scientific relationships;
+- units and necessary conversions;
+- initial conditions, geometry, constraints, and signs;
+- whether several requested quantities can be computed together.
+
+Then return ONLY one JSON object:
+{"expression":"...","requested":"..."}
+
+The expression must be a SINGLE self-contained Wolfram Language expression
+that computes EVERY requested result from the stated data.
+
+For multiple requested results, return a list of immediate rules, for example:
+{time_of_flight -> N[...], maximum_height -> N[...], range -> N[...], impact_speed -> N[...]}
+
+Use lowercase snake_case symbols for result labels. Do not use strings in the
+Wolfram expression. Prefer With[...] to define intermediate quantities and
+make all substitutions explicit. Use standard Wolfram functions such as N,
+Sqrt, Sin, Cos, Tan, Exp, Log, Abs, Solve, and With when needed.
+
+Do not invent data, formulas, assumptions, or unstated conditions. Use the
+problem's stated reference frame and initial conditions. If the problem is
+physically/mathematically determinate, encode the actual governing equations,
+not a rough approximation or a single intermediate equation.
+
+The expression must calculate the requested final quantities, not merely
+define a governing equation. If the user asks for four quantities, the
+expression must return four corresponding results.
+
+The "requested" field should be a short comma-separated description of the
+requested result labels only. It is metadata and is not executed.
+
+Return no markdown, no prose outside the JSON object, and no code fences.
+"""
+        formulation_prompt = json.dumps(
+            {
+                "user_request": problem,
+                "explanation_preference": explanation,
+            },
+            ensure_ascii=False,
+        )
+
+        llm_started = time.perf_counter()
+        try:
+            formulation = self.router.generate(
+                prompt=formulation_prompt,
+                system_prompt=formulation_system,
+                temperature=0.0,
+                request_timeout=None,
+            )
+        except Exception as exc:
+            return self._error(f"Computational formulation failed: {exc}")
+
+        formulation_ms = round(
+            (time.perf_counter() - llm_started) * 1000,
+            2,
+        )
+
+        if not formulation.get("success"):
+            return self._error(
+                formulation.get("error") or "Computational formulation failed."
+            )
+
+        plan = self._parse_json(formulation.get("result"))
+        expression = (
+            plan.get("expression")
+            if isinstance(plan, dict)
+            else None
+        )
+
+        if (
+            not isinstance(expression, str)
+            or not self._is_planner_calculate_expression(expression)
+        ):
+            return self._error(
+                "The reasoning model did not produce a valid computational expression."
+            )
+
+        validated = self._validate_tool_call(
+            {
+                "tool": "calculate",
+                "arguments": {"expression": expression},
+            }
+        )
+        if not validated.get("valid"):
+            return self._error(
+                validated.get("error")
+                or "The computational expression was rejected."
+            )
+
+        wolfram_started = time.perf_counter()
+        result = self._execute_tool(
+            "calculate",
+            {"expression": expression},
+        )
+        wolfram_ms = round(
+            (time.perf_counter() - wolfram_started) * 1000,
+            2,
+        )
+
+        if not result.get("success"):
+            return self._error(
+                "Wolfram verification failed: "
+                + str(result.get("error") or "unknown error")
+            )
+
+        tool_results = [
+            {
+                "tool": "calculate",
+                "arguments": {"expression": expression},
+                "result": result.get("result"),
+            }
+        ]
+
+        if explanation == "off":
+            response = self._cas_result_only(tool_results)
+            response["engine"] = "wolfram"
+            response["tool_calls"] = []
+            response["cached"] = False
+            response["timings_ms"] = {
+                "planner": formulation_ms,
+                "wolfram": wolfram_ms,
+                "final_llm": 0.0,
+            }
+            response["llm_passes"] = 1
+            return response
+
+        response = self._final_explanation(
+            problem=problem,
+            idea="",
+            reasoning=[],
+            tool_results=tool_results,
+            explanation=explanation,
+            estimated_answer_tokens=None,
+        )
+        response["timings_ms"] = {
+            "planner": formulation_ms,
+            "wolfram": wolfram_ms,
+            "final_llm": response.pop("_final_llm_ms", 0.0),
+        }
+        response["llm_passes"] = 2
+        return response
+
+    # =========================================================
     # COMPLEX COMPUTATIONAL PIPELINE
     # =========================================================
 
@@ -599,83 +785,6 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         if recovered is not None and not needs_wolfram:
             operation, arguments = recovered
             needs_wolfram = True
-
-        # The planner's boolean is advisory. For a structurally identified
-        # determinate numerical request, give the planner a second, narrowly
-        # scoped extraction pass if it incorrectly classified the request as
-        # pure reasoning. This remains domain-agnostic.
-        if self._is_complex_computational_request(problem) and not needs_wolfram:
-            extraction_started = time.perf_counter()
-            try:
-                extraction = self.router.plan(
-                    prompt=json.dumps({"user_request": problem}, ensure_ascii=False),
-                    system_prompt=r"""
-You are Nova's computational expression planner.
-
-The request below has already been structurally identified as a determinate
-numerical/computational request. Do NOT answer it and do NOT explain it.
-
-Return ONLY one JSON object:
-{"type":"plan","intent":"exact","needs_wolfram":true,"operation":"calculate","arguments":{"expression":"..."},"answer_tokens":null}
-
-Construct one self-contained Wolfram Language expression that computes EVERY
-explicitly requested numerical result from the information in the request.
-
-Use explicit numerical substitution and ordinary Wolfram Language constructs
-such as With, N, Sqrt, Sin, Cos, Tan, Exp, Log, Abs, Min, Max, Solve, lists,
-and rules when useful. A list of results is preferred when several values are
-requested.
-
-You may derive the governing equations internally, but do not invent data or
-assumptions. Preserve the user's stated quantities and units. The expression
-must be executable as a single calculate expression.
-
-Do not return natural-language instructions. Do not return prose or markdown.
-""",
-                    # This is an extraction/planning pass, not the final answer.
-                    # Give it enough room to construct a complete multi-result expression.
-                    max_tokens=768,
-                    request_timeout=None,
-                )
-            except Exception:
-                extraction = {"success": False}
-
-            extraction_plan = (
-                self._parse_json(extraction.get("result"))
-                if extraction.get("success")
-                else None
-            )
-            if isinstance(extraction_plan, dict):
-                extraction_needs_wolfram = extraction_plan.get("needs_wolfram")
-                if isinstance(extraction_needs_wolfram, str):
-                    extraction_needs_wolfram = (
-                        extraction_needs_wolfram.strip().lower()
-                        in {"true", "yes", "1"}
-                    )
-
-                extraction_operation = extraction_plan.get("operation")
-                extraction_arguments = extraction_plan.get("arguments")
-
-                # The extraction prompt already fixes the intended operation,
-                # so tolerate minor planner metadata drift while requiring the
-                # actual computational payload to be structurally valid.
-                if (
-                    extraction_needs_wolfram is True
-                    and extraction_operation == "calculate"
-                    and isinstance(extraction_arguments, dict)
-                    and isinstance(extraction_arguments.get("expression"), str)
-                    and self._is_planner_calculate_expression(
-                        extraction_arguments["expression"]
-                    )
-                ):
-                    operation = "calculate"
-                    arguments = extraction_arguments
-                    needs_wolfram = True
-
-            planner_ms += round(
-                (time.perf_counter() - extraction_started) * 1000,
-                2,
-            )
 
         if not needs_wolfram or not isinstance(operation, str) or not isinstance(arguments, dict):
             needs_wolfram = False
