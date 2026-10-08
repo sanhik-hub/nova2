@@ -213,24 +213,71 @@ def shade(cell, color="E8EDF3"):
     tc.append(sh)
 
 
+def set_cell_width(cell, width_inches):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    tc_w = tc_pr.find(qn("w:tcW"))
+    if tc_w is None:
+        tc_w = OxmlElement("w:tcW")
+        tc_pr.append(tc_w)
+    tc_w.set(qn("w:type"), "dxa")
+    tc_w.set(qn("w:w"), str(int(width_inches * 1440)))
+
+
+def set_row_no_split(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    if tr_pr.find(qn("w:cantSplit")) is None:
+        tr_pr.append(OxmlElement("w:cantSplit"))
+
+
+def safe_text(value):
+    text = shorten(value)
+    chunks = []
+    for line in text.split("\n"):
+        out = []
+        for token in line.split(" "):
+            if len(token) > 45:
+                token = "\u200b".join(token[i:i + 45] for i in range(0, len(token), 45))
+            out.append(token)
+        chunks.append(" ".join(out))
+    return "\n".join(chunks)
+
+
 def put(cell, value, bold=False, size=7):
     cell.text = ""
     paragraph = cell.paragraphs[0]
-    run = paragraph.add_run(shorten(value))
+    paragraph.paragraph_format.space_after = Pt(0)
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.line_spacing = 1.0
+    run = paragraph.add_run(safe_text(value))
     run.bold = bold
     run.font.size = Pt(size)
 
 
-def make_table(document, headers):
+def make_table(document, headers, widths):
     table = document.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+    tbl_pr = table._tbl.tblPr
+    tbl_layout = tbl_pr.find(qn("w:tblLayout"))
+    if tbl_layout is None:
+        tbl_layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(tbl_layout)
+    tbl_layout.set(qn("w:type"), "fixed")
     for index, header in enumerate(headers):
-        put(table.rows[0].cells[index], header, True, 6.5)
+        set_cell_width(table.rows[0].cells[index], widths[index])
+        put(table.rows[0].cells[index], header, True, 7)
         shade(table.rows[0].cells[index])
+    set_row_no_split(table.rows[0])
     row_properties = table.rows[0]._tr.get_or_add_trPr()
     row_properties.append(OxmlElement("w:tblHeader"))
     return table
+
+
+def set_table_row_widths(row, widths):
+    set_row_no_split(row)
+    for cell, width in zip(row.cells, widths):
+        set_cell_width(cell, width)
 
 
 def atomic_write_json(path, data):
@@ -273,6 +320,7 @@ def save_docx(report, path, base_url):
             "Error",
             "Accuracy Remarks",
         ],
+        [0.75, 0.85, 0.75, 2.15, 3.05, 0.72, 1.05, 1.10],
     )
     for result in report["results"]:
         if result["kind"] != "standard":
@@ -288,8 +336,9 @@ def save_docx(report, path, base_url):
             result.get("error", "") or "",
             "",
         ]
+        set_table_row_widths(row, [0.75, 0.85, 0.75, 2.15, 3.05, 0.72, 1.05, 1.10])
         for index, value in enumerate(values):
-            put(row[index], value, size=6.5)
+            put(row[index], value, size=7)
 
     document.add_page_break()
     document.add_heading("Guided Attempts", 1)
@@ -306,6 +355,7 @@ def save_docx(report, path, base_url):
             "Error",
             "Accuracy Remarks",
         ],
+        [0.70, 0.80, 1.75, 2.65, 0.70, 2.10, 0.72, 0.95, 1.05],
     )
     for result in report["results"]:
         if result["kind"] != "guided":
@@ -322,8 +372,9 @@ def save_docx(report, path, base_url):
             result.get("error", "") or "",
             "",
         ]
+        set_table_row_widths(row, [0.70, 0.80, 1.75, 2.65, 0.70, 2.10, 0.72, 0.95, 1.05])
         for index, value in enumerate(values):
-            put(row[index], value, size=6.2)
+            put(row[index], value, size=6.8)
 
     try:
         document.save(path)
