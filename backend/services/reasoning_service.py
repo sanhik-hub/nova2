@@ -1301,7 +1301,16 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         text = value.strip()
         if not text or len(text) > 500:
             return False
-        if re.search(r"""["'\\#    def _validate_tool_call(self, call: dict):?|:]""", text):
+        if re.search(r"""["'\\#$&?|:]""", text):
+            return False
+        allowed = r"A-Za-z0-9_+\-*/^%().,\[\]{}\sπ∞√"
+        if allow_equals:
+            allowed += "="
+        if re.search(rf"[^{allowed}]", text):
+            return False
+        return bool(re.search(r"[A-Za-z0-9]", text))
+
+    def _validate_tool_call(self, call: dict):?|:]""", text):
             return False
         allowed = r"A-Za-z0-9_+\\-*/^%().,\\[\\]{}\\sπ∞√"
         if allow_equals:
