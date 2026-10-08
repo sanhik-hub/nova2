@@ -316,10 +316,10 @@ def add_case_header(document, case_number, case):
 def make_case_table(document, rows, guided=False):
     if guided:
         headers = ["Test", "Actual MCQs + Hints", "MCQ Time", "Full Solution", "Solution Time", "Error", "Accuracy Remarks"]
-        widths = [0.75, 4.15, 0.75, 2.55, 0.80, 0.80, 1.00]
+        widths = [0.60, 3.70, 0.65, 2.20, 0.75, 1.00, 1.10]
     else:
         headers = ["Test", "Actual Result", "Elapsed", "Error", "Accuracy Remarks"]
-        widths = [1.05, 5.45, 0.80, 1.15, 1.15]
+        widths = [0.70, 5.10, 0.75, 1.35, 1.10]
 
     table = make_table(document, headers, widths)
     for item in rows:
@@ -336,9 +336,10 @@ def save_docx(report, path, base_url):
     document = Document()
     section = document.sections[0]
     section.orientation = WD_ORIENT.LANDSCAPE
-    section.page_width, section.page_height = section.page_height, section.page_width
+    section.page_width = Inches(11.0)
+    section.page_height = Inches(8.5)
     for margin in ("top_margin", "bottom_margin", "left_margin", "right_margin"):
-        setattr(section, margin, Inches(0.4))
+        setattr(section, margin, Inches(0.45))
 
     document.add_heading("Nova2 — Full Pre-Change STEM Baseline", 0)
     document.add_paragraph(
@@ -374,7 +375,11 @@ def save_docx(report, path, base_url):
                 mode.title(),
                 result.get("display_output", standard_output(result)),
                 format_seconds(result["ms"]),
-                result.get("error", "") or "",
+                result.get("error", "") or (
+                    result.get("response", {}).get("error", "")
+                    if isinstance(result.get("response"), dict)
+                    else ""
+                ),
                 "",
             ])
         make_case_table(document, rows, guided=False)
@@ -389,7 +394,11 @@ def save_docx(report, path, base_url):
                 format_seconds(guided_result["ms"]),
                 guided_result.get("display_solution", solution_output(guided_result.get("solution"))),
                 format_seconds(guided_result.get("solution_ms", 0)),
-                guided_result.get("error", "") or "",
+                guided_result.get("error", "") or (
+                    guided_result.get("response", {}).get("error", "")
+                    if isinstance(guided_result.get("response"), dict)
+                    else ""
+                ),
                 "",
             ]]
         make_case_table(document, guided_rows, guided=True)
