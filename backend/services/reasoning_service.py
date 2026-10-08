@@ -632,7 +632,9 @@ must be executable as a single calculate expression.
 
 Do not return natural-language instructions. Do not return prose or markdown.
 """,
-                    max_tokens=256,
+                    # This is an extraction/planning pass, not the final answer.
+                    # Give it enough room to construct a complete multi-result expression.
+                    max_tokens=768,
                     request_timeout=None,
                 )
             except Exception:
@@ -643,16 +645,32 @@ Do not return natural-language instructions. Do not return prose or markdown.
                 if extraction.get("success")
                 else None
             )
-            if (
-                isinstance(extraction_plan, dict)
-                and extraction_plan.get("type") == "plan"
-                and extraction_plan.get("needs_wolfram") is True
-                and extraction_plan.get("operation") == "calculate"
-                and isinstance(extraction_plan.get("arguments"), dict)
-            ):
-                operation = "calculate"
-                arguments = extraction_plan["arguments"]
-                needs_wolfram = True
+            if isinstance(extraction_plan, dict):
+                extraction_needs_wolfram = extraction_plan.get("needs_wolfram")
+                if isinstance(extraction_needs_wolfram, str):
+                    extraction_needs_wolfram = (
+                        extraction_needs_wolfram.strip().lower()
+                        in {"true", "yes", "1"}
+                    )
+
+                extraction_operation = extraction_plan.get("operation")
+                extraction_arguments = extraction_plan.get("arguments")
+
+                # The extraction prompt already fixes the intended operation,
+                # so tolerate minor planner metadata drift while requiring the
+                # actual computational payload to be structurally valid.
+                if (
+                    extraction_needs_wolfram is True
+                    and extraction_operation == "calculate"
+                    and isinstance(extraction_arguments, dict)
+                    and isinstance(extraction_arguments.get("expression"), str)
+                    and self._is_planner_calculate_expression(
+                        extraction_arguments["expression"]
+                    )
+                ):
+                    operation = "calculate"
+                    arguments = extraction_arguments
+                    needs_wolfram = True
 
             planner_ms += round(
                 (time.perf_counter() - extraction_started) * 1000,
