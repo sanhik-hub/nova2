@@ -15,7 +15,7 @@ from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.shared import Inches, Pt
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 
 try:
@@ -357,7 +357,7 @@ def _latex_to_omml(latex):
                 '<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"',
                 1,
             )
-        return ET.fromstring(omml)
+        return parse_xml(omml.encode('utf-8'))
     except Exception:
         return None
 
