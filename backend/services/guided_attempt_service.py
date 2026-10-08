@@ -33,174 +33,88 @@ class GuidedAttemptService:
         include_hints: bool = False,
         step_count: int | None = None,
     ) -> dict[str, Any]:
-        """Build a guided attempt from a verified solution, then design MCQs."""
+        """Generate a guided attempt with exactly one local-LLM pass."""
         problem = query.strip()
         if not problem:
             return {"success": False, "error": "Question is empty."}
 
         started = perf_counter()
-        reasoning = self.reasoning
-
-        verified_started = perf_counter()
-        verified = reasoning.solve(problem, explanation="concise")
-        verified_elapsed_ms = (perf_counter() - verified_started) * 1000
-        if not verified.get("success"):
-            return {
-                "success": False,
-                "query": problem,
-                "steps": [],
-                "include_hints": include_hints,
-                "include_full_solution": False,
-                "full_solution": None,
-                "error": verified.get("error") or "Unable to establish a verified solution.",
-                "solution_generation_elapsed_ms": round(verified_elapsed_ms, 2),
-                "mcq_generation_elapsed_ms": 0.0,
-                "hint_elapsed_ms": 0.0,
-                "elapsed_ms": round((perf_counter() - started) * 1000, 2),
-            }
-
-        verified_answer = str(verified.get("answer") or "").strip()
-        if verified_answer:
-            self._verified_solution_cache[problem.casefold()] = verified_answer
-        if not verified_answer:
-            return {
-                "success": False,
-                "query": problem,
-                "steps": [],
-                "include_hints": include_hints,
-                "include_full_solution": False,
-                "full_solution": None,
-                "error": "The verified solution contained no usable answer.",
-            }
-
-        # Advisory complexity only: never converted into a model token/time cap.
-        # The verified concise solution is the authoritative stage representation;
-        # the MCQ model should convert those stages, not solve the problem again.
         estimated_steps, advisory_tokens = self._estimate_guided_complexity(problem)
-        requested = (
-            max(2, min(8, int(step_count)))
-            if step_count is not None
-            else estimated_steps
-        )
-        count_instruction = (
-            f"Use about {requested} meaningful stages."
-            " Do not create artificial stages just to reach the estimate."
-        )
-
-        hint_field = "|||HINT" if include_hints else ""
+        requested = max(2, min(8, int(step_count))) if step_count is not None else estimated_steps
+        hint_suffix = "|||HINT" if include_hints else ""
         prompt = f"""Original problem:
 {problem}
 
-Authoritative verified solution:
-{verified_answer}
+Generate a Guided Attempt in ONE pass. First emit exactly one solution line:
+SOLUTION|||STAGE_1|||STAGE_2|||STAGE_3...
+Then emit one line per meaningful guided stage:
+STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3{hint_suffix}
 
-Create a Guided Attempt by converting the actual stages of this verified
-solution into progressive MCQs. {count_instruction}
+Use about {requested} meaningful stages, but never invent artificial stages.
+The solution stages and MCQs must describe the SAME solution in the same order.
+The final stage must establish the requested result when applicable.
+Do not repeat targets or ask for values that were simply supplied as inputs.
+Each correct answer must be the answer to its own question.
+All three distractors must be plausible but clearly incorrect for that same stage.
+Python will own correct_index and option ordering; do not output an index or answer letter.
+{"Include one short hint per STEP without revealing the answer." if include_hints else "Do not output hints."}
+Use plain ASCII scientific notation in generated records: x^2, H2O, CH3, ->, omega.
+Never emit mojibake or replacement characters.
+Do not output headings, Markdown, JSON, blank lines, or commentary.""".strip()
 
-Output one line per stage in exactly this format:
-STEP|||QUESTION|||CORRECT_ANSWER|||WRONG_1|||WRONG_2|||WRONG_3{hint_field}
-
-Rules:
-- Treat the verified solution above as authoritative. Do not re-solve the
-  problem with a different method and do not contradict any established result.
-- Each MCQ must correspond to one concrete equation, relationship,
-  transformation, or necessary inference already present in the verified
-  solution.
-- Work in the same logical order as the verified solution: prerequisite
-  stages first and the requested result last when applicable.
-- Do not invent artificial stages just to reach the estimate.
-- Do not repeat a target quantity or ask the same mathematical/scientific
-  question in different wording.
-- Never ask for a value that is explicitly supplied as input unless the
-  question is testing a transformation that genuinely uses that supplied value.
-- CORRECT_ANSWER must be the answer to that stage's question and must agree
-  with the verified solution.
-- Provide three plausible, clearly incorrect distractors for each question.
-- All three distractors must test the same stage and must be independently
-  relevant to that question. Never reuse an answer from another stage merely
-  to fill an option slot.
-- Distractors should test the actual stage, not unrelated facts.
-- Do not output a correct-index, answer letter, option position, or schema label.
-- The final meaningful question should establish the requested result.
-- Keep questions and options concise and specific to this problem.
-- {"Include one short hint per question, without revealing the answer." if include_hints else "Do not generate hints."}
-- Do not output solutions, explanations, headings, JSON, Markdown, or blank lines.
-- Preserve unambiguous mathematical/scientific notation.
-- Use transport-safe scientific notation. Never emit raw Unicode subscript or
-  superscript digits, Greek letters, reaction arrows, or special mathematical
-  symbols in questions or options. Use ASCII forms such as x^2, H2O, CH3,
-  ->, and omega, or plain ASCII words when unambiguous.
-- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
-  These characters must not appear in generated questions, answers, options,
-  or hints. Do not attempt to approximate a scientific symbol with a damaged
-  Unicode fragment.
-""".strip()
-
-        system_prompt = """You are Nova's Guided Attempt designer.
-
-The computational/reasoning layer has already produced an authoritative concise
-solution. Your job is NOT to solve the original problem again. Convert the
-actual solution stages into a short, accurate sequence of progressive MCQs.
-
-Every question must map to a genuine stage in the supplied solution. The
-correct answer must agree with that supplied solution. Generate plausible
-distractors for the same stage, not generic alternatives.
-
-For every STEP record, emit the semantic correct answer explicitly before the
-two distractors. Never emit a correct-index field: Python owns option
-ordering and correct_index.
-
-Distinctness and solution alignment are more important than artificial step
-count. Avoid repeated targets and repeated final-result questions.""".strip()
+        system_prompt = """You are Nova Guided Attempt designer.
+You get the original STEM problem only. Solve it once and immediately convert
+the resulting solution stages into progressive MCQs. Do not use a separate
+planning pass and do not solve the problem again for each question.
+Accuracy of the solution stages and semantic alignment of every MCQ matter more
+than reaching an arbitrary stage count. Return only the requested SOLUTION and
+STEP records."""
 
         generation_started = perf_counter()
-        response = self.router.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0,
-            enable_thinking=False,
-        )
-        generation_elapsed_ms = (perf_counter() - generation_started) * 1000
+        try:
+            response = self.router.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0,
+                enable_thinking=False,
+                request_timeout=None,
+            )
+        except Exception as exc:
+            return {
+                "success": False, "query": problem, "steps": [],
+                "include_hints": include_hints, "include_full_solution": False,
+                "full_solution": None, "error": str(exc),
+            }
 
+        generation_elapsed_ms = (perf_counter() - generation_started) * 1000
         if not response.get("success"):
             return {
-                "success": False,
-                "query": problem,
-                "steps": [],
-                "include_hints": include_hints,
-                "include_full_solution": False,
+                "success": False, "query": problem, "steps": [],
+                "include_hints": include_hints, "include_full_solution": False,
                 "full_solution": None,
                 "error": response.get("error") or "Guided attempt generation failed.",
-                "solution_generation_elapsed_ms": round(verified_elapsed_ms, 2),
+                "solution_generation_elapsed_ms": 0.0,
                 "mcq_generation_elapsed_ms": round(generation_elapsed_ms, 2),
                 "hint_elapsed_ms": round(generation_elapsed_ms, 2) if include_hints else 0.0,
                 "elapsed_ms": round((perf_counter() - started) * 1000, 2),
-                "guided_estimated_steps": estimated_steps,
-                "guided_advisory_tokens": advisory_tokens,
             }
 
+        raw = response.get("result")
         try:
-            generated = self._parse_generated_records(response.get("result"), include_hints)
+            generated = self._parse_generated_records(raw, include_hints)
             generated = self._reorder_final_step(problem, generated)
-
             valid, steps_or_error = self._validate(
-                {"steps": generated},
-                include_hints,
-                requested_step_count=requested,
-                problem=problem,
+                {"steps": generated}, include_hints,
+                requested_step_count=requested, problem=problem,
             )
             if not valid:
                 raise ValueError(str(steps_or_error))
         except (ValueError, TypeError) as exc:
             return {
-                "success": False,
-                "query": problem,
-                "steps": [],
-                "include_hints": include_hints,
-                "include_full_solution": False,
-                "full_solution": None,
-                "error": str(exc),
-                "solution_generation_elapsed_ms": round(verified_elapsed_ms, 2),
+                "success": False, "query": problem, "steps": [],
+                "include_hints": include_hints, "include_full_solution": False,
+                "full_solution": None, "error": str(exc),
+                "solution_generation_elapsed_ms": 0.0,
                 "mcq_generation_elapsed_ms": round(generation_elapsed_ms, 2),
                 "hint_elapsed_ms": round(generation_elapsed_ms, 2) if include_hints else 0.0,
                 "elapsed_ms": round((perf_counter() - started) * 1000, 2),
@@ -208,22 +122,43 @@ count. Avoid repeated targets and repeated final-result questions.""".strip()
                 "guided_advisory_tokens": advisory_tokens,
             }
 
+        verified_answer = self._extract_guided_solution(raw, generated)
+        if verified_answer:
+            self._verified_solution_cache[problem.casefold()] = verified_answer
+
         return {
-            "success": True,
-            "query": problem,
-            "steps": steps_or_error,
-            "include_hints": include_hints,
-            "include_full_solution": False,
-            "full_solution": None,
-            "verified_solution": verified_answer,
-            "verified_solution_elapsed_ms": round(verified_elapsed_ms, 2),
-            "solution_generation_elapsed_ms": round(verified_elapsed_ms, 2),
+            "success": True, "query": problem, "steps": steps_or_error,
+            "include_hints": include_hints, "include_full_solution": False,
+            "full_solution": None, "verified_solution": verified_answer,
+            "verified_solution_elapsed_ms": 0.0,
+            "solution_generation_elapsed_ms": 0.0,
             "mcq_generation_elapsed_ms": round(generation_elapsed_ms, 2),
             "hint_elapsed_ms": round(generation_elapsed_ms, 2) if include_hints else 0.0,
             "elapsed_ms": round((perf_counter() - started) * 1000, 2),
             "guided_estimated_steps": estimated_steps,
             "guided_advisory_tokens": advisory_tokens,
+            "llm_passes": 1,
         }
+
+    @staticmethod
+    def _extract_guided_solution(raw: Any, generated: list[dict[str, Any]]) -> str:
+        """Extract the solution emitted in the same single generation pass."""
+        if isinstance(raw, str):
+            for line in raw.splitlines():
+                stripped = line.strip()
+                if stripped.upper().startswith("SOLUTION|||"):
+                    parts = [p.strip() for p in stripped.split("|||")[1:] if p.strip()]
+                    if parts:
+                        return "\n\n".join(
+                            GuidedAttemptService._normalize_generated_text(p)
+                            for p in parts
+                        )
+        stages = [
+            str(item.get("stage_answer") or "").strip()
+            for item in generated
+            if item.get("stage_answer")
+        ]
+        return "\n".join(stages)
 
     @staticmethod
     def _parse_one_pass_records(
