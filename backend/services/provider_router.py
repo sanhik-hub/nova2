@@ -42,6 +42,11 @@ class ProviderRouter:
             request_timeout=request_timeout,
         )
 
+    def supports_tool_calls(self) -> bool:
+        """Return whether the local llama-server exposes native tool calling."""
+        provider = self.get_provider("local_llm")
+        return bool(provider.supports_tool_calls())
+
     def calculate(
         self,
         query: str | None = None,
@@ -68,6 +73,8 @@ class ProviderRouter:
         enable_thinking=False,
         response_format=None,
         request_timeout=None,
+        tools=None,
+        tool_choice=None,
     ):
 
         provider = self.get_provider("local_llm")
