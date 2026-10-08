@@ -87,4 +87,6 @@ class ProviderRouter:
             enable_thinking=enable_thinking,
             response_format=response_format,
             request_timeout=request_timeout,
+            tools=tools,
+            tool_choice=tool_choice,
         )
