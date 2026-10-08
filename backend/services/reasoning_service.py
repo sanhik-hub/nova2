@@ -1106,7 +1106,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         # Only attempt normalization when the request explicitly starts with
         # one of the deterministic operation forms already understood below.
         prefix = re.match(
-            r"(?is)^\\s*(differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\\b",
+            r"(?is)^\s*(differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\b",
             text,
         )
         if not prefix:
@@ -1118,8 +1118,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         candidates = [text]
         body = text[prefix.end():].strip()
         for pattern in (
-            r"\\s*;\\s*",
-            r"\\s+(?:and then|then|and)\\s+",
+            r"\s*;\s*",
+            r"\s+(?:and then|then|and)\s+",
         ):
             parts = re.split(pattern, body, maxsplit=1, flags=re.IGNORECASE)
             if len(parts) == 2 and parts[0].strip():
