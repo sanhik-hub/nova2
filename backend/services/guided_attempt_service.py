@@ -7,6 +7,7 @@ from typing import Any
 
 from backend.services.provider_router import ProviderRouter
 from backend.services.reasoning_service import ReasoningService
+from backend.services.complexity_classifier import ComplexityClassifier
 
 
 class GuidedAttemptService:
@@ -22,6 +23,7 @@ class GuidedAttemptService:
         # Keep one reasoning service alongside the shared router so its
         # deterministic-result cache survives across Guided requests.
         self.reasoning = ReasoningService(router=self.router)
+        self.complexity_classifier = ComplexityClassifier()
         # The authoritative solution is already generated before MCQ
         # generation. Keep it available for the lazy full-solution request so
         # the same question is not solved a second time.
@@ -40,6 +42,7 @@ class GuidedAttemptService:
 
         started = perf_counter()
         estimated_steps, advisory_tokens = self._estimate_guided_complexity(problem)
+        complexity = self.complexity_classifier.analyze(problem)
         requested = max(2, min(8, int(step_count))) if step_count is not None else estimated_steps
         hint_suffix = "|||HINT" if include_hints else ""
         prompt = f"""Original problem:
@@ -76,7 +79,7 @@ STEP records."""
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0,
-                enable_thinking=False,
+                enable_thinking=complexity.thinking,
                 request_timeout=None,
             )
         except Exception as exc:
@@ -137,6 +140,7 @@ STEP records."""
             "elapsed_ms": round((perf_counter() - started) * 1000, 2),
             "guided_estimated_steps": estimated_steps,
             "guided_advisory_tokens": advisory_tokens,
+            "complexity": complexity.to_dict(),
             "llm_passes": 1,
         }
 
