@@ -1619,22 +1619,39 @@ Scientific display contract:
         if not text:
             return text
 
-        # Prefer the final fenced/displayed mathematical payload.
+        # Preserve the COMPLETE generated result payload.
+        #
+        # The result-only prompt may contain several independent requested
+        # values, each in its own display/inline math block. Never select only
+        # the final block: doing so silently drops every earlier requested
+        # result.
         blocks = re.findall(
             r"\`\`\`(?:math|latex)?\s*(.*?)\s*\`\`\`",
             text,
             flags=re.IGNORECASE | re.DOTALL,
         )
         if blocks:
-            return blocks[-1].strip()
+            return "\\n".join(
+                block.strip()
+                for block in blocks
+                if block.strip()
+            )
 
         displays = re.findall(r"\$\$(.*?)\$\$", text, flags=re.DOTALL)
         if displays:
-            return displays[-1].strip()
+            return "\\n".join(
+                display.strip()
+                for display in displays
+                if display.strip()
+            )
 
         displays = re.findall(r"\\\[(.*?)\\\]", text, flags=re.DOTALL)
         if displays:
-            return displays[-1].strip()
+            return "\\n".join(
+                display.strip()
+                for display in displays
+                if display.strip()
+            )
 
         inline = re.findall(
             r"(?<!\\)\$(?!\$)(.+?)(?<!\\)\$",
@@ -1642,7 +1659,11 @@ Scientific display contract:
             flags=re.DOTALL,
         )
         if inline:
-            return "$" + inline[-1].strip() + "$"
+            return "\\n".join(
+                "$" + value.strip() + "$"
+                for value in inline
+                if value.strip()
+            )
 
         return text
 
