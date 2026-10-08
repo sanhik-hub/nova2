@@ -616,6 +616,15 @@ immediate rules, for example:
 Use simple lowerCamelCase result labels. NEVER use snake_case or underscores
 in Wolfram symbols: underscore is Wolfram's pattern syntax.
 
+Completeness invariant: before emitting the JSON, make a private checklist of
+EVERY quantity, value, equation, product, condition, or other output explicitly
+requested by the user. A calculate call is invalid if it computes only one part
+of a multi-part request. For multiple requested outputs, return one expression
+that constructs a result for every requested output. Do not stop at an
+intermediate Solve, equation, derivative, or other sub-result merely because
+it answers one part. Reuse intermediate values with With, replacement rules,
+or local symbols when needed.
+
 For direct operations, translate the user's actual expression/equation into
 valid Wolfram syntax. For example, a request such as
 "solve : x^2-5x+4 = 0" should become:
@@ -639,6 +648,70 @@ Return no markdown, prose, or code fences outside the JSON object.
             ensure_ascii=False,
         )
 
+        # Prefer llama.cpp native tool calls when the running server exposes
+        # a tool-aware Jinja template. Otherwise use llama.cpp's constrained
+        # JSON output path. Both transports feed the same Python validator.
+        formulation_schema = {
+            "type": "object",
+            "properties": {
+                "operation": {
+                    "type": "string",
+                    "enum": [
+                        "calculate",
+                        "simplify",
+                        "factor",
+                        "expand",
+                        "differentiate",
+                        "integrate",
+                        "integrate_definite",
+                        "solve",
+                        "limit",
+                    ],
+                },
+                "arguments": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {"type": "string"},
+                        "equation": {"type": "string"},
+                        "variable": {"type": "string"},
+                        "lower": {"type": "string"},
+                        "upper": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            },
+            "required": ["operation", "arguments"],
+            "additionalProperties": False,
+        }
+
+        wolfram_tool = {
+            "type": "function",
+            "function": {
+                "name": "wolfram",
+                "description": (
+                    "Translate the user's computational STEM request into one "
+                    "validated Wolfram operation. Preserve every explicitly "
+                    "requested result."
+                ),
+                "parameters": formulation_schema,
+            },
+        }
+
+        use_native_tools = self.router.supports_tool_calls()
+        structured_kwargs = (
+            {
+                "tools": [wolfram_tool],
+                "tool_choice": "required",
+            }
+            if use_native_tools
+            else {
+                "response_format": {
+                    "type": "json_object",
+                    "schema": formulation_schema,
+                },
+            }
+        )
+
         llm_started = time.perf_counter()
         try:
             formulation = self.router.generate(
@@ -646,6 +719,7 @@ Return no markdown, prose, or code fences outside the JSON object.
                 system_prompt=formulation_system,
                 temperature=0.0,
                 request_timeout=None,
+                **structured_kwargs,
             )
         except Exception as exc:
             return self._error(f"Computational formulation failed: {exc}")
@@ -748,6 +822,7 @@ effects. Never use underscores in Wolfram symbols.
                     system_prompt=repair_system,
                     temperature=0.0,
                     request_timeout=None,
+                    **structured_kwargs,
                 )
             except Exception as exc:
                 repaired = {"success": False, "error": str(exc)}
