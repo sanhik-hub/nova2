@@ -62,6 +62,18 @@ class ComplexityClassifier:
             text,
             re.IGNORECASE,
         ))
+        verification_count = len(re.findall(
+            r"\b(?:verify|verification|validate|validation|check|checking|"
+            r"substitut(?:e|ing)|confirm|confirming|test|testing)\b",
+            text,
+            re.IGNORECASE,
+        ))
+        constraint_count = len(re.findall(
+            r"\b(?:constraint|constraints|condition|conditions|unknown|"
+            r"unknowns|equation|equations|requirement|requirements)\b",
+            text,
+            re.IGNORECASE,
+        ))
         unit_count = len(re.findall(
             r"(?<![A-Za-z])\d+(?:\.\d+)?\s*(?:[A-Za-zµμΩ]+)(?![A-Za-z])",
             text,
@@ -119,6 +131,18 @@ class ComplexityClassifier:
         if relation_count >= 2:
             score += 1
             signals.append("explicit_reasoning_relationships")
+
+        # Explicit verification adds a separate reasoning stage and therefore
+        # materially increases structural complexity.
+        if verification_count >= 1:
+            score += 2
+            signals.append("explicit_verification")
+
+        # Natural-language constraints/unknowns can represent coupled reasoning
+        # even when no symbolic equations are present.
+        if constraint_count >= 3:
+            score += 1
+            signals.append("multiple_constraints_or_unknowns")
 
         if unit_count >= 3:
             score += 1
