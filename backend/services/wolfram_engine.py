@@ -388,6 +388,18 @@ Module[
             f"Integrate[{expression}, {variable}]"
         )
 
+    def integrate_definite(
+        self,
+        expression: str,
+        variable: str = "x",
+        lower: str = "0",
+        upper: str = "1",
+    ) -> WolframResult:
+        """Evaluate a definite integral exactly with Wolfram Language."""
+        return self.calculate(
+            f"Integrate[{expression}, {{{variable}, {lower}, {upper}}}]"
+        )
+
     def limit(
         self,
         expression: str,
