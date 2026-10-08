@@ -37,6 +37,8 @@ class LocalLLMProvider(ComputationProvider):
         enable_thinking: bool = False,
         response_format: Optional[dict[str, Any]] = None,
         request_timeout: Optional[int] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
+        tool_choice: Optional[str] = None,
     ) -> dict[str, Any]:
 
         try:
@@ -48,6 +50,8 @@ class LocalLLMProvider(ComputationProvider):
                 enable_thinking=enable_thinking,
                 response_format=response_format,
                 request_timeout=request_timeout,
+                tools=tools,
+                tool_choice=tool_choice,
             )
 
             return {
