@@ -475,374 +475,13 @@ Scientific display contract:
     # COMPLEX COMPUTATIONAL PIPELINE
     # =========================================================
 
-    def _solve_complex(
-        self,
-        problem: str,
-        explanation: str = "detailed",
-    ):
-
-        planner_system = r"""
-You are Nova's semantic STEM request planner.
-
-Nova Standard Solver handles mathematics, physics, chemistry, and general scientific/conceptual questions. Classify the user's request by meaning, then decide whether exact symbolic/numeric computation is genuinely required.
-
-Do not solve the request and do not write the final answer.
-
-Return ONLY one JSON object with EXACTLY these fields:
-type, intent, needs_wolfram, operation, arguments, answer_tokens.
-
-The value of answer_tokens must be a positive integer chosen for this request.
-
-Rules:
-- "type" is always "plan".
-- "needs_wolfram" is a boolean.
-- Route by semantic intent, not by matching isolated subject words or operation keywords.
-- "needs_wolfram" means that the final answer genuinely benefits from exact symbolic/numeric computation or exact mathematical transformation that can be represented by one of the allowed structured operations.
-- Set "needs_wolfram" to false for factual recall, definitions, laws, units, formulas, nomenclature, identification, qualitative chemistry, conceptual physics, conceptual science, and ordinary explanations.
-- A chemistry question is NOT a Wolfram request merely because it mentions a chemical compound, reaction, element, or formula. Factual formulas, nomenclature, identification, and qualitative chemistry should use needs_wolfram=false.
-- A physics question is NOT a Wolfram request merely because it is physics. Conceptual laws, definitions, units, and qualitative explanations should use needs_wolfram=false.
-- Use Wolfram for physics or chemistry only when the user's concrete problem requires exact symbolic/numeric computation, algebra, equation solving, calculus, or another supported exact operation and the required mathematical data are present.
-- Derivations and proofs normally use needs_wolfram=false; use Wolfram only when an explicit concrete expression/equation requires exact symbolic computation.
-- Simple arithmetic or a bare mathematical expression may use Wolfram when exact evaluation is the actual task.
-- For a quantitative problem that supplies concrete numerical values and explicitly asks for a calculated numerical result, exact arithmetic is genuinely required. Prefer a supported exact calculation operation for the arithmetic subcalculation while the local reasoning model remains responsible for the scientific interpretation and final solution. Do not route such a request as a formula-only or factual response.
-- "operation" is null when exact symbolic/numeric computation is not genuinely needed.
-- "arguments" is null when "operation" is null.
-- If exact computation is needed, "operation" must be exactly one of:
-  calculate, simplify, factor, expand, differentiate, integrate, solve, limit.
-- Use "calculate" for concrete numerical arithmetic inside a semantic STEM
-  problem. Its arguments must contain one mathematical expression only; do not
-  return the final answer yourself.
-- "arguments" must be a machine-readable object appropriate to that operation.
-  For "calculate", use {"expression":"<mathematical expression>"}.
-- Wolfram arguments must contain only mathematical expressions/values from the user's request.
-- Never use natural-language instructions as computation arguments.
-- Never invent a formula, value, variable, condition, or assumption.
-- For derivations, proofs, conceptual explanations, and reasoning, set
-  "needs_wolfram" to false and use "operation":null and "arguments":null unless
-  the user explicitly supplies a concrete expression/equation that needs exact
-  symbolic computation.
-- A request to "derive", "prove", or "show that" a formula is normally a
-  reasoning task, not a Wolfram task. Do not invent a computation for it.
-- Use Wolfram only when a concrete expression/equation from the user's request
-  is available and exact symbolic/numeric computation or verification is genuinely useful.
-- If no computation is needed, "operation" MUST be null and "arguments" MUST be null.
-- If computation is needed, return one structured operation and its arguments;
-  do not return a tool name, provider name, array wrapper, or natural-language
-  instruction in either field.
-- Explicit concrete computation examples:
-  - "Differentiate x^3 + 5x" requires exact symbolic computation:
-    {"type":"plan","intent":"differentiate","needs_wolfram":true,"operation":"differentiate","arguments":{"expression":"x^3 + 5x","variable":"x"},"answer_tokens":60}
-  - "Solve x^2 - 5x + 6 = 0" requires exact equation solving:
-    {"type":"plan","intent":"solve","needs_wolfram":true,"operation":"solve","arguments":{"equation":"x^2 - 5x + 6 = 0","variable":"x"},"answer_tokens":60}
-  - A conceptual law/definition question is semantic reasoning:
-    {"type":"plan","intent":"conceptual","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":80}
-  - A request for a known chemical formula or name is factual chemistry:
-    {"type":"plan","intent":"factual_chemistry","needs_wolfram":false,"operation":null,"arguments":null,"answer_tokens":40}
-  - A quantitative semantic problem may use exact arithmetic verification:
-    {"type":"plan","intent":"quantitative","needs_wolfram":true,"operation":"calculate","arguments":{"expression":"9*10^9*(2*10^-6)*(3*10^-6)/(0.5^2)"},"answer_tokens":80}
-- Do not classify an explicit request to differentiate, integrate, factor, expand, simplify, solve, or take a limit as pure reasoning when the user supplied the concrete expression/equation needed for that exact operation.
-- "answer_tokens" is the planner's estimate of the completion tokens actually
-  required for the final answer. It is advisory metadata only and is never a
-  hard generation ceiling.
-- For explanation "off", estimate ONLY the required result that should be shown
-  to the user. Do not budget for explanations, introductions, commentary,
-  headings, derivations, or summaries. An overall-reaction request should budget
-  for the reaction equation; a formula request for the formula; a name request
-  for the name; a value request for the value.
-- For "concise" and "detailed", estimate the complete response including the  mathematics and prose required by that explanation mode.
-- Always use the smallest sufficient estimate for this specific request.
-- Never inflate the estimate merely because the topic is difficult.
-
-The planner is a router and computation-request builder, not the final solver.
-For a semantic quantitative problem, it may construct the exact arithmetic
-expression that the final solver needs Wolfram to evaluate, but it must not
-write the final user answer. When information needed for a formula or calculation is missing, leave Wolfram unused rather than guessing it.
-
-Important: do not infer that every math/physics/chemistry request needs Wolfram. The deciding question is whether exact computation is genuinely required for this particular request.
-"""
-
-        planner_started = time.perf_counter()
-
-        planner = self.router.plan(
-            prompt=json.dumps(
-                {
-                    "explanation_preference": explanation,
-                    "user_request": problem,
-                },
-                ensure_ascii=False,
-            ),
-            system_prompt=planner_system,
-            # The lightweight planner must use ordinary JSON-object output
-            # rather than constrained JSON decoding. Constrained decoding has
-            # previously caused severe stalls on this model. The reasoning
-            # service already parses and validates the returned object, so the
-            # response-format constraint is redundant here.
-            max_tokens=self.PLANNER_TOKENS,
-            compact=True,
-        )
-
-        planner_ms = round(
-            (time.perf_counter() - planner_started) * 1000,
-            2,
-        )
-
-        if not planner["success"]:
-            response = self._error(planner["error"])
-            response["timings_ms"] = {
-                "planner": planner_ms,
-                "wolfram": 0.0,
-                "final_llm": 0.0,
-            }
-            return response
-
-        plan = self._parse_json(planner["result"])
-
-        # Lightweight local planner models can occasionally preserve an older
-        # top-level type label (for example "reasoning") even when they emit
-        # the current structured plan fields correctly. Recover only when the
-        # complete current contract is otherwise present; never turn arbitrary
-        # planner output into a plan.
-        if isinstance(plan, dict) and plan.get("type") != "plan":
-            compatible_fields = {
-                "intent",
-                "needs_wolfram",
-                "operation",
-                "arguments",
-            }
-            if compatible_fields.issubset(plan):
-                plan["type"] = "plan"
-
-        if not isinstance(plan, dict) or plan.get("type") != "plan":
-            # The small planner is advisory. Never turn malformed planner JSON
-            # into a user-visible failure when the request itself can be routed
-            # safely. Recover exact operations deterministically; otherwise
-            # continue as a semantic reasoning request.
-            recovered = self._detect_explicit_operation(problem)
-            if recovered is not None:
-                operation, arguments = recovered
-                plan = {
-                    "type": "plan",
-                    "intent": "solve",
-                    "needs_wolfram": True,
-                    "operation": operation,
-                    "arguments": arguments,
-                    "answer_tokens": None,
-                }
-            else:
-                plan = {
-                    "type": "plan",
-                    "intent": "solve",
-                    "needs_wolfram": False,
-                    "operation": None,
-                    "arguments": None,
-                    "answer_tokens": None,
-                }
-
-        # Normalize harmless scalar variants emitted by small local models
-        # before validating the routing contract.
-        if isinstance(plan.get("needs_wolfram"), str):
-            flag = plan["needs_wolfram"].strip().lower()
-            if flag in {"true", "yes", "1"}:
-                plan["needs_wolfram"] = True
-            elif flag in {"false", "no", "0"}:
-                plan["needs_wolfram"] = False
-
-        if not isinstance(plan.get("intent"), str):
-            plan["intent"] = str(plan.get("intent") or "solve")
-
-        required_fields = {
-            "intent": str,
-            "needs_wolfram": bool,
-            "operation": (str, type(None)),
-            "arguments": (dict, type(None)),
-        }
-
-        for field, expected_type in required_fields.items():
-            if field not in plan or not isinstance(plan[field], expected_type):
-                recovered = self._detect_explicit_operation(problem)
-                if field in {"needs_wolfram", "operation", "arguments"} and recovered is not None:
-                    recovered_operation, recovered_arguments = recovered
-                    plan["needs_wolfram"] = True
-                    plan["operation"] = recovered_operation
-                    plan["arguments"] = recovered_arguments
-                    continue
-                # Invalid optional routing metadata should not prevent the
-                # semantic solver from answering. Fall back to no exact tool.
-                if field == "needs_wolfram":
-                    plan["needs_wolfram"] = False
-                    continue
-                if field == "operation":
-                    plan["operation"] = None
-                    continue
-                if field == "arguments":
-                    plan["arguments"] = None
-                    continue
-                return self._error(
-                    f"Planner returned an invalid plan field: {field}."
-                )
-
-        # The new planner contract remains operation + arguments.
-        operation = plan.get("operation")
-        arguments = plan.get("arguments")
-
-        legacy_calls = plan.get("wolfram")
-        if operation is None and plan["needs_wolfram"] and isinstance(legacy_calls, list):
-            if len(legacy_calls) == 1 and isinstance(legacy_calls[0], dict):
-                operation = legacy_calls[0].get("operation")
-                arguments = legacy_calls[0].get("arguments")
-
-        # If a legacy planner emitted a provider/tool-name string such as
-        # "wolfram", recover only from an unambiguous explicit operation in the
-        # user's request. Do not use this as the primary routing mechanism.
-        if operation is None and plan["needs_wolfram"]:
-            recovered = self._detect_explicit_operation(problem)
-            if recovered is not None:
-                operation, arguments = recovered
-
-        # Semantic planning remains primary, but validate the planner against
-        # an unambiguous explicit exact-computation request. Small local models
-        # can occasionally under-classify these requests as pure reasoning.
-        # This is a recovery guard, not the routing architecture: it only
-        # upgrades a false negative when the existing structured detector can
-        # identify a concrete supported operation and arguments.
-        #
-        # Some local planner responses violate the contract by returning a
-        # valid operation + arguments while incorrectly setting needs_wolfram
-        # to false. If the user's request independently matches the same
-        # explicit supported operation, promote the request back to exact
-        # computation instead of discarding the planner's operation below.
-        if not plan["needs_wolfram"]:
-            recovered = self._detect_explicit_operation(problem)
-            if recovered is not None:
-                recovered_operation, recovered_arguments = recovered
-                if (
-                    isinstance(recovered_operation, str)
-                    and isinstance(recovered_arguments, dict)
-                    and (
-                        operation is None
-                        or operation == recovered_operation
-                    )
-                ):
-                    plan["needs_wolfram"] = True
-                    operation = recovered_operation
-                    arguments = recovered_arguments
-
-        if plan["needs_wolfram"]:
-            if not isinstance(operation, str) or not operation.strip() or not isinstance(arguments, dict):
-                # The planner is advisory. If it cannot produce a usable
-                # exact-computation contract, fall back to semantic solving
-                # instead of exposing "invalid plan" to the user.
-                recovered = self._detect_explicit_operation(problem)
-                if recovered is not None:
-                    operation, arguments = recovered
-                else:
-                    plan["needs_wolfram"] = False
-                    operation = None
-                    arguments = None
-        else:
-            operation = None
-            arguments = None
-
-        calls = []
-        if operation is not None:
-            calls.append({
-                "operation": operation,
-                "arguments": arguments,
-            })
-
-        # The answer-size estimate is advisory. Normalize the small planner's
-        # occasional JSON-string integer, but never let an unusable estimate
-        # prevent an otherwise valid mathematical request from being solved.
-        # A missing/invalid estimate means the final model may terminate
-        # naturally rather than receiving an artificial fallback cap.
-        answer_tokens = plan.get("answer_tokens")
-        if isinstance(answer_tokens, str) and re.fullmatch(r"\d+", answer_tokens.strip()):
-            answer_tokens = int(answer_tokens.strip())
-            plan["answer_tokens"] = answer_tokens
-
-        if type(answer_tokens) is not int or answer_tokens <= 0:
-            answer_tokens = None
-            plan["answer_tokens"] = None
-
-        calls = calls[:self.MAX_TOOL_CALLS]
-
-        if not plan["needs_wolfram"]:
-            calls = []
-
-        if self._contains_undefined_function_call(calls):
-            return self._error("Planner produced an unsupported function call.")
-
-        tool_results = []
-        wolfram_ms_total = 0.0
-
-        for call in calls:
-            validated = self._validate_tool_call({
-                "tool": call.get("operation"),
-                "arguments": call.get("arguments"),
-            })
-
-            if not validated["valid"]:
-                return self._error(validated["error"])
-
-            tool_started = time.perf_counter()
-
-            result = self._execute_tool(
-                validated["tool"],
-                validated["arguments"],
-            )
-
-            wolfram_ms_total += round(
-                (time.perf_counter() - tool_started) * 1000,
-                2,
-            )
-
-            if not result.get("success"):
-                return self._error(
-                    "Wolfram verification failed: "
-                    + str(result.get("error"))
-                )
-
-            tool_results.append({
-                "tool": validated["tool"],
-                "arguments": validated["arguments"],
-                "result": result.get("result"),
-            })
-
-        # -----------------------------------------------------
-        # EXPLANATION OFF
-        # -----------------------------------------------------
-        #
-        # If Wolfram produced an exact result, return it directly.
-        # Otherwise the final Qwen model still owns the answer. The planner
-        # never supplies final solution text.
-        # -----------------------------------------------------
-
-        if explanation == "off" and tool_results:
-            response = self._cas_result_only(tool_results=tool_results)
-            response["timings_ms"] = {
-                "planner": planner_ms,
-                "wolfram": wolfram_ms_total,
-                "final_llm": 0.0,
-            }
-            return response
-
-        # -----------------------------------------------------
-        # ONE FINAL LLM CALL
-        # -----------------------------------------------------
-
-        response = self._final_explanation(
-            problem=problem,
-            idea="",
-            reasoning=[],
-            tool_results=tool_results,
-            explanation=explanation,
-            estimated_answer_tokens=answer_tokens,
-        )
-        response["timings_ms"] = {
-            "planner": planner_ms,
-            "wolfram": wolfram_ms_total,
-            "final_llm": response.pop("_final_llm_ms", 0.0),
-        }
+    def _solve_complex(self, problem: str, explanation: str = "detailed"):
+        """Run exactly one local-LLM pass for unresolved semantic STEM requests."""
+        started = time.perf_counter()
+        response = self._final_explanation(problem=problem, idea="", reasoning=[], tool_results=[], explanation=explanation, estimated_answer_tokens=None)
+        response["timings_ms"] = {"planner": 0.0, "wolfram": 0.0, "final_llm": response.pop("_final_llm_ms", 0.0)}
+        response["llm_passes"] = 1
+        response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
         return response
 
     def _solve_quantitative_direct(self, problem: str, explanation: str):
@@ -1098,6 +737,16 @@ problem, then calculate from the supplied data. Do not invent missing values.
 
     def _detect_result_only_operation(self, problem: str):
         text = problem.strip()
+        definite = re.match(
+            r"(?is)^\s*(?:∫|\\int)\s*_?\{?([^,{}]+)\}?\s*\^\s*\{?([^}\s]+)\}?\s*(.*?)\s+d\s*([A-Za-z])\s*[.!?]?\s*$",
+            text,
+        )
+        if definite:
+            lower, upper, expression, variable = definite.groups()
+            expression = normalize_expression(expression.strip())
+            if expression:
+                return "integrate_definite", {"expression": expression, "variable": variable, "lower": normalize_expression(lower.strip()), "upper": normalize_expression(upper.strip())}
+
         patterns = [
             (r"^(?:the )?derivative of\s+(.+?)(?:\s+with respect to\s+([A-Za-z]))?\s*\.?$", "differentiate"),
             (r"^find (?:the )?derivative of\s+(.+?)(?:\s+with respect to\s+([A-Za-z]))?\s*\.?$", "differentiate"),
@@ -1145,7 +794,10 @@ problem, then calculate from the supplied data. Do not invent missing values.
         )
         if match:
             expression = match.group(1).strip()
-            expression = normalize_expression(expression.strip("`").strip())
+            expression = expression.strip("`").strip()
+            # If written as y = ..., differentiate the right-hand side.
+            expression = re.sub(r"(?is)^y\s*=\s*", "", expression).strip()
+            expression = normalize_expression(expression)
             expression = re.sub(
                 r"(?is)\s+with\s+respect\s+to\s+([a-zA-Z])\s*$",
                 "",
@@ -1163,6 +815,17 @@ problem, then calculate from the supplied data. Do not invent missing values.
                 "expression": expression,
                 "variable": variable,
             })
+
+        # DEFINITE INTEGRAL notation, e.g. ∫_0^1 x^2 ln(x) dx.
+        definite = re.match(
+            r"(?is)^\s*(?:integrate\s+)?(?:∫|\\int)\s*_?\{?([^,{}]+)\}?\s*\^\s*\{?([^}\s]+)\}?\s*(.*?)\s+d\s*([A-Za-z])\s*[.!?]?\s*$",
+            text,
+        )
+        if definite:
+            lower, upper, expression, variable = definite.groups()
+            expression = normalize_expression(expression.strip())
+            if expression:
+                return ("integrate_definite", {"expression": expression, "variable": variable, "lower": normalize_expression(lower.strip()), "upper": normalize_expression(upper.strip())})
 
         # INTEGRATE
         match = re.match(
@@ -1250,6 +913,7 @@ problem, then calculate from the supplied data. Do not invent missing values.
             "expand",
             "differentiate",
             "integrate",
+            "integrate_definite",
             "solve",
             "limit",
         }
@@ -1518,6 +1182,13 @@ problem, then calculate from the supplied data. Do not invent missing values.
                     arguments.get("variable", "x"),
                 )
 
+            elif tool == "integrate_definite":
+                raw = provider.engine.integrate_definite(
+                    normalize_expression(arguments["expression"]),
+                    arguments.get("variable", "x"),
+                    normalize_expression(arguments["lower"]),
+                    normalize_expression(arguments["upper"]),
+                )
             elif tool == "integrate":
 
                 raw = provider.engine.integrate(
