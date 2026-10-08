@@ -414,7 +414,1016 @@
       "display_solution": "",
       "solution_ms": 0,
       "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "physics_easy_projectile",
+      "difficulty": "easy",
+      "domain": "physics",
+      "mode": "off",
+      "question": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+      "ms": 12336.604500073008,
+      "response": {
+        "success": true,
+        "answer": "$t = \\frac{2v}{g} = \\frac{2 \\times 20}{10} = 4$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 12333.36
+        },
+        "elapsed_ms": 12334.47
+      },
+      "raw": "{\"success\":true,\"answer\":\"$t = \\\\frac{2v}{g} = \\\\frac{2 \\\\times 20}{10} = 4$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":12333.36},\"elapsed_ms\":12334.47}",
+      "display_output": "$t = \\frac{2v}{g} = \\frac{2 \\times 20}{10} = 4$",
+      "structured_output": "$t = \\frac{2v}{g} = \\frac{2 \\times 20}{10} = 4$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_easy_projectile",
+      "difficulty": "easy",
+      "domain": "physics",
+      "mode": "concise",
+      "question": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+      "ms": 29202.395000029355,
+      "response": {
+        "success": true,
+        "answer": "The maximum height $ h $ of a projectile launched vertically upward is given by:\n\n$$\nh = \\frac{v^2}{2g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nh = \\frac{20^2}{2 \\cdot 10} = \\frac{400}{20} = 20 \\text{ m}\n$$\n\nThe total time of flight $ t $ for a vertically projected object is given by:\n\n$$\nt = \\frac{v}{g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nt = \\frac{20}{10} = 2 \\text{ s}\n$$\n\nTherefore, the maximum height is $ \\boxed{20} $ meters and the total time of flight is $ \\boxed{2} $ seconds.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 29199.56
+        },
+        "elapsed_ms": 29199.63
+      },
+      "raw": "{\"success\":true,\"answer\":\"The maximum height $ h $ of a projectile launched vertically upward is given by:\\n\\n$$\\nh = \\\\frac{v^2}{2g}\\n$$\\n\\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\\n\\n$$\\nh = \\\\frac{20^2}{2 \\\\cdot 10} = \\\\frac{400}{20} = 20 \\\\text{ m}\\n$$\\n\\nThe total time of flight $ t $ for a vertically projected object is given by:\\n\\n$$\\nt = \\\\frac{v}{g}\\n$$\\n\\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\\n\\n$$\\nt = \\\\frac{20}{10} = 2 \\\\text{ s}\\n$$\\n\\nTherefore, the maximum height is $ \\\\boxed{20} $ meters and the total time of flight is $ \\\\boxed{2} $ seconds.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":29199.56},\"elapsed_ms\":29199.63}",
+      "display_output": "The maximum height $ h $ of a projectile launched vertically upward is given by:\n\n$$\nh = \\frac{v^2}{2g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nh = \\frac{20^2}{2 \\cdot 10} = \\frac{400}{20} = 20 \\text{ m}\n$$\n\nThe total time of flight $ t $ for a vertically projected object is given by:\n\n$$\nt = \\frac{v}{g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nt = \\frac{20}{10} = 2 \\text{ s}\n$$\n\nTherefore, the maximum height is $ \\boxed{20} $ meters and the total time of flight is $ \\boxed{2} $ seconds.",
+      "structured_output": "The maximum height $ h $ of a projectile launched vertically upward is given by:\n\n$$\nh = \\frac{v^2}{2g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nh = \\frac{20^2}{2 \\cdot 10} = \\frac{400}{20} = 20 \\text{ m}\n$$\n\nThe total time of flight $ t $ for a vertically projected object is given by:\n\n$$\nt = \\frac{v}{g}\n$$\n\nSubstituting $ v = 20 $ m/s and $ g = 10 $ m/s²:\n\n$$\nt = \\frac{20}{10} = 2 \\text{ s}\n$$\n\nTherefore, the maximum height is $ \\boxed{20} $ meters and the total time of flight is $ \\boxed{2} $ seconds.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_easy_projectile",
+      "difficulty": "easy",
+      "domain": "physics",
+      "mode": "detailed",
+      "question": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+      "ms": 62053.89850004576,
+      "response": {
+        "success": true,
+        "answer": "To solve this problem, we use the equations of motion under constant acceleration (gravity, $ g = 10 \\, \\text{m/s}^2 $).\n\n### Given:\n- Initial velocity, $ u = 20 \\, \\text{m/s} $\n- Acceleration due to gravity, $ g = 10 \\, \\text{m/s}^2 $\n- Air resistance is neglected.\n\n### Objective:\n1. Find the **maximum height** reached by the particle.\n2. Find the **total time of flight** until the particle returns to the ground.\n\n---\n\n### 1. Maximum Height\n\nAt maximum height, the velocity of the particle becomes zero. We use the kinematic equation:\n\n$$\nv^2 = u^2 + 2as\n$$\n\nWhere:\n- $ v = 0 \\, \\text{m/s} $ (velocity at maximum height),\n- $ u = 20 \\, \\text{m/s} $,\n- $ a = -g = -10 \\, \\text{m/s}^2 $ (negative because gravity acts opposite to the motion),\n- $ s $ is the displacement (maximum height).\n\nSubstitute the values:\n\n$$\n0^2 = (20)^2 + 2(-10)s\n$$\n\n$$\n0 = 400 - 20s\n$$\n\n$$\n20s = 400\n$$\n\n$$\ns = \\frac{400}{20} = 20 \\, \\text{m}\n$$\n\n**Maximum height = 20 m**\n\n---\n\n### 2. Total Time of Flight\n\nThe total time of flight is the time taken for the particle to go up and then come back down to the ground. We use the kinematic equation:\n\n$$\nv = u + at\n$$\n\nAt the end of the flight, the particle returns to the ground, so the final velocity $ v = 0 $ (at the peak), but we are interested in the total time of flight. Alternatively, we can use the formula for time of flight for vertical motion:\n\n$$\nt = \\frac{2u}{g}\n$$\n\nSubstitute the values:\n\n$$\nt = \\frac{2 \\times 20}{10} = \\frac{40}{10} = 4 \\, \\text{s}\n$$\n\n**Total time of flight = 4 s**\n\n---\n\n### Final Answer:\n\n- **Maximum height = 20 m**\n- **Total time of flight = 4 s**",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 62042.06
+        },
+        "elapsed_ms": 62042.11
+      },
+      "raw": "{\"success\":true,\"answer\":\"To solve this problem, we use the equations of motion under constant acceleration (gravity, $ g = 10 \\\\, \\\\text{m/s}^2 $).\\n\\n### Given:\\n- Initial velocity, $ u = 20 \\\\, \\\\text{m/s} $\\n- Acceleration due to gravity, $ g = 10 \\\\, \\\\text{m/s}^2 $\\n- Air resistance is neglected.\\n\\n### Objective:\\n1. Find the **maximum height** reached by the particle.\\n2. Find the **total time of flight** until the particle returns to the ground.\\n\\n---\\n\\n### 1. Maximum Height\\n\\nAt maximum height, the velocity of the particle becomes zero. We use the kinematic equation:\\n\\n$$\\nv^2 = u^2 + 2as\\n$$\\n\\nWhere:\\n- $ v = 0 \\\\, \\\\text{m/s} $ (velocity at maximum height),\\n- $ u = 20 \\\\, \\\\text{m/s} $,\\n- $ a = -g = -10 \\\\, \\\\text{m/s}^2 $ (negative because gravity acts opposite to the motion),\\n- $ s $ is the displacement (maximum height).\\n\\nSubstitute the values:\\n\\n$$\\n0^2 = (20)^2 + 2(-10)s\\n$$\\n\\n$$\\n0 = 400 - 20s\\n$$\\n\\n$$\\n20s = 400\\n$$\\n\\n$$\\ns = \\\\frac{400}{20} = 20 \\\\, \\\\text{m}\\n$$\\n\\n**Maximum height = 20 m**\\n\\n---\\n\\n### 2. Total Time of Flight\\n\\nThe total time of flight is the time taken for the particle to go up and then come back down to the ground. We use the kinematic equation:\\n\\n$$\\nv = u + at\\n$$\\n\\nAt the end of the flight, the particle returns to the ground, so the final velocity $ v = 0 $ (at the peak), but we are interested in the total time of flight. Alternatively, we can use the formula for time of flight for vertical motion:\\n\\n$$\\nt = \\\\frac{2u}{g}\\n$$\\n\\nSubstitute the values:\\n\\n$$\\nt = \\\\frac{2 \\\\times 20}{10} = \\\\frac{40}{10} = 4 \\\\, \\\\text{s}\\n$$\\n\\n**Total time of flight = 4 s**\\n\\n---\\n\\n### Final Answer:\\n\\n- **Maximum height = 20 m**\\n- **Total time of flight = 4 s**\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":62042.06},\"elapsed_ms\":62042.11}",
+      "display_output": "To solve this problem, we use the equations of motion under constant acceleration (gravity, $ g = 10 \\, \\text{m/s}^2 $).\n\n### Given:\n- Initial velocity, $ u = 20 \\, \\text{m/s} $\n- Acceleration due to gravity, $ g = 10 \\, \\text{m/s}^2 $\n- Air resistance is neglected.\n\n### Objective:\n1. Find the **maximum height** reached by the particle.\n2. Find the **total time of flight** until the particle returns to the ground.\n\n---\n\n### 1. Maximum Height\n\nAt maximum height, the velocity of the particle becomes zero. We use the kinematic equation:\n\n$$\nv^2 = u^2 + 2as\n$$\n\nWhere:\n- $ v = 0 \\, \\text{m/s} $ (velocity at maximum height),\n- $ u = 20 \\, \\text{m/s} $,\n- $ a = -g = -10 \\, \\text{m/s}^2 $ (negative because gravity acts opposite to the motion),\n- $ s $ is the displacement (maximum height).\n\nSubstitute the values:\n\n$$\n0^2 = (20)^2 + 2(-10)s\n$$\n\n$$\n0 = 400 - 20s\n$$\n\n$$\n20s = 400\n$$\n\n$$\ns = \\frac{400}{20} = 20 \\, \\text{m}\n$$\n\n**Maximum height = 20 m**\n\n---\n\n### 2. Total Time of Flight\n\nThe total time of flight is the time taken for the particle to go up and then come back down to the ground. We use the kinematic equation:\n\n$$\nv = u + at\n$$\n\nAt the end of the flight, the particle returns to the ground, so the final velocity $ v = 0 $ (at the peak), but we are interested in the total time of flight. Alternatively, we can use the formula for time of flight for vertical motion:\n\n$$\nt = \\frac{2u}{g}\n$$\n\nSubstitute the values:\n\n$$\nt = \\frac{2 \\times 20}{10} = \\frac{40}{10} = 4 \\, \\text{s}\n$$\n\n**Total time of flight = 4 s**\n\n---\n\n### Final Answer:\n\n- **Maximum height = 20 m**\n- **Total time of flight = 4 s**",
+      "structured_output": "To solve this problem, we use the equations of motion under constant acceleration (gravity, $ g = 10 \\, \\text{m/s}^2 $).\n\n### Given:\n- Initial velocity, $ u = 20 \\, \\text{m/s} $\n- Acceleration due to gravity, $ g = 10 \\, \\text{m/s}^2 $\n- Air resistance is neglected.\n\n### Objective:\n1. Find the **maximum height** reached by the particle.\n2. Find the **total time of flight** until the particle returns to the ground.\n\n---\n\n### 1. Maximum Height\n\nAt maximum height, the velocity of the particle becomes zero. We use the kinematic equation:\n\n$$\nv^2 = u^2 + 2as\n$$\n\nWhere:\n- $ v = 0 \\, \\text{m/s} $ (velocity at maximum height),\n- $ u = 20 \\, \\text{m/s} $,\n- $ a = -g = -10 \\, \\text{m/s}^2 $ (negative because gravity acts opposite to the motion),\n- $ s $ is the displacement (maximum height).\n\nSubstitute the values:\n\n$$\n0^2 = (20)^2 + 2(-10)s\n$$\n\n$$\n0 = 400 - 20s\n$$\n\n$$\n20s = 400\n$$\n\n$$\ns = \\frac{400}{20} = 20 \\, \\text{m}\n$$\n\n**Maximum height = 20 m**\n\n---\n\n### 2. Total Time of Flight\n\nThe total time of flight is the time taken for the particle to go up and then come back down to the ground. We use the kinematic equation:\n\n$$\nv = u + at\n$$\n\nAt the end of the flight, the particle returns to the ground, so the final velocity $ v = 0 $ (at the peak), but we are interested in the total time of flight. Alternatively, we can use the formula for time of flight for vertical motion:\n\n$$\nt = \\frac{2u}{g}\n$$\n\nSubstitute the values:\n\n$$\nt = \\frac{2 \\times 20}{10} = \\frac{40}{10} = 4 \\, \\text{s}\n$$\n\n**Total time of flight = 4 s**\n\n---\n\n### Final Answer:\n\n- **Maximum height = 20 m**\n- **Total time of flight = 4 s**",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "physics_easy_projectile",
+      "difficulty": "easy",
+      "domain": "physics",
+      "question": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+      "ms": 100635.06430003326,
+      "response": {
+        "success": false,
+        "query": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 28045.7,
+        "mcq_generation_elapsed_ms": 72570.69,
+        "hint_elapsed_ms": 72570.69,
+        "elapsed_ms": 100616.55,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 72570.69
+      },
+      "raw": "{\"success\":false,\"query\":\"A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":28045.7,\"mcq_generation_elapsed_ms\":72570.69,\"hint_elapsed_ms\":72570.69,\"elapsed_ms\":100616.55,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":72570.69}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "physics_medium_rod_emf",
+      "difficulty": "medium",
+      "domain": "physics",
+      "mode": "off",
+      "question": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+      "ms": 36765.952500049025,
+      "response": {
+        "success": true,
+        "answer": "\\mathcal{E} = \\frac{1}{2} B \\omega L^2",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 36763.06,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 36762.15
+        }
+      },
+      "raw": "{\"success\":true,\"answer\":\"\\\\mathcal{E} = \\\\frac{1}{2} B \\\\omega L^2\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":36763.06,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":36762.15}}",
+      "display_output": "\\mathcal{E} = \\frac{1}{2} B \\omega L^2",
+      "structured_output": "\\mathcal{E} = \\frac{1}{2} B \\omega L^2",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_medium_rod_emf",
+      "difficulty": "medium",
+      "domain": "physics",
+      "mode": "concise",
+      "question": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+      "ms": 29778.90859998297,
+      "response": {
+        "success": true,
+        "answer": "The motional emf across a small segment of the rod is given by\n\n$$\ndE = Bv\\,dr\n$$\n\nwhere $v$ is the linear speed of the segment at distance $r$ from the axis of rotation. The linear speed is related to the angular speed by $v = r\\omega$. Substituting this into the expression for $dE$:\n\n$$\ndE = B(r\\omega)\\,dr\n$$\n\nIntegrating this expression from $0$ to $L$ to find the total emf:\n\n$$\nE = \\int_0^L B\\omega r\\,dr\n$$\n\nEvaluating the integral:\n\n$$\nE = \\frac{1}{2}B\\omega L^2\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "elapsed_ms": 29776.29,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 29776.16
+        }
+      },
+      "raw": "{\"success\":true,\"answer\":\"The motional emf across a small segment of the rod is given by\\n\\n$$\\ndE = Bv\\\\,dr\\n$$\\n\\nwhere $v$ is the linear speed of the segment at distance $r$ from the axis of rotation. The linear speed is related to the angular speed by $v = r\\\\omega$. Substituting this into the expression for $dE$:\\n\\n$$\\ndE = B(r\\\\omega)\\\\,dr\\n$$\\n\\nIntegrating this expression from $0$ to $L$ to find the total emf:\\n\\n$$\\nE = \\\\int_0^L B\\\\omega r\\\\,dr\\n$$\\n\\nEvaluating the integral:\\n\\n$$\\nE = \\\\frac{1}{2}B\\\\omega L^2\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"elapsed_ms\":29776.29,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":29776.16}}",
+      "display_output": "The motional emf across a small segment of the rod is given by\n\n$$\ndE = Bv\\,dr\n$$\n\nwhere $v$ is the linear speed of the segment at distance $r$ from the axis of rotation. The linear speed is related to the angular speed by $v = r\\omega$. Substituting this into the expression for $dE$:\n\n$$\ndE = B(r\\omega)\\,dr\n$$\n\nIntegrating this expression from $0$ to $L$ to find the total emf:\n\n$$\nE = \\int_0^L B\\omega r\\,dr\n$$\n\nEvaluating the integral:\n\n$$\nE = \\frac{1}{2}B\\omega L^2\n$$",
+      "structured_output": "The motional emf across a small segment of the rod is given by\n\n$$\ndE = Bv\\,dr\n$$\n\nwhere $v$ is the linear speed of the segment at distance $r$ from the axis of rotation. The linear speed is related to the angular speed by $v = r\\omega$. Substituting this into the expression for $dE$:\n\n$$\ndE = B(r\\omega)\\,dr\n$$\n\nIntegrating this expression from $0$ to $L$ to find the total emf:\n\n$$\nE = \\int_0^L B\\omega r\\,dr\n$$\n\nEvaluating the integral:\n\n$$\nE = \\frac{1}{2}B\\omega L^2\n$$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_medium_rod_emf",
+      "difficulty": "medium",
+      "domain": "physics",
+      "mode": "detailed",
+      "question": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+      "ms": 113105.81400000956,
+      "response": {
+        "success": true,
+        "answer": "To derive the motional emf between the ends of a conducting rod rotating in a uniform magnetic field, we consider the motion of the rod in the magnetic field and the induced electric field due to the motion.\n\nThe rod of length $ L $ rotates about one end with constant angular speed $ \\omega $ in a uniform magnetic field $ B $ perpendicular to the plane of rotation. The magnetic field is perpendicular to the plane of rotation, which is the same direction as the angular velocity vector.\n\nThe motional emf $ \\mathcal{E} $ induced between the ends of the rod can be derived by considering the motion of the charges in the magnetic field. The magnetic force on a charge $ q $ moving with velocity $ \\mathbf{v} $ in a magnetic field $ \\mathbf{B} $ is given by:\n\n$$\n\\mathbf{F} = q (\\mathbf{v} \\times \\mathbf{B})\n$$\n\nIn this case, the velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\omega r $. The magnetic force on a charge at this point is:\n\n$$\n\\mathbf{F} = q (\\omega r \\times \\mathbf{B})\n$$\n\nThe direction of the force is perpendicular to both $ \\mathbf{v} $ and $ \\mathbf{B} $. Since the magnetic field is perpendicular to the plane of rotation, the force is tangential to the rod, causing a separation of charges at the ends of the rod.\n\nThe motional emf is the work done per unit charge by the magnetic force. The emf can be calculated by integrating the magnetic force over the length of the rod:\n\n$$\n\\mathcal{E} = \\int_0^L \\mathbf{v} \\times \\mathbf{B} \\cdot d\\mathbf{l}\n$$\n\nSubstituting $ \\mathbf{v} = \\omega r \\hat{\\theta} $ and $ \\mathbf{B} = B \\hat{z} $, where $ \\hat{\\theta} $ is the tangential direction and $ \\hat{z} $ is the direction of the magnetic field, we get:\n\n$$\n\\mathcal{E} = \\int_0^L (\\omega r \\hat{\\theta}) \\times (B \\hat{z}) \\cdot d\\mathbf{l}\n$$\n\nThe cross product $ \\hat{\\theta} \\times \\hat{z} $ is $ \\hat{r} $, so:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r \\hat{r} \\cdot d\\mathbf{l}\n$$\n\nSince $ d\\mathbf{l} = r dr \\hat{r} $, the integral becomes:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r (r dr) = \\omega B \\int_0^L r^2 dr\n$$\n\nEvaluating the integral:\n\n$$\n\\mathcal{E} = \\omega B \\left[ \\frac{r^3}{3} \\right]_0^L = \\omega B \\frac{L^3}{3}\n$$\n\nThus, the motional emf between the ends of the rod is:\n\n$$\n\\mathcal{E} = \\frac{1}{3} \\omega B L^3\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "elapsed_ms": 113103.25,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 113103.13
+        }
+      },
+      "raw": "{\"success\":true,\"answer\":\"To derive the motional emf between the ends of a conducting rod rotating in a uniform magnetic field, we consider the motion of the rod in the magnetic field and the induced electric field due to the motion.\\n\\nThe rod of length $ L $ rotates about one end with constant angular speed $ \\\\omega $ in a uniform magnetic field $ B $ perpendicular to the plane of rotation. The magnetic field is perpendicular to the plane of rotation, which is the same direction as the angular velocity vector.\\n\\nThe motional emf $ \\\\mathcal{E} $ induced between the ends of the rod can be derived by considering the motion of the charges in the magnetic field. The magnetic force on a charge $ q $ moving with velocity $ \\\\mathbf{v} $ in a magnetic field $ \\\\mathbf{B} $ is given by:\\n\\n$$\\n\\\\mathbf{F} = q (\\\\mathbf{v} \\\\times \\\\mathbf{B})\\n$$\\n\\nIn this case, the velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\\\omega r $. The magnetic force on a charge at this point is:\\n\\n$$\\n\\\\mathbf{F} = q (\\\\omega r \\\\times \\\\mathbf{B})\\n$$\\n\\nThe direction of the force is perpendicular to both $ \\\\mathbf{v} $ and $ \\\\mathbf{B} $. Since the magnetic field is perpendicular to the plane of rotation, the force is tangential to the rod, causing a separation of charges at the ends of the rod.\\n\\nThe motional emf is the work done per unit charge by the magnetic force. The emf can be calculated by integrating the magnetic force over the length of the rod:\\n\\n$$\\n\\\\mathcal{E} = \\\\int_0^L \\\\mathbf{v} \\\\times \\\\mathbf{B} \\\\cdot d\\\\mathbf{l}\\n$$\\n\\nSubstituting $ \\\\mathbf{v} = \\\\omega r \\\\hat{\\\\theta} $ and $ \\\\mathbf{B} = B \\\\hat{z} $, where $ \\\\hat{\\\\theta} $ is the tangential direction and $ \\\\hat{z} $ is the direction of the magnetic field, we get:\\n\\n$$\\n\\\\mathcal{E} = \\\\int_0^L (\\\\omega r \\\\hat{\\\\theta}) \\\\times (B \\\\hat{z}) \\\\cdot d\\\\mathbf{l}\\n$$\\n\\nThe cross product $ \\\\hat{\\\\theta} \\\\times \\\\hat{z} $ is $ \\\\hat{r} $, so:\\n\\n$$\\n\\\\mathcal{E} = \\\\int_0^L \\\\omega B r \\\\hat{r} \\\\cdot d\\\\mathbf{l}\\n$$\\n\\nSince $ d\\\\mathbf{l} = r dr \\\\hat{r} $, the integral becomes:\\n\\n$$\\n\\\\mathcal{E} = \\\\int_0^L \\\\omega B r (r dr) = \\\\omega B \\\\int_0^L r^2 dr\\n$$\\n\\nEvaluating the integral:\\n\\n$$\\n\\\\mathcal{E} = \\\\omega B \\\\left[ \\\\frac{r^3}{3} \\\\right]_0^L = \\\\omega B \\\\frac{L^3}{3}\\n$$\\n\\nThus, the motional emf between the ends of the rod is:\\n\\n$$\\n\\\\mathcal{E} = \\\\frac{1}{3} \\\\omega B L^3\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"elapsed_ms\":113103.25,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":113103.13}}",
+      "display_output": "To derive the motional emf between the ends of a conducting rod rotating in a uniform magnetic field, we consider the motion of the rod in the magnetic field and the induced electric field due to the motion.\n\nThe rod of length $ L $ rotates about one end with constant angular speed $ \\omega $ in a uniform magnetic field $ B $ perpendicular to the plane of rotation. The magnetic field is perpendicular to the plane of rotation, which is the same direction as the angular velocity vector.\n\nThe motional emf $ \\mathcal{E} $ induced between the ends of the rod can be derived by considering the motion of the charges in the magnetic field. The magnetic force on a charge $ q $ moving with velocity $ \\mathbf{v} $ in a magnetic field $ \\mathbf{B} $ is given by:\n\n$$\n\\mathbf{F} = q (\\mathbf{v} \\times \\mathbf{B})\n$$\n\nIn this case, the velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\omega r $. The magnetic force on a charge at this point is:\n\n$$\n\\mathbf{F} = q (\\omega r \\times \\mathbf{B})\n$$\n\nThe direction of the force is perpendicular to both $ \\mathbf{v} $ and $ \\mathbf{B} $. Since the magnetic field is perpendicular to the plane of rotation, the force is tangential to the rod, causing a separation of charges at the ends of the rod.\n\nThe motional emf is the work done per unit charge by the magnetic force. The emf can be calculated by integrating the magnetic force over the length of the rod:\n\n$$\n\\mathcal{E} = \\int_0^L \\mathbf{v} \\times \\mathbf{B} \\cdot d\\mathbf{l}\n$$\n\nSubstituting $ \\mathbf{v} = \\omega r \\hat{\\theta} $ and $ \\mathbf{B} = B \\hat{z} $, where $ \\hat{\\theta} $ is the tangential direction and $ \\hat{z} $ is the direction of the magnetic field, we get:\n\n$$\n\\mathcal{E} = \\int_0^L (\\omega r \\hat{\\theta}) \\times (B \\hat{z}) \\cdot d\\mathbf{l}\n$$\n\nThe cross product $ \\hat{\\theta} \\times \\hat{z} $ is $ \\hat{r} $, so:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r \\hat{r} \\cdot d\\mathbf{l}\n$$\n\nSince $ d\\mathbf{l} = r dr \\hat{r} $, the integral becomes:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r (r dr) = \\omega B \\int_0^L r^2 dr\n$$\n\nEvaluating the integral:\n\n$$\n\\mathcal{E} = \\omega B \\left[ \\frac{r^3}{3} \\right]_0^L = \\omega B \\frac{L^3}{3}\n$$\n\nThus, the motional emf between the ends of the rod is:\n\n$$\n\\mathcal{E} = \\frac{1}{3} \\omega B L^3\n$$",
+      "structured_output": "To derive the motional emf between the ends of a conducting rod rotating in a uniform magnetic field, we consider the motion of the rod in the magnetic field and the induced electric field due to the motion.\n\nThe rod of length $ L $ rotates about one end with constant angular speed $ \\omega $ in a uniform magnetic field $ B $ perpendicular to the plane of rotation. The magnetic field is perpendicular to the plane of rotation, which is the same direction as the angular velocity vector.\n\nThe motional emf $ \\mathcal{E} $ induced between the ends of the rod can be derived by considering the motion of the charges in the magnetic field. The magnetic force on a charge $ q $ moving with velocity $ \\mathbf{v} $ in a magnetic field $ \\mathbf{B} $ is given by:\n\n$$\n\\mathbf{F} = q (\\mathbf{v} \\times \\mathbf{B})\n$$\n\nIn this case, the velocity of a point on the rod at a distance $ r $ from the center of rotation is $ v = \\omega r $. The magnetic force on a charge at this point is:\n\n$$\n\\mathbf{F} = q (\\omega r \\times \\mathbf{B})\n$$\n\nThe direction of the force is perpendicular to both $ \\mathbf{v} $ and $ \\mathbf{B} $. Since the magnetic field is perpendicular to the plane of rotation, the force is tangential to the rod, causing a separation of charges at the ends of the rod.\n\nThe motional emf is the work done per unit charge by the magnetic force. The emf can be calculated by integrating the magnetic force over the length of the rod:\n\n$$\n\\mathcal{E} = \\int_0^L \\mathbf{v} \\times \\mathbf{B} \\cdot d\\mathbf{l}\n$$\n\nSubstituting $ \\mathbf{v} = \\omega r \\hat{\\theta} $ and $ \\mathbf{B} = B \\hat{z} $, where $ \\hat{\\theta} $ is the tangential direction and $ \\hat{z} $ is the direction of the magnetic field, we get:\n\n$$\n\\mathcal{E} = \\int_0^L (\\omega r \\hat{\\theta}) \\times (B \\hat{z}) \\cdot d\\mathbf{l}\n$$\n\nThe cross product $ \\hat{\\theta} \\times \\hat{z} $ is $ \\hat{r} $, so:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r \\hat{r} \\cdot d\\mathbf{l}\n$$\n\nSince $ d\\mathbf{l} = r dr \\hat{r} $, the integral becomes:\n\n$$\n\\mathcal{E} = \\int_0^L \\omega B r (r dr) = \\omega B \\int_0^L r^2 dr\n$$\n\nEvaluating the integral:\n\n$$\n\\mathcal{E} = \\omega B \\left[ \\frac{r^3}{3} \\right]_0^L = \\omega B \\frac{L^3}{3}\n$$\n\nThus, the motional emf between the ends of the rod is:\n\n$$\n\\mathcal{E} = \\frac{1}{3} \\omega B L^3\n$$",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "physics_medium_rod_emf",
+      "difficulty": "medium",
+      "domain": "physics",
+      "question": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+      "ms": 121304.52870007139,
+      "response": {
+        "success": false,
+        "query": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 24938.13,
+        "mcq_generation_elapsed_ms": 96358.49,
+        "hint_elapsed_ms": 96358.49,
+        "elapsed_ms": 121301.46,
+        "guided_estimated_steps": 4,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 96358.49
+      },
+      "raw": "{\"success\":false,\"query\":\"A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":24938.13,\"mcq_generation_elapsed_ms\":96358.49,\"hint_elapsed_ms\":96358.49,\"elapsed_ms\":121301.46,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":96358.49}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "physics_hard_orbit",
+      "difficulty": "hard",
+      "domain": "physics",
+      "mode": "off",
+      "question": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+      "ms": 42409.278200007975,
+      "response": {
+        "success": true,
+        "answer": "v_e = \\sqrt{2} v_o",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 13425.1,
+          "wolfram": 0.0,
+          "final_llm": 28976.7
+        },
+        "elapsed_ms": 42402.09
+      },
+      "raw": "{\"success\":true,\"answer\":\"v_e = \\\\sqrt{2} v_o\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":13425.1,\"wolfram\":0.0,\"final_llm\":28976.7},\"elapsed_ms\":42402.09}",
+      "display_output": "v_e = \\sqrt{2} v_o",
+      "structured_output": "v_e = \\sqrt{2} v_o",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_hard_orbit",
+      "difficulty": "hard",
+      "domain": "physics",
+      "mode": "concise",
+      "question": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+      "ms": 50855.71570007596,
+      "response": {
+        "success": true,
+        "answer": "The orbital speed $v$ of a satellite in a circular orbit is given by the gravitational force providing the centripetal acceleration:\n\n$$\n\\frac{GM}{r^2} = \\frac{mv^2}{r}\n$$\n\nSolving for $v$:\n\n$$\nv = \\sqrt{\\frac{GM}{r}}\n$$\n\nThe kinetic energy $K$ of the satellite is:\n\n$$\nK = \\frac{1}{2}mv^2 = \\frac{1}{2}m\\frac{GM}{r}\n$$\n\nThe total mechanical energy $E$ is the sum of kinetic and potential energy:\n\n$$\nE = K + U = \\frac{1}{2}m\\frac{GM}{r} - G\\frac{Mm}{r}\n$$\n\nSimplifying:\n\n$$\nE = -\\frac{1}{2}G\\frac{Mm}{r}\n$$\n\nThe escape speed $v_e$ is the speed required to escape the gravitational pull, derived from the condition that the total mechanical energy is zero:\n\n$$\n\\frac{1}{2}mv_e^2 - G\\frac{Mm}{r} = 0\n$$\n\nSolving for $v_e$:\n\n$$\nv_e = \\sqrt{\\frac{2GM}{r}}\n$$\n\nThe relation between orbital speed $v$ and escape speed $v_e$ is:\n\n$$\nv_e = \\sqrt{2}v\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 3026.27,
+          "wolfram": 0.0,
+          "final_llm": 47825.62
+        },
+        "elapsed_ms": 50852.38
+      },
+      "raw": "{\"success\":true,\"answer\":\"The orbital speed $v$ of a satellite in a circular orbit is given by the gravitational force providing the centripetal acceleration:\\n\\n$$\\n\\\\frac{GM}{r^2} = \\\\frac{mv^2}{r}\\n$$\\n\\nSolving for $v$:\\n\\n$$\\nv = \\\\sqrt{\\\\frac{GM}{r}}\\n$$\\n\\nThe kinetic energy $K$ of the satellite is:\\n\\n$$\\nK = \\\\frac{1}{2}mv^2 = \\\\frac{1}{2}m\\\\frac{GM}{r}\\n$$\\n\\nThe total mechanical energy $E$ is the sum of kinetic and potential energy:\\n\\n$$\\nE = K + U = \\\\frac{1}{2}m\\\\frac{GM}{r} - G\\\\frac{Mm}{r}\\n$$\\n\\nSimplifying:\\n\\n$$\\nE = -\\\\frac{1}{2}G\\\\frac{Mm}{r}\\n$$\\n\\nThe escape speed $v_e$ is the speed required to escape the gravitational pull, derived from the condition that the total mechanical energy is zero:\\n\\n$$\\n\\\\frac{1}{2}mv_e^2 - G\\\\frac{Mm}{r} = 0\\n$$\\n\\nSolving for $v_e$:\\n\\n$$\\nv_e = \\\\sqrt{\\\\frac{2GM}{r}}\\n$$\\n\\nThe relation between orbital speed $v$ and escape speed $v_e$ is:\\n\\n$$\\nv_e = \\\\sqrt{2}v\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":3026.27,\"wolfram\":0.0,\"final_llm\":47825.62},\"elapsed_ms\":50852.38}",
+      "display_output": "The orbital speed $v$ of a satellite in a circular orbit is given by the gravitational force providing the centripetal acceleration:\n\n$$\n\\frac{GM}{r^2} = \\frac{mv^2}{r}\n$$\n\nSolving for $v$:\n\n$$\nv = \\sqrt{\\frac{GM}{r}}\n$$\n\nThe kinetic energy $K$ of the satellite is:\n\n$$\nK = \\frac{1}{2}mv^2 = \\frac{1}{2}m\\frac{GM}{r}\n$$\n\nThe total mechanical energy $E$ is the sum of kinetic and potential energy:\n\n$$\nE = K + U = \\frac{1}{2}m\\frac{GM}{r} - G\\frac{Mm}{r}\n$$\n\nSimplifying:\n\n$$\nE = -\\frac{1}{2}G\\frac{Mm}{r}\n$$\n\nThe escape speed $v_e$ is the speed required to escape the gravitational pull, derived from the condition that the total mechanical energy is zero:\n\n$$\n\\frac{1}{2}mv_e^2 - G\\frac{Mm}{r} = 0\n$$\n\nSolving for $v_e$:\n\n$$\nv_e = \\sqrt{\\frac{2GM}{r}}\n$$\n\nThe relation between orbital speed $v$ and escape speed $v_e$ is:\n\n$$\nv_e = \\sqrt{2}v\n$$",
+      "structured_output": "The orbital speed $v$ of a satellite in a circular orbit is given by the gravitational force providing the centripetal acceleration:\n\n$$\n\\frac{GM}{r^2} = \\frac{mv^2}{r}\n$$\n\nSolving for $v$:\n\n$$\nv = \\sqrt{\\frac{GM}{r}}\n$$\n\nThe kinetic energy $K$ of the satellite is:\n\n$$\nK = \\frac{1}{2}mv^2 = \\frac{1}{2}m\\frac{GM}{r}\n$$\n\nThe total mechanical energy $E$ is the sum of kinetic and potential energy:\n\n$$\nE = K + U = \\frac{1}{2}m\\frac{GM}{r} - G\\frac{Mm}{r}\n$$\n\nSimplifying:\n\n$$\nE = -\\frac{1}{2}G\\frac{Mm}{r}\n$$\n\nThe escape speed $v_e$ is the speed required to escape the gravitational pull, derived from the condition that the total mechanical energy is zero:\n\n$$\n\\frac{1}{2}mv_e^2 - G\\frac{Mm}{r} = 0\n$$\n\nSolving for $v_e$:\n\n$$\nv_e = \\sqrt{\\frac{2GM}{r}}\n$$\n\nThe relation between orbital speed $v$ and escape speed $v_e$ is:\n\n$$\nv_e = \\sqrt{2}v\n$$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "physics_hard_orbit",
+      "difficulty": "hard",
+      "domain": "physics",
+      "mode": "detailed",
+      "question": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+      "ms": 107731.61559994332,
+      "response": {
+        "success": true,
+        "answer": "To derive the orbital speed, kinetic energy, total mechanical energy, and escape speed of a satellite in a circular orbit of radius $ r $ around a planet of mass $ M $, we use the principles of gravitational physics and energy conservation.\n\n### 1. Orbital Speed\n\nThe gravitational force provides the centripetal force required for the satellite to move in a circular orbit. The gravitational force is given by Newton's law of gravitation:\n\n$$\nF = \\frac{G M m}{r^2}\n$$\n\nwhere $ G $ is the gravitational constant, $ M $ is the mass of the planet, $ m $ is the mass of the satellite, and $ r $ is the radius of the orbit.\n\nThe centripetal force required for circular motion is:\n\n$$\nF = \\frac{m v^2}{r}\n$$\n\nEquating the two expressions for force:\n\n$$\n\\frac{G M m}{r^2} = \\frac{m v^2}{r}\n$$\n\nSolving for $ v $:\n\n$$\nv = \\sqrt{\\frac{G M}{r}}\n$$\n\n### 2. Kinetic Energy\n\nThe kinetic energy $ K $ of the satellite is given by:\n\n$$\nK = \\frac{1}{2} m v^2\n$$\n\nSubstituting $ v $ from the previous result:\n\n$$\nK = \\frac{1}{2} m \\left( \\frac{G M}{r} \\right) = \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 3. Total Mechanical Energy\n\nThe total mechanical energy $ E $ of the satellite is the sum of its kinetic and potential energy. The potential energy $ U $ of the satellite is given by:\n\n$$\nU = - \\frac{G M m}{r}\n$$\n\nThe total mechanical energy is:\n\n$$\nE = K + U = \\frac{1}{2} \\frac{G M m}{r} - \\frac{G M m}{r} = - \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 4. Escape Speed\n\nThe escape speed $ v_e $ is the minimum speed required for the satellite to escape the gravitational pull of the planet. The kinetic energy at escape speed must be equal to the magnitude of the potential energy:\n\n$$\n\\frac{1}{2} m v_e^2 = \\frac{G M m}{r}\n$$\n\nSolving for $ v_e $:\n\n$$\nv_e = \\sqrt{\\frac{2 G M}{r}}\n$$\n\n### 5. Relation Between Orbital and Escape Speed\n\nThe escape speed is related to the orbital speed by a factor of $ \\sqrt{2} $:\n\n$$\nv_e = \\sqrt{2} v\n$$\n\nThis shows that the escape speed is $ \\sqrt{2} $ times the orbital speed.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2626.78,
+          "wolfram": 0.0,
+          "final_llm": 105085.19
+        },
+        "elapsed_ms": 107712.28
+      },
+      "raw": "{\"success\":true,\"answer\":\"To derive the orbital speed, kinetic energy, total mechanical energy, and escape speed of a satellite in a circular orbit of radius $ r $ around a planet of mass $ M $, we use the principles of gravitational physics and energy conservation.\\n\\n### 1. Orbital Speed\\n\\nThe gravitational force provides the centripetal force required for the satellite to move in a circular orbit. The gravitational force is given by Newton's law of gravitation:\\n\\n$$\\nF = \\\\frac{G M m}{r^2}\\n$$\\n\\nwhere $ G $ is the gravitational constant, $ M $ is the mass of the planet, $ m $ is the mass of the satellite, and $ r $ is the radius of the orbit.\\n\\nThe centripetal force required for circular motion is:\\n\\n$$\\nF = \\\\frac{m v^2}{r}\\n$$\\n\\nEquating the two expressions for force:\\n\\n$$\\n\\\\frac{G M m}{r^2} = \\\\frac{m v^2}{r}\\n$$\\n\\nSolving for $ v $:\\n\\n$$\\nv = \\\\sqrt{\\\\frac{G M}{r}}\\n$$\\n\\n### 2. Kinetic Energy\\n\\nThe kinetic energy $ K $ of the satellite is given by:\\n\\n$$\\nK = \\\\frac{1}{2} m v^2\\n$$\\n\\nSubstituting $ v $ from the previous result:\\n\\n$$\\nK = \\\\frac{1}{2} m \\\\left( \\\\frac{G M}{r} \\\\right) = \\\\frac{1}{2} \\\\frac{G M m}{r}\\n$$\\n\\n### 3. Total Mechanical Energy\\n\\nThe total mechanical energy $ E $ of the satellite is the sum of its kinetic and potential energy. The potential energy $ U $ of the satellite is given by:\\n\\n$$\\nU = - \\\\frac{G M m}{r}\\n$$\\n\\nThe total mechanical energy is:\\n\\n$$\\nE = K + U = \\\\frac{1}{2} \\\\frac{G M m}{r} - \\\\frac{G M m}{r} = - \\\\frac{1}{2} \\\\frac{G M m}{r}\\n$$\\n\\n### 4. Escape Speed\\n\\nThe escape speed $ v_e $ is the minimum speed required for the satellite to escape the gravitational pull of the planet. The kinetic energy at escape speed must be equal to the magnitude of the potential energy:\\n\\n$$\\n\\\\frac{1}{2} m v_e^2 = \\\\frac{G M m}{r}\\n$$\\n\\nSolving for $ v_e $:\\n\\n$$\\nv_e = \\\\sqrt{\\\\frac{2 G M}{r}}\\n$$\\n\\n### 5. Relation Between Orbital and Escape Speed\\n\\nThe escape speed is related to the orbital speed by a factor of $ \\\\sqrt{2} $:\\n\\n$$\\nv_e = \\\\sqrt{2} v\\n$$\\n\\nThis shows that the escape speed is $ \\\\sqrt{2} $ times the orbital speed.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2626.78,\"wolfram\":0.0,\"final_llm\":105085.19},\"elapsed_ms\":107712.28}",
+      "display_output": "To derive the orbital speed, kinetic energy, total mechanical energy, and escape speed of a satellite in a circular orbit of radius $ r $ around a planet of mass $ M $, we use the principles of gravitational physics and energy conservation.\n\n### 1. Orbital Speed\n\nThe gravitational force provides the centripetal force required for the satellite to move in a circular orbit. The gravitational force is given by Newton's law of gravitation:\n\n$$\nF = \\frac{G M m}{r^2}\n$$\n\nwhere $ G $ is the gravitational constant, $ M $ is the mass of the planet, $ m $ is the mass of the satellite, and $ r $ is the radius of the orbit.\n\nThe centripetal force required for circular motion is:\n\n$$\nF = \\frac{m v^2}{r}\n$$\n\nEquating the two expressions for force:\n\n$$\n\\frac{G M m}{r^2} = \\frac{m v^2}{r}\n$$\n\nSolving for $ v $:\n\n$$\nv = \\sqrt{\\frac{G M}{r}}\n$$\n\n### 2. Kinetic Energy\n\nThe kinetic energy $ K $ of the satellite is given by:\n\n$$\nK = \\frac{1}{2} m v^2\n$$\n\nSubstituting $ v $ from the previous result:\n\n$$\nK = \\frac{1}{2} m \\left( \\frac{G M}{r} \\right) = \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 3. Total Mechanical Energy\n\nThe total mechanical energy $ E $ of the satellite is the sum of its kinetic and potential energy. The potential energy $ U $ of the satellite is given by:\n\n$$\nU = - \\frac{G M m}{r}\n$$\n\nThe total mechanical energy is:\n\n$$\nE = K + U = \\frac{1}{2} \\frac{G M m}{r} - \\frac{G M m}{r} = - \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 4. Escape Speed\n\nThe escape speed $ v_e $ is the minimum speed required for the satellite to escape the gravitational pull of the planet. The kinetic energy at escape speed must be equal to the magnitude of the potential energy:\n\n$$\n\\frac{1}{2} m v_e^2 = \\frac{G M m}{r}\n$$\n\nSolving for $ v_e $:\n\n$$\nv_e = \\sqrt{\\frac{2 G M}{r}}\n$$\n\n### 5. Relation Between Orbital and Escape Speed\n\nThe escape speed is related to the orbital speed by a factor of $ \\sqrt{2} $:\n\n$$\nv_e = \\sqrt{2} v\n$$\n\nThis shows that the escape speed is $ \\sqrt{2} $ times the orbital speed.",
+      "structured_output": "To derive the orbital speed, kinetic energy, total mechanical energy, and escape speed of a satellite in a circular orbit of radius $ r $ around a planet of mass $ M $, we use the principles of gravitational physics and energy conservation.\n\n### 1. Orbital Speed\n\nThe gravitational force provides the centripetal force required for the satellite to move in a circular orbit. The gravitational force is given by Newton's law of gravitation:\n\n$$\nF = \\frac{G M m}{r^2}\n$$\n\nwhere $ G $ is the gravitational constant, $ M $ is the mass of the planet, $ m $ is the mass of the satellite, and $ r $ is the radius of the orbit.\n\nThe centripetal force required for circular motion is:\n\n$$\nF = \\frac{m v^2}{r}\n$$\n\nEquating the two expressions for force:\n\n$$\n\\frac{G M m}{r^2} = \\frac{m v^2}{r}\n$$\n\nSolving for $ v $:\n\n$$\nv = \\sqrt{\\frac{G M}{r}}\n$$\n\n### 2. Kinetic Energy\n\nThe kinetic energy $ K $ of the satellite is given by:\n\n$$\nK = \\frac{1}{2} m v^2\n$$\n\nSubstituting $ v $ from the previous result:\n\n$$\nK = \\frac{1}{2} m \\left( \\frac{G M}{r} \\right) = \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 3. Total Mechanical Energy\n\nThe total mechanical energy $ E $ of the satellite is the sum of its kinetic and potential energy. The potential energy $ U $ of the satellite is given by:\n\n$$\nU = - \\frac{G M m}{r}\n$$\n\nThe total mechanical energy is:\n\n$$\nE = K + U = \\frac{1}{2} \\frac{G M m}{r} - \\frac{G M m}{r} = - \\frac{1}{2} \\frac{G M m}{r}\n$$\n\n### 4. Escape Speed\n\nThe escape speed $ v_e $ is the minimum speed required for the satellite to escape the gravitational pull of the planet. The kinetic energy at escape speed must be equal to the magnitude of the potential energy:\n\n$$\n\\frac{1}{2} m v_e^2 = \\frac{G M m}{r}\n$$\n\nSolving for $ v_e $:\n\n$$\nv_e = \\sqrt{\\frac{2 G M}{r}}\n$$\n\n### 5. Relation Between Orbital and Escape Speed\n\nThe escape speed is related to the orbital speed by a factor of $ \\sqrt{2} $:\n\n$$\nv_e = \\sqrt{2} v\n$$\n\nThis shows that the escape speed is $ \\sqrt{2} $ times the orbital speed.",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "physics_hard_orbit",
+      "difficulty": "hard",
+      "domain": "physics",
+      "question": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+      "ms": 164253.4020000603,
+      "response": {
+        "success": false,
+        "query": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 48392.74,
+        "mcq_generation_elapsed_ms": 115847.22,
+        "hint_elapsed_ms": 115847.22,
+        "elapsed_ms": 164240.09,
+        "guided_estimated_steps": 4,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 115847.22
+      },
+      "raw": "{\"success\":false,\"query\":\"A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":48392.74,\"mcq_generation_elapsed_ms\":115847.22,\"hint_elapsed_ms\":115847.22,\"elapsed_ms\":164240.09,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":115847.22}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_easy_molecular_geometry",
+      "difficulty": "easy",
+      "domain": "chemistry",
+      "mode": "off",
+      "question": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+      "ms": 10368.122099898756,
+      "response": {
+        "success": true,
+        "answer": "The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 10341.9
+        },
+        "elapsed_ms": 10342.09
+      },
+      "raw": "{\"success\":true,\"answer\":\"The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":10341.9},\"elapsed_ms\":10342.09}",
+      "display_output": "The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.",
+      "structured_output": "The Lewis structure of NH3 consists of a central nitrogen atom bonded to three hydrogen atoms, with one lone pair on the nitrogen. The electron-pair geometry is trigonal pyramidal, and the molecular geometry is also trigonal pyramidal. The approximate bond angle is 107 degrees.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_easy_molecular_geometry",
+      "difficulty": "easy",
+      "domain": "chemistry",
+      "mode": "concise",
+      "question": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+      "ms": 64775.318400003016,
+      "response": {
+        "success": true,
+        "answer": "The Lewis structure of NH$_3$ is:\n\n$$\n\\mathrm{N} \\ with \\ three \\ H \\ atoms \\ bonded \\ to \\ it \\ and \\ one \\ lone \\ pair \\ of \\ electrons\n$$\n\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\n\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\n\nThe approximate bond angle of NH$_3$ is $107^\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\circ$ due to the lone pair on the nitrogen atom causing repulsion.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 64772.88
+        },
+        "elapsed_ms": 64772.94
+      },
+      "raw": "{\"success\":true,\"answer\":\"The Lewis structure of NH$_3$ is:\\n\\n$$\\n\\\\mathrm{N} \\\\ with \\\\ three \\\\ H \\\\ atoms \\\\ bonded \\\\ to \\\\ it \\\\ and \\\\ one \\\\ lone \\\\ pair \\\\ of \\\\ electrons\\n$$\\n\\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\\n\\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\\n\\nThe approximate bond angle of NH$_3$ is $107^\\\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\\\circ$ due to the lone pair on the nitrogen atom causing repulsion.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":64772.88},\"elapsed_ms\":64772.94}",
+      "display_output": "The Lewis structure of NH$_3$ is:\n\n$$\n\\mathrm{N} \\ with \\ three \\ H \\ atoms \\ bonded \\ to \\ it \\ and \\ one \\ lone \\ pair \\ of \\ electrons\n$$\n\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\n\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\n\nThe approximate bond angle of NH$_3$ is $107^\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\circ$ due to the lone pair on the nitrogen atom causing repulsion.",
+      "structured_output": "The Lewis structure of NH$_3$ is:\n\n$$\n\\mathrm{N} \\ with \\ three \\ H \\ atoms \\ bonded \\ to \\ it \\ and \\ one \\ lone \\ pair \\ of \\ electrons\n$$\n\nThe electron-pair geometry of NH$_3$ is trigonal pyramidal because there are four electron pairs around the nitrogen atom (three bonding pairs and one lone pair).\n\nThe molecular geometry of NH$_3$ is also trigonal pyramidal due to the presence of the lone pair on the nitrogen atom.\n\nThe approximate bond angle of NH$_3$ is $107^\\circ$, which is slightly less than the ideal tetrahedral angle of $109.5^\\circ$ due to the lone pair on the nitrogen atom causing repulsion.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_easy_molecular_geometry",
+      "difficulty": "easy",
+      "domain": "chemistry",
+      "mode": "detailed",
+      "question": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+      "ms": 68138.00489995629,
+      "response": {
+        "success": true,
+        "answer": "To determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH₃ (ammonia), we follow these steps:\n\n### 1. **Determine the number of valence electrons:**\nNitrogen (N) has 5 valence electrons.  \nHydrogen (H) has 1 valence electron.  \nThere are 3 hydrogen atoms, so total valence electrons = 5 (N) + 3×1 (H) = 8.\n\n### 2. **Draw the Lewis structure:**\n- Place the nitrogen atom in the center.\n- Connect each hydrogen atom to nitrogen with a single bond (each bond represents 2 electrons).\n- Distribute the remaining electrons to satisfy the octet rule.\n\nThe Lewis structure of NH₃ is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nBut more accurately, it is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nwith a lone pair on the nitrogen atom.\n\n### 3. **Determine the electron-pair geometry:**\nThe electron-pair geometry is determined by the number of electron groups (bonds and lone pairs) around the central atom. In NH₃, nitrogen has:\n- 3 bonding pairs (with H)\n- 1 lone pair\n\nTotal = 4 electron groups.\n\nThe electron-pair geometry is **tetrahedral** (since 4 electron groups around the central atom).\n\n### 4. **Determine the molecular geometry:**\nThe molecular geometry is determined by the arrangement of the atoms (not including lone pairs). In NH₃, the nitrogen is bonded to 3 hydrogen atoms, and has 1 lone pair. This results in a **trigonal pyramidal** molecular geometry.\n\n### 5. **Determine the approximate bond angle:**\nIn a perfect tetrahedral geometry (like methane, CH₄), the bond angles are approximately 109.5°. However, in NH₃, the lone pair on nitrogen causes **lone pair-bond pair repulsion**, which slightly **reduces** the bond angle. The bond angle in NH₃ is approximately **107°**.\n\n### **Summary:**\n- **Lewis structure**: Nitrogen is at the center, bonded to three hydrogen atoms, with one lone pair on nitrogen.\n- **Electron-pair geometry**: Tetrahedral\n- **Molecular geometry**: Trigonal pyramidal\n- **Approximate bond angle**: 107°\n\nThis is the complete analysis of NH₃.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 68134.81
+        },
+        "elapsed_ms": 68134.88
+      },
+      "raw": "{\"success\":true,\"answer\":\"To determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH₃ (ammonia), we follow these steps:\\n\\n### 1. **Determine the number of valence electrons:**\\nNitrogen (N) has 5 valence electrons.  \\nHydrogen (H) has 1 valence electron.  \\nThere are 3 hydrogen atoms, so total valence electrons = 5 (N) + 3×1 (H) = 8.\\n\\n### 2. **Draw the Lewis structure:**\\n- Place the nitrogen atom in the center.\\n- Connect each hydrogen atom to nitrogen with a single bond (each bond represents 2 electrons).\\n- Distribute the remaining electrons to satisfy the octet rule.\\n\\nThe Lewis structure of NH₃ is:\\n\\n```\\n    H\\n    |\\nH-N-H\\n    |\\n    H\\n```\\n\\nBut more accurately, it is:\\n\\n```\\n    H\\n    |\\nH-N-H\\n    |\\n    H\\n```\\n\\nwith a lone pair on the nitrogen atom.\\n\\n### 3. **Determine the electron-pair geometry:**\\nThe electron-pair geometry is determined by the number of electron groups (bonds and lone pairs) around the central atom. In NH₃, nitrogen has:\\n- 3 bonding pairs (with H)\\n- 1 lone pair\\n\\nTotal = 4 electron groups.\\n\\nThe electron-pair geometry is **tetrahedral** (since 4 electron groups around the central atom).\\n\\n### 4. **Determine the molecular geometry:**\\nThe molecular geometry is determined by the arrangement of the atoms (not including lone pairs). In NH₃, the nitrogen is bonded to 3 hydrogen atoms, and has 1 lone pair. This results in a **trigonal pyramidal** molecular geometry.\\n\\n### 5. **Determine the approximate bond angle:**\\nIn a perfect tetrahedral geometry (like methane, CH₄), the bond angles are approximately 109.5°. However, in NH₃, the lone pair on nitrogen causes **lone pair-bond pair repulsion**, which slightly **reduces** the bond angle. The bond angle in NH₃ is approximately **107°**.\\n\\n### **Summary:**\\n- **Lewis structure**: Nitrogen is at the center, bonded to three hydrogen atoms, with one lone pair on nitrogen.\\n- **Electron-pair geometry**: Tetrahedral\\n- **Molecular geometry**: Trigonal pyramidal\\n- **Approximate bond angle**: 107°\\n\\nThis is the complete analysis of NH₃.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":68134.81},\"elapsed_ms\":68134.88}",
+      "display_output": "To determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH₃ (ammonia), we follow these steps:\n\n### 1. **Determine the number of valence electrons:**\nNitrogen (N) has 5 valence electrons.  \nHydrogen (H) has 1 valence electron.  \nThere are 3 hydrogen atoms, so total valence electrons = 5 (N) + 3×1 (H) = 8.\n\n### 2. **Draw the Lewis structure:**\n- Place the nitrogen atom in the center.\n- Connect each hydrogen atom to nitrogen with a single bond (each bond represents 2 electrons).\n- Distribute the remaining electrons to satisfy the octet rule.\n\nThe Lewis structure of NH₃ is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nBut more accurately, it is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nwith a lone pair on the nitrogen atom.\n\n### 3. **Determine the electron-pair geometry:**\nThe electron-pair geometry is determined by the number of electron groups (bonds and lone pairs) around the central atom. In NH₃, nitrogen has:\n- 3 bonding pairs (with H)\n- 1 lone pair\n\nTotal = 4 electron groups.\n\nThe electron-pair geometry is **tetrahedral** (since 4 electron groups around the central atom).\n\n### 4. **Determine the molecular geometry:**\nThe molecular geometry is determined by the arrangement of the atoms (not including lone pairs). In NH₃, the nitrogen is bonded to 3 hydrogen atoms, and has 1 lone pair. This results in a **trigonal pyramidal** molecular geometry.\n\n### 5. **Determine the approximate bond angle:**\nIn a perfect tetrahedral geometry (like methane, CH₄), the bond angles are approximately 109.5°. However, in NH₃, the lone pair on nitrogen causes **lone pair-bond pair repulsion**, which slightly **reduces** the bond angle. The bond angle in NH₃ is approximately **107°**.\n\n### **Summary:**\n- **Lewis structure**: Nitrogen is at the center, bonded to three hydrogen atoms, with one lone pair on nitrogen.\n- **Electron-pair geometry**: Tetrahedral\n- **Molecular geometry**: Trigonal pyramidal\n- **Approximate bond angle**: 107°\n\nThis is the complete analysis of NH₃.",
+      "structured_output": "To determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH₃ (ammonia), we follow these steps:\n\n### 1. **Determine the number of valence electrons:**\nNitrogen (N) has 5 valence electrons.  \nHydrogen (H) has 1 valence electron.  \nThere are 3 hydrogen atoms, so total valence electrons = 5 (N) + 3×1 (H) = 8.\n\n### 2. **Draw the Lewis structure:**\n- Place the nitrogen atom in the center.\n- Connect each hydrogen atom to nitrogen with a single bond (each bond represents 2 electrons).\n- Distribute the remaining electrons to satisfy the octet rule.\n\nThe Lewis structure of NH₃ is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nBut more accurately, it is:\n\n```\n    H\n    |\nH-N-H\n    |\n    H\n```\n\nwith a lone pair on the nitrogen atom.\n\n### 3. **Determine the electron-pair geometry:**\nThe electron-pair geometry is determined by the number of electron groups (bonds and lone pairs) around the central atom. In NH₃, nitrogen has:\n- 3 bonding pairs (with H)\n- 1 lone pair\n\nTotal = 4 electron groups.\n\nThe electron-pair geometry is **tetrahedral** (since 4 electron groups around the central atom).\n\n### 4. **Determine the molecular geometry:**\nThe molecular geometry is determined by the arrangement of the atoms (not including lone pairs). In NH₃, the nitrogen is bonded to 3 hydrogen atoms, and has 1 lone pair. This results in a **trigonal pyramidal** molecular geometry.\n\n### 5. **Determine the approximate bond angle:**\nIn a perfect tetrahedral geometry (like methane, CH₄), the bond angles are approximately 109.5°. However, in NH₃, the lone pair on nitrogen causes **lone pair-bond pair repulsion**, which slightly **reduces** the bond angle. The bond angle in NH₃ is approximately **107°**.\n\n### **Summary:**\n- **Lewis structure**: Nitrogen is at the center, bonded to three hydrogen atoms, with one lone pair on nitrogen.\n- **Electron-pair geometry**: Tetrahedral\n- **Molecular geometry**: Trigonal pyramidal\n- **Approximate bond angle**: 107°\n\nThis is the complete analysis of NH₃.",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "chemistry_easy_molecular_geometry",
+      "difficulty": "easy",
+      "domain": "chemistry",
+      "question": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+      "ms": 96446.4346000459,
+      "response": {
+        "success": false,
+        "query": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 23129.57,
+        "mcq_generation_elapsed_ms": 73311.97,
+        "hint_elapsed_ms": 73311.97,
+        "elapsed_ms": 96441.65,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 73311.97
+      },
+      "raw": "{\"success\":false,\"query\":\"Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":23129.57,\"mcq_generation_elapsed_ms\":73311.97,\"hint_elapsed_ms\":73311.97,\"elapsed_ms\":96441.65,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":73311.97}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_medium_buffer",
+      "difficulty": "medium",
+      "domain": "chemistry",
+      "mode": "off",
+      "question": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+      "ms": 55017.620499944314,
+      "response": {
+        "success": true,
+        "answer": "To calculate the resulting pH, first determine the moles of HA and NaOH:\n\nMoles of HA = 0.20 M × 0.100 L = 0.020 mol  \nMoles of NaOH = 0.10 M × 0.050 L = 0.005 mol  \n\nThe reaction between HA and NaOH is:  \nHA + NaOH → NaA + H₂O  \n\nMoles of HA remaining = 0.020 mol - 0.005 mol = 0.015 mol  \nMoles of A⁻ formed = 0.005 mol  \n\nTotal volume = 0.100 L + 0.050 L = 0.150 L  \n\nConcentration of HA = 0.015 mol / 0.150 L = 0.10 M  \nConcentration of A⁻ = 0.005 mol / 0.150 L = 0.0333 M  \n\nUse the Henderson-Hasselbalch equation to calculate pH:  \npH = pKa + log([A⁻]/[HA])  \npKa = -log(1.8×10^-5) ≈ 4.74  \n\npH = 4.74 + log(0.0333/0.10) ≈ 4.74 + log(0.333) ≈ 4.74 - 0.477 ≈ 4.26  \n\nThe resulting pH is 4.26.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 55014.93
+        },
+        "elapsed_ms": 55015.04
+      },
+      "raw": "{\"success\":true,\"answer\":\"To calculate the resulting pH, first determine the moles of HA and NaOH:\\n\\nMoles of HA = 0.20 M × 0.100 L = 0.020 mol  \\nMoles of NaOH = 0.10 M × 0.050 L = 0.005 mol  \\n\\nThe reaction between HA and NaOH is:  \\nHA + NaOH → NaA + H₂O  \\n\\nMoles of HA remaining = 0.020 mol - 0.005 mol = 0.015 mol  \\nMoles of A⁻ formed = 0.005 mol  \\n\\nTotal volume = 0.100 L + 0.050 L = 0.150 L  \\n\\nConcentration of HA = 0.015 mol / 0.150 L = 0.10 M  \\nConcentration of A⁻ = 0.005 mol / 0.150 L = 0.0333 M  \\n\\nUse the Henderson-Hasselbalch equation to calculate pH:  \\npH = pKa + log([A⁻]/[HA])  \\npKa = -log(1.8×10^-5) ≈ 4.74  \\n\\npH = 4.74 + log(0.0333/0.10) ≈ 4.74 + log(0.333) ≈ 4.74 - 0.477 ≈ 4.26  \\n\\nThe resulting pH is 4.26.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":55014.93},\"elapsed_ms\":55015.04}",
+      "display_output": "To calculate the resulting pH, first determine the moles of HA and NaOH:\n\nMoles of HA = 0.20 M × 0.100 L = 0.020 mol  \nMoles of NaOH = 0.10 M × 0.050 L = 0.005 mol  \n\nThe reaction between HA and NaOH is:  \nHA + NaOH → NaA + H₂O  \n\nMoles of HA remaining = 0.020 mol - 0.005 mol = 0.015 mol  \nMoles of A⁻ formed = 0.005 mol  \n\nTotal volume = 0.100 L + 0.050 L = 0.150 L  \n\nConcentration of HA = 0.015 mol / 0.150 L = 0.10 M  \nConcentration of A⁻ = 0.005 mol / 0.150 L = 0.0333 M  \n\nUse the Henderson-Hasselbalch equation to calculate pH:  \npH = pKa + log([A⁻]/[HA])  \npKa = -log(1.8×10^-5) ≈ 4.74  \n\npH = 4.74 + log(0.0333/0.10) ≈ 4.74 + log(0.333) ≈ 4.74 - 0.477 ≈ 4.26  \n\nThe resulting pH is 4.26.",
+      "structured_output": "To calculate the resulting pH, first determine the moles of HA and NaOH:\n\nMoles of HA = 0.20 M × 0.100 L = 0.020 mol  \nMoles of NaOH = 0.10 M × 0.050 L = 0.005 mol  \n\nThe reaction between HA and NaOH is:  \nHA + NaOH → NaA + H₂O  \n\nMoles of HA remaining = 0.020 mol - 0.005 mol = 0.015 mol  \nMoles of A⁻ formed = 0.005 mol  \n\nTotal volume = 0.100 L + 0.050 L = 0.150 L  \n\nConcentration of HA = 0.015 mol / 0.150 L = 0.10 M  \nConcentration of A⁻ = 0.005 mol / 0.150 L = 0.0333 M  \n\nUse the Henderson-Hasselbalch equation to calculate pH:  \npH = pKa + log([A⁻]/[HA])  \npKa = -log(1.8×10^-5) ≈ 4.74  \n\npH = 4.74 + log(0.0333/0.10) ≈ 4.74 + log(0.333) ≈ 4.74 - 0.477 ≈ 4.26  \n\nThe resulting pH is 4.26.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_medium_buffer",
+      "difficulty": "medium",
+      "domain": "chemistry",
+      "mode": "concise",
+      "question": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+      "ms": 106116.82029999793,
+      "response": {
+        "success": true,
+        "answer": "The reaction between HA and NaOH is:\n\n$$\n\\mathrm{HA} + \\mathrm{OH}^- \\rightarrow \\mathrm{A}^- + \\mathrm{H_2O}\n$$\n\nFirst, calculate the moles of HA and NaOH:\n\n$$\n\\text{Moles of HA} = 0.20\\, \\mathrm{M} \\times 0.100\\, \\mathrm{L} = 0.020\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of NaOH} = 0.10\\, \\mathrm{M} \\times 0.050\\, \\mathrm{L} = 0.005\\, \\mathrm{mol}\n$$\n\nThe NaOH will neutralize part of the HA:\n\n$$\n\\text{Moles of HA remaining} = 0.020\\, \\mathrm{mol} - 0.005\\, \\mathrm{mol} = 0.015\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of A}^- = 0.005\\, \\mathrm{mol}\n$$\n\nTotal volume of the solution is:\n\n$$\n0.100\\, \\mathrm{L} + 0.050\\, \\mathrm{L} = 0.150\\, \\mathrm{L}\n$$\n\nConcentrations after neutralization:\n\n$$\n[\\mathrm{HA}] = \\frac{0.015\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.10\\, \\mathrm{M}\n$$\n\n$$\n[\\mathrm{A}^-] = \\frac{0.005\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.033\\, \\mathrm{M}\n$$\n\nThe solution now contains a buffer of HA and A^-. Use the Henderson-Hasselbalch equation to calculate the pH:\n\n$$\n\\mathrm{pH} = \\mathrm{p}K_a + \\log\\left(\\frac{[\\mathrm{A}^-]}{[\\mathrm{HA}]}\\right)\n$$\n\n$$\n\\mathrm{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log\\left(\\frac{0.033}{0.10}\\right)\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log(0.33)\n$$\n\n$$\n\\mathrm{pH} = 4.74 - 0.48 = 4.26\n$$\n\n$$\n\\boxed{4.26}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 106091.48
+        },
+        "elapsed_ms": 106091.54
+      },
+      "raw": "{\"success\":true,\"answer\":\"The reaction between HA and NaOH is:\\n\\n$$\\n\\\\mathrm{HA} + \\\\mathrm{OH}^- \\\\rightarrow \\\\mathrm{A}^- + \\\\mathrm{H_2O}\\n$$\\n\\nFirst, calculate the moles of HA and NaOH:\\n\\n$$\\n\\\\text{Moles of HA} = 0.20\\\\, \\\\mathrm{M} \\\\times 0.100\\\\, \\\\mathrm{L} = 0.020\\\\, \\\\mathrm{mol}\\n$$\\n\\n$$\\n\\\\text{Moles of NaOH} = 0.10\\\\, \\\\mathrm{M} \\\\times 0.050\\\\, \\\\mathrm{L} = 0.005\\\\, \\\\mathrm{mol}\\n$$\\n\\nThe NaOH will neutralize part of the HA:\\n\\n$$\\n\\\\text{Moles of HA remaining} = 0.020\\\\, \\\\mathrm{mol} - 0.005\\\\, \\\\mathrm{mol} = 0.015\\\\, \\\\mathrm{mol}\\n$$\\n\\n$$\\n\\\\text{Moles of A}^- = 0.005\\\\, \\\\mathrm{mol}\\n$$\\n\\nTotal volume of the solution is:\\n\\n$$\\n0.100\\\\, \\\\mathrm{L} + 0.050\\\\, \\\\mathrm{L} = 0.150\\\\, \\\\mathrm{L}\\n$$\\n\\nConcentrations after neutralization:\\n\\n$$\\n[\\\\mathrm{HA}] = \\\\frac{0.015\\\\, \\\\mathrm{mol}}{0.150\\\\, \\\\mathrm{L}} = 0.10\\\\, \\\\mathrm{M}\\n$$\\n\\n$$\\n[\\\\mathrm{A}^-] = \\\\frac{0.005\\\\, \\\\mathrm{mol}}{0.150\\\\, \\\\mathrm{L}} = 0.033\\\\, \\\\mathrm{M}\\n$$\\n\\nThe solution now contains a buffer of HA and A^-. Use the Henderson-Hasselbalch equation to calculate the pH:\\n\\n$$\\n\\\\mathrm{pH} = \\\\mathrm{p}K_a + \\\\log\\\\left(\\\\frac{[\\\\mathrm{A}^-]}{[\\\\mathrm{HA}]}\\\\right)\\n$$\\n\\n$$\\n\\\\mathrm{p}K_a = -\\\\log(1.8 \\\\times 10^{-5}) \\\\approx 4.74\\n$$\\n\\n$$\\n\\\\mathrm{pH} = 4.74 + \\\\log\\\\left(\\\\frac{0.033}{0.10}\\\\right)\\n$$\\n\\n$$\\n\\\\mathrm{pH} = 4.74 + \\\\log(0.33)\\n$$\\n\\n$$\\n\\\\mathrm{pH} = 4.74 - 0.48 = 4.26\\n$$\\n\\n$$\\n\\\\boxed{4.26}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":106091.48},\"elapsed_ms\":106091.54}",
+      "display_output": "The reaction between HA and NaOH is:\n\n$$\n\\mathrm{HA} + \\mathrm{OH}^- \\rightarrow \\mathrm{A}^- + \\mathrm{H_2O}\n$$\n\nFirst, calculate the moles of HA and NaOH:\n\n$$\n\\text{Moles of HA} = 0.20\\, \\mathrm{M} \\times 0.100\\, \\mathrm{L} = 0.020\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of NaOH} = 0.10\\, \\mathrm{M} \\times 0.050\\, \\mathrm{L} = 0.005\\, \\mathrm{mol}\n$$\n\nThe NaOH will neutralize part of the HA:\n\n$$\n\\text{Moles of HA remaining} = 0.020\\, \\mathrm{mol} - 0.005\\, \\mathrm{mol} = 0.015\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of A}^- = 0.005\\, \\mathrm{mol}\n$$\n\nTotal volume of the solution is:\n\n$$\n0.100\\, \\mathrm{L} + 0.050\\, \\mathrm{L} = 0.150\\, \\mathrm{L}\n$$\n\nConcentrations after neutralization:\n\n$$\n[\\mathrm{HA}] = \\frac{0.015\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.10\\, \\mathrm{M}\n$$\n\n$$\n[\\mathrm{A}^-] = \\frac{0.005\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.033\\, \\mathrm{M}\n$$\n\nThe solution now contains a buffer of HA and A^-. Use the Henderson-Hasselbalch equation to calculate the pH:\n\n$$\n\\mathrm{pH} = \\mathrm{p}K_a + \\log\\left(\\frac{[\\mathrm{A}^-]}{[\\mathrm{HA}]}\\right)\n$$\n\n$$\n\\mathrm{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log\\left(\\frac{0.033}{0.10}\\right)\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log(0.33)\n$$\n\n$$\n\\mathrm{pH} = 4.74 - 0.48 = 4.26\n$$\n\n$$\n\\boxed{4.26}\n$$",
+      "structured_output": "The reaction between HA and NaOH is:\n\n$$\n\\mathrm{HA} + \\mathrm{OH}^- \\rightarrow \\mathrm{A}^- + \\mathrm{H_2O}\n$$\n\nFirst, calculate the moles of HA and NaOH:\n\n$$\n\\text{Moles of HA} = 0.20\\, \\mathrm{M} \\times 0.100\\, \\mathrm{L} = 0.020\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of NaOH} = 0.10\\, \\mathrm{M} \\times 0.050\\, \\mathrm{L} = 0.005\\, \\mathrm{mol}\n$$\n\nThe NaOH will neutralize part of the HA:\n\n$$\n\\text{Moles of HA remaining} = 0.020\\, \\mathrm{mol} - 0.005\\, \\mathrm{mol} = 0.015\\, \\mathrm{mol}\n$$\n\n$$\n\\text{Moles of A}^- = 0.005\\, \\mathrm{mol}\n$$\n\nTotal volume of the solution is:\n\n$$\n0.100\\, \\mathrm{L} + 0.050\\, \\mathrm{L} = 0.150\\, \\mathrm{L}\n$$\n\nConcentrations after neutralization:\n\n$$\n[\\mathrm{HA}] = \\frac{0.015\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.10\\, \\mathrm{M}\n$$\n\n$$\n[\\mathrm{A}^-] = \\frac{0.005\\, \\mathrm{mol}}{0.150\\, \\mathrm{L}} = 0.033\\, \\mathrm{M}\n$$\n\nThe solution now contains a buffer of HA and A^-. Use the Henderson-Hasselbalch equation to calculate the pH:\n\n$$\n\\mathrm{pH} = \\mathrm{p}K_a + \\log\\left(\\frac{[\\mathrm{A}^-]}{[\\mathrm{HA}]}\\right)\n$$\n\n$$\n\\mathrm{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log\\left(\\frac{0.033}{0.10}\\right)\n$$\n\n$$\n\\mathrm{pH} = 4.74 + \\log(0.33)\n$$\n\n$$\n\\mathrm{pH} = 4.74 - 0.48 = 4.26\n$$\n\n$$\n\\boxed{4.26}\n$$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_medium_buffer",
+      "difficulty": "medium",
+      "domain": "chemistry",
+      "mode": "detailed",
+      "question": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+      "ms": 99467.03270007856,
+      "response": {
+        "success": true,
+        "answer": "To calculate the resulting pH after mixing 100 mL of 0.20 M HA (a weak acid) with 50 mL of 0.10 M NaOH, we follow these steps:\n\n### 1. **Stoichiometric Neutralization**\n\nFirst, determine the moles of HA and NaOH before the reaction:\n\n- Moles of HA = $ 0.100 \\, \\text{L} \\times 0.20 \\, \\text{M} = 0.020 \\, \\text{mol} $\n- Moles of NaOH = $ 0.050 \\, \\text{L} \\times 0.10 \\, \\text{M} = 0.005 \\, \\text{mol} $\n\nThe reaction between HA and NaOH is:\n\n$$\n\\text{HA} + \\text{OH}^- \\rightarrow \\text{A}^- + \\text{H}_2\\text{O}\n$$\n\nSince NaOH is a strong base, it will completely dissociate, and the OH⁻ will react with HA (a weak acid) in a 1:1 molar ratio.\n\nThe limiting reagent is NaOH (0.005 mol), so:\n\n- Moles of HA remaining = $ 0.020 \\, \\text{mol} - 0.005 \\, \\text{mol} = 0.015 \\, \\text{mol} $\n- Moles of A⁻ formed = $ 0.005 \\, \\text{mol} $\n\nTotal volume of the solution after mixing = $ 100 \\, \\text{mL} + 50 \\, \\text{mL} = 150 \\, \\text{mL} = 0.150 \\, \\text{L} $\n\nNow, calculate the concentrations of HA and A⁻ in the final solution:\n\n- $ [\\text{HA}] = \\frac{0.015 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.10 \\, \\text{M} $\n- $ [\\text{A}^-] = \\frac{0.005 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.0333 \\, \\text{M} $\n\n### 2. **Equilibrium Calculation**\n\nThe solution now contains a buffer of HA and A⁻, so we can use the **Henderson-Hasselbalch equation** to calculate the pH:\n\n$$\n\\text{pH} = \\text{p}K_a + \\log\\left(\\frac{[\\text{A}^-]}{[\\text{HA}]}\\right)\n$$\n\nGiven:\n- $ K_a = 1.8 \\times 10^{-5} $\n- $ \\text{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74 $\n\nSubstitute the values:\n\n$$\n\\text{pH} = 4.74 + \\log\\left(\\frac{0.0333}{0.10}\\right)\n$$\n\n$$\n\\text{pH} = 4.74 + \\log(0.333)\n$$\n\n$$\n\\text{pH} = 4.74 - 0.477 = 4.26\n$$\n\n### Final Answer:\n\n$$\n\\boxed{4.26}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 99463.32
+        },
+        "elapsed_ms": 99463.39
+      },
+      "raw": "{\"success\":true,\"answer\":\"To calculate the resulting pH after mixing 100 mL of 0.20 M HA (a weak acid) with 50 mL of 0.10 M NaOH, we follow these steps:\\n\\n### 1. **Stoichiometric Neutralization**\\n\\nFirst, determine the moles of HA and NaOH before the reaction:\\n\\n- Moles of HA = $ 0.100 \\\\, \\\\text{L} \\\\times 0.20 \\\\, \\\\text{M} = 0.020 \\\\, \\\\text{mol} $\\n- Moles of NaOH = $ 0.050 \\\\, \\\\text{L} \\\\times 0.10 \\\\, \\\\text{M} = 0.005 \\\\, \\\\text{mol} $\\n\\nThe reaction between HA and NaOH is:\\n\\n$$\\n\\\\text{HA} + \\\\text{OH}^- \\\\rightarrow \\\\text{A}^- + \\\\text{H}_2\\\\text{O}\\n$$\\n\\nSince NaOH is a strong base, it will completely dissociate, and the OH⁻ will react with HA (a weak acid) in a 1:1 molar ratio.\\n\\nThe limiting reagent is NaOH (0.005 mol), so:\\n\\n- Moles of HA remaining = $ 0.020 \\\\, \\\\text{mol} - 0.005 \\\\, \\\\text{mol} = 0.015 \\\\, \\\\text{mol} $\\n- Moles of A⁻ formed = $ 0.005 \\\\, \\\\text{mol} $\\n\\nTotal volume of the solution after mixing = $ 100 \\\\, \\\\text{mL} + 50 \\\\, \\\\text{mL} = 150 \\\\, \\\\text{mL} = 0.150 \\\\, \\\\text{L} $\\n\\nNow, calculate the concentrations of HA and A⁻ in the final solution:\\n\\n- $ [\\\\text{HA}] = \\\\frac{0.015 \\\\, \\\\text{mol}}{0.150 \\\\, \\\\text{L}} = 0.10 \\\\, \\\\text{M} $\\n- $ [\\\\text{A}^-] = \\\\frac{0.005 \\\\, \\\\text{mol}}{0.150 \\\\, \\\\text{L}} = 0.0333 \\\\, \\\\text{M} $\\n\\n### 2. **Equilibrium Calculation**\\n\\nThe solution now contains a buffer of HA and A⁻, so we can use the **Henderson-Hasselbalch equation** to calculate the pH:\\n\\n$$\\n\\\\text{pH} = \\\\text{p}K_a + \\\\log\\\\left(\\\\frac{[\\\\text{A}^-]}{[\\\\text{HA}]}\\\\right)\\n$$\\n\\nGiven:\\n- $ K_a = 1.8 \\\\times 10^{-5} $\\n- $ \\\\text{p}K_a = -\\\\log(1.8 \\\\times 10^{-5}) \\\\approx 4.74 $\\n\\nSubstitute the values:\\n\\n$$\\n\\\\text{pH} = 4.74 + \\\\log\\\\left(\\\\frac{0.0333}{0.10}\\\\right)\\n$$\\n\\n$$\\n\\\\text{pH} = 4.74 + \\\\log(0.333)\\n$$\\n\\n$$\\n\\\\text{pH} = 4.74 - 0.477 = 4.26\\n$$\\n\\n### Final Answer:\\n\\n$$\\n\\\\boxed{4.26}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":99463.32},\"elapsed_ms\":99463.39}",
+      "display_output": "To calculate the resulting pH after mixing 100 mL of 0.20 M HA (a weak acid) with 50 mL of 0.10 M NaOH, we follow these steps:\n\n### 1. **Stoichiometric Neutralization**\n\nFirst, determine the moles of HA and NaOH before the reaction:\n\n- Moles of HA = $ 0.100 \\, \\text{L} \\times 0.20 \\, \\text{M} = 0.020 \\, \\text{mol} $\n- Moles of NaOH = $ 0.050 \\, \\text{L} \\times 0.10 \\, \\text{M} = 0.005 \\, \\text{mol} $\n\nThe reaction between HA and NaOH is:\n\n$$\n\\text{HA} + \\text{OH}^- \\rightarrow \\text{A}^- + \\text{H}_2\\text{O}\n$$\n\nSince NaOH is a strong base, it will completely dissociate, and the OH⁻ will react with HA (a weak acid) in a 1:1 molar ratio.\n\nThe limiting reagent is NaOH (0.005 mol), so:\n\n- Moles of HA remaining = $ 0.020 \\, \\text{mol} - 0.005 \\, \\text{mol} = 0.015 \\, \\text{mol} $\n- Moles of A⁻ formed = $ 0.005 \\, \\text{mol} $\n\nTotal volume of the solution after mixing = $ 100 \\, \\text{mL} + 50 \\, \\text{mL} = 150 \\, \\text{mL} = 0.150 \\, \\text{L} $\n\nNow, calculate the concentrations of HA and A⁻ in the final solution:\n\n- $ [\\text{HA}] = \\frac{0.015 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.10 \\, \\text{M} $\n- $ [\\text{A}^-] = \\frac{0.005 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.0333 \\, \\text{M} $\n\n### 2. **Equilibrium Calculation**\n\nThe solution now contains a buffer of HA and A⁻, so we can use the **Henderson-Hasselbalch equation** to calculate the pH:\n\n$$\n\\text{pH} = \\text{p}K_a + \\log\\left(\\frac{[\\text{A}^-]}{[\\text{HA}]}\\right)\n$$\n\nGiven:\n- $ K_a = 1.8 \\times 10^{-5} $\n- $ \\text{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74 $\n\nSubstitute the values:\n\n$$\n\\text{pH} = 4.74 + \\log\\left(\\frac{0.0333}{0.10}\\right)\n$$\n\n$$\n\\text{pH} = 4.74 + \\log(0.333)\n$$\n\n$$\n\\text{pH} = 4.74 - 0.477 = 4.26\n$$\n\n### Final Answer:\n\n$$\n\\boxed{4.26}\n$$",
+      "structured_output": "To calculate the resulting pH after mixing 100 mL of 0.20 M HA (a weak acid) with 50 mL of 0.10 M NaOH, we follow these steps:\n\n### 1. **Stoichiometric Neutralization**\n\nFirst, determine the moles of HA and NaOH before the reaction:\n\n- Moles of HA = $ 0.100 \\, \\text{L} \\times 0.20 \\, \\text{M} = 0.020 \\, \\text{mol} $\n- Moles of NaOH = $ 0.050 \\, \\text{L} \\times 0.10 \\, \\text{M} = 0.005 \\, \\text{mol} $\n\nThe reaction between HA and NaOH is:\n\n$$\n\\text{HA} + \\text{OH}^- \\rightarrow \\text{A}^- + \\text{H}_2\\text{O}\n$$\n\nSince NaOH is a strong base, it will completely dissociate, and the OH⁻ will react with HA (a weak acid) in a 1:1 molar ratio.\n\nThe limiting reagent is NaOH (0.005 mol), so:\n\n- Moles of HA remaining = $ 0.020 \\, \\text{mol} - 0.005 \\, \\text{mol} = 0.015 \\, \\text{mol} $\n- Moles of A⁻ formed = $ 0.005 \\, \\text{mol} $\n\nTotal volume of the solution after mixing = $ 100 \\, \\text{mL} + 50 \\, \\text{mL} = 150 \\, \\text{mL} = 0.150 \\, \\text{L} $\n\nNow, calculate the concentrations of HA and A⁻ in the final solution:\n\n- $ [\\text{HA}] = \\frac{0.015 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.10 \\, \\text{M} $\n- $ [\\text{A}^-] = \\frac{0.005 \\, \\text{mol}}{0.150 \\, \\text{L}} = 0.0333 \\, \\text{M} $\n\n### 2. **Equilibrium Calculation**\n\nThe solution now contains a buffer of HA and A⁻, so we can use the **Henderson-Hasselbalch equation** to calculate the pH:\n\n$$\n\\text{pH} = \\text{p}K_a + \\log\\left(\\frac{[\\text{A}^-]}{[\\text{HA}]}\\right)\n$$\n\nGiven:\n- $ K_a = 1.8 \\times 10^{-5} $\n- $ \\text{p}K_a = -\\log(1.8 \\times 10^{-5}) \\approx 4.74 $\n\nSubstitute the values:\n\n$$\n\\text{pH} = 4.74 + \\log\\left(\\frac{0.0333}{0.10}\\right)\n$$\n\n$$\n\\text{pH} = 4.74 + \\log(0.333)\n$$\n\n$$\n\\text{pH} = 4.74 - 0.477 = 4.26\n$$\n\n### Final Answer:\n\n$$\n\\boxed{4.26}\n$$",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "chemistry_medium_buffer",
+      "difficulty": "medium",
+      "domain": "chemistry",
+      "question": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+      "ms": 206221.4201000752,
+      "response": {
+        "success": false,
+        "query": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 96324.85,
+        "mcq_generation_elapsed_ms": 109893.2,
+        "hint_elapsed_ms": 109893.2,
+        "elapsed_ms": 206218.19,
+        "guided_estimated_steps": 4,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 109893.2
+      },
+      "raw": "{\"success\":false,\"query\":\"A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":96324.85,\"mcq_generation_elapsed_ms\":109893.2,\"hint_elapsed_ms\":109893.2,\"elapsed_ms\":206218.19,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":109893.2}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_hard_equilibrium",
+      "difficulty": "hard",
+      "domain": "chemistry",
+      "mode": "off",
+      "question": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+      "ms": 57624.01430006139,
+      "response": {
+        "success": true,
+        "answer": "The equilibrium reaction is:  \nN₂O₄(g) ⇌ 2NO₂(g)  \n\nLet α be the fraction dissociated. Initially, the pressure of N₂O₄ is 1.00 atm, and the pressure of NO₂ is 0. At equilibrium:  \n- Pressure of N₂O₄ = 1.00(1 - α)  \n- Pressure of NO₂ = 2α  \n\nThe equilibrium constant Kp is given by:  \nKp = (P_NO2²) / (P_N2O4) = ( (2α)² ) / (1.00(1 - α)) = 0.144  \n\nSolving for α:  \n(4α²) / (1.00(1 - α)) = 0.144  \n4α² = 0.144(1 - α)  \n4α² = 0.144 - 0.144α  \n4α² + 0.144α - 0.144 = 0  \n\nUsing the quadratic formula:  \nα = [-0.144 ± √(0.144² + 4 * 4 * 0.144)] / (2 * 4)  \n\nCalculating the discriminant:  \n√(0.020736 + 2.304) = √(2.324736) ≈ 1.5247  \n\nThen:  \nα = [-0.144 ± 1.5247] / 8  \n\nTaking the positive root:  \nα = (1.3807) / 8 ≈ 0.1726  \n\nThe fraction dissociated α is 0.1726.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 57613.29
+        },
+        "elapsed_ms": 57613.45
+      },
+      "raw": "{\"success\":true,\"answer\":\"The equilibrium reaction is:  \\nN₂O₄(g) ⇌ 2NO₂(g)  \\n\\nLet α be the fraction dissociated. Initially, the pressure of N₂O₄ is 1.00 atm, and the pressure of NO₂ is 0. At equilibrium:  \\n- Pressure of N₂O₄ = 1.00(1 - α)  \\n- Pressure of NO₂ = 2α  \\n\\nThe equilibrium constant Kp is given by:  \\nKp = (P_NO2²) / (P_N2O4) = ( (2α)² ) / (1.00(1 - α)) = 0.144  \\n\\nSolving for α:  \\n(4α²) / (1.00(1 - α)) = 0.144  \\n4α² = 0.144(1 - α)  \\n4α² = 0.144 - 0.144α  \\n4α² + 0.144α - 0.144 = 0  \\n\\nUsing the quadratic formula:  \\nα = [-0.144 ± √(0.144² + 4 * 4 * 0.144)] / (2 * 4)  \\n\\nCalculating the discriminant:  \\n√(0.020736 + 2.304) = √(2.324736) ≈ 1.5247  \\n\\nThen:  \\nα = [-0.144 ± 1.5247] / 8  \\n\\nTaking the positive root:  \\nα = (1.3807) / 8 ≈ 0.1726  \\n\\nThe fraction dissociated α is 0.1726.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":57613.29},\"elapsed_ms\":57613.45}",
+      "display_output": "The equilibrium reaction is:  \nN₂O₄(g) ⇌ 2NO₂(g)  \n\nLet α be the fraction dissociated. Initially, the pressure of N₂O₄ is 1.00 atm, and the pressure of NO₂ is 0. At equilibrium:  \n- Pressure of N₂O₄ = 1.00(1 - α)  \n- Pressure of NO₂ = 2α  \n\nThe equilibrium constant Kp is given by:  \nKp = (P_NO2²) / (P_N2O4) = ( (2α)² ) / (1.00(1 - α)) = 0.144  \n\nSolving for α:  \n(4α²) / (1.00(1 - α)) = 0.144  \n4α² = 0.144(1 - α)  \n4α² = 0.144 - 0.144α  \n4α² + 0.144α - 0.144 = 0  \n\nUsing the quadratic formula:  \nα = [-0.144 ± √(0.144² + 4 * 4 * 0.144)] / (2 * 4)  \n\nCalculating the discriminant:  \n√(0.020736 + 2.304) = √(2.324736) ≈ 1.5247  \n\nThen:  \nα = [-0.144 ± 1.5247] / 8  \n\nTaking the positive root:  \nα = (1.3807) / 8 ≈ 0.1726  \n\nThe fraction dissociated α is 0.1726.",
+      "structured_output": "The equilibrium reaction is:  \nN₂O₄(g) ⇌ 2NO₂(g)  \n\nLet α be the fraction dissociated. Initially, the pressure of N₂O₄ is 1.00 atm, and the pressure of NO₂ is 0. At equilibrium:  \n- Pressure of N₂O₄ = 1.00(1 - α)  \n- Pressure of NO₂ = 2α  \n\nThe equilibrium constant Kp is given by:  \nKp = (P_NO2²) / (P_N2O4) = ( (2α)² ) / (1.00(1 - α)) = 0.144  \n\nSolving for α:  \n(4α²) / (1.00(1 - α)) = 0.144  \n4α² = 0.144(1 - α)  \n4α² = 0.144 - 0.144α  \n4α² + 0.144α - 0.144 = 0  \n\nUsing the quadratic formula:  \nα = [-0.144 ± √(0.144² + 4 * 4 * 0.144)] / (2 * 4)  \n\nCalculating the discriminant:  \n√(0.020736 + 2.304) = √(2.324736) ≈ 1.5247  \n\nThen:  \nα = [-0.144 ± 1.5247] / 8  \n\nTaking the positive root:  \nα = (1.3807) / 8 ≈ 0.1726  \n\nThe fraction dissociated α is 0.1726.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_hard_equilibrium",
+      "difficulty": "hard",
+      "domain": "chemistry",
+      "mode": "concise",
+      "question": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+      "ms": 80823.37270001881,
+      "response": {
+        "success": true,
+        "answer": "The equilibrium reaction is:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nLet $P_0 = 1.00$ atm be the initial pressure of $\\text{N}_2\\text{O}_4$. At equilibrium, the pressure of $\\text{N}_2\\text{O}_4$ is $P_0(1 - \\alpha)$, and the pressure of $\\text{NO}_2$ is $2P_0\\alpha$, where $\\alpha$ is the fraction dissociated.\n\nThe equilibrium constant $K_p$ is given by:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstituting $K_p = 0.144$ and $P_0 = 1.00$:\n\n$$\n0.144 = \\frac{(2\\alpha)^2}{1 - \\alpha}\n$$\n\nSolving for $\\alpha$:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nUsing the quadratic formula:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4 \\cdot 4 \\cdot (-0.144)}}{2 \\cdot 4}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\n$$\n\\alpha = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 80820.16
+        },
+        "elapsed_ms": 80820.23
+      },
+      "raw": "{\"success\":true,\"answer\":\"The equilibrium reaction is:\\n\\n$$\\n\\\\text{N}_2\\\\text{O}_4(g) \\\\rightleftharpoons 2\\\\text{NO}_2(g)\\n$$\\n\\nLet $P_0 = 1.00$ atm be the initial pressure of $\\\\text{N}_2\\\\text{O}_4$. At equilibrium, the pressure of $\\\\text{N}_2\\\\text{O}_4$ is $P_0(1 - \\\\alpha)$, and the pressure of $\\\\text{NO}_2$ is $2P_0\\\\alpha$, where $\\\\alpha$ is the fraction dissociated.\\n\\nThe equilibrium constant $K_p$ is given by:\\n\\n$$\\nK_p = \\\\frac{(P_{\\\\text{NO}_2})^2}{P_{\\\\text{N}_2\\\\text{O}_4}} = \\\\frac{(2P_0\\\\alpha)^2}{P_0(1 - \\\\alpha)}\\n$$\\n\\nSubstituting $K_p = 0.144$ and $P_0 = 1.00$:\\n\\n$$\\n0.144 = \\\\frac{(2\\\\alpha)^2}{1 - \\\\alpha}\\n$$\\n\\nSolving for $\\\\alpha$:\\n\\n$$\\n0.144(1 - \\\\alpha) = 4\\\\alpha^2\\n$$\\n\\n$$\\n0.144 - 0.144\\\\alpha = 4\\\\alpha^2\\n$$\\n\\n$$\\n4\\\\alpha^2 + 0.144\\\\alpha - 0.144 = 0\\n$$\\n\\nUsing the quadratic formula:\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{(0.144)^2 - 4 \\\\cdot 4 \\\\cdot (-0.144)}}{2 \\\\cdot 4}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{0.020736 + 2.304}}{8}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{2.324736}}{8}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm 1.5247}{8}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{1.3807}{8} \\\\approx 0.1726\\n$$\\n\\n$$\\n\\\\boxed{\\\\alpha \\\\approx 0.173}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":80820.16},\"elapsed_ms\":80820.23}",
+      "display_output": "The equilibrium reaction is:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nLet $P_0 = 1.00$ atm be the initial pressure of $\\text{N}_2\\text{O}_4$. At equilibrium, the pressure of $\\text{N}_2\\text{O}_4$ is $P_0(1 - \\alpha)$, and the pressure of $\\text{NO}_2$ is $2P_0\\alpha$, where $\\alpha$ is the fraction dissociated.\n\nThe equilibrium constant $K_p$ is given by:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstituting $K_p = 0.144$ and $P_0 = 1.00$:\n\n$$\n0.144 = \\frac{(2\\alpha)^2}{1 - \\alpha}\n$$\n\nSolving for $\\alpha$:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nUsing the quadratic formula:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4 \\cdot 4 \\cdot (-0.144)}}{2 \\cdot 4}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\n$$\n\\alpha = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$",
+      "structured_output": "The equilibrium reaction is:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nLet $P_0 = 1.00$ atm be the initial pressure of $\\text{N}_2\\text{O}_4$. At equilibrium, the pressure of $\\text{N}_2\\text{O}_4$ is $P_0(1 - \\alpha)$, and the pressure of $\\text{NO}_2$ is $2P_0\\alpha$, where $\\alpha$ is the fraction dissociated.\n\nThe equilibrium constant $K_p$ is given by:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstituting $K_p = 0.144$ and $P_0 = 1.00$:\n\n$$\n0.144 = \\frac{(2\\alpha)^2}{1 - \\alpha}\n$$\n\nSolving for $\\alpha$:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nUsing the quadratic formula:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4 \\cdot 4 \\cdot (-0.144)}}{2 \\cdot 4}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\n$$\n\\alpha = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "chemistry_hard_equilibrium",
+      "difficulty": "hard",
+      "domain": "chemistry",
+      "mode": "detailed",
+      "question": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+      "ms": 135546.65749997366,
+      "response": {
+        "success": true,
+        "answer": "To solve this problem, we start by analyzing the chemical equilibrium reaction:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nThe equilibrium constant $ K_p $ is given as 0.144 at 298 K. Initially, the vessel contains pure $ \\text{N}_2\\text{O}_4 $ at a pressure of 1.00 atm. Let $ \\alpha $ be the fraction of $ \\text{N}_2\\text{O}_4 $ that dissociates. Our goal is to derive the equilibrium equation and calculate $ \\alpha $.\n\n---\n\n### **Step 1: Define the Equilibrium Expressions**\n\nLet the initial pressure of $ \\text{N}_2\\text{O}_4 $ be $ P_0 = 1.00 $ atm. At equilibrium, the pressure of $ \\text{N}_2\\text{O}_4 $ will be $ P_0(1 - \\alpha) $, and the pressure of $ \\text{NO}_2 $ will be $ 2P_0\\alpha $, since each mole of $ \\text{N}_2\\text{O}_4 $ produces 2 moles of $ \\text{NO}_2 $.\n\nThe equilibrium expression for $ K_p $ is:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstitute $ P_0 = 1.00 $ atm:\n\n$$\nK_p = \\frac{(2\\alpha)^2}{1 - \\alpha} = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\n---\n\n### **Step 2: Solve for $ \\alpha $**\n\nWe are given $ K_p = 0.144 $. Substitute into the equation:\n\n$$\n0.144 = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\nMultiply both sides by $ 1 - \\alpha $:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\nDistribute the left-hand side:\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\nRearrange into standard quadratic form:\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nThis is a quadratic equation of the form $ a\\alpha^2 + b\\alpha + c = 0 $, where:\n\n- $ a = 4 $\n- $ b = 0.144 $\n- $ c = -0.144 $\n\nUse the quadratic formula:\n\n$$\n\\alpha = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n\nSubstitute the values:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4(4)(-0.144)}}{2(4)}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\nWe take the positive root (since $ \\alpha $ must be between 0 and 1):\n\n$$\n\\alpha = \\frac{-0.144 + 1.5247}{8} = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n---\n\n### **Final Answer**\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$\n\nThis means that approximately 17.3% of the initial $ \\text{N}_2\\text{O}_4 $ dissociates at equilibrium.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 135522.52
+        },
+        "elapsed_ms": 135522.6
+      },
+      "raw": "{\"success\":true,\"answer\":\"To solve this problem, we start by analyzing the chemical equilibrium reaction:\\n\\n$$\\n\\\\text{N}_2\\\\text{O}_4(g) \\\\rightleftharpoons 2\\\\text{NO}_2(g)\\n$$\\n\\nThe equilibrium constant $ K_p $ is given as 0.144 at 298 K. Initially, the vessel contains pure $ \\\\text{N}_2\\\\text{O}_4 $ at a pressure of 1.00 atm. Let $ \\\\alpha $ be the fraction of $ \\\\text{N}_2\\\\text{O}_4 $ that dissociates. Our goal is to derive the equilibrium equation and calculate $ \\\\alpha $.\\n\\n---\\n\\n### **Step 1: Define the Equilibrium Expressions**\\n\\nLet the initial pressure of $ \\\\text{N}_2\\\\text{O}_4 $ be $ P_0 = 1.00 $ atm. At equilibrium, the pressure of $ \\\\text{N}_2\\\\text{O}_4 $ will be $ P_0(1 - \\\\alpha) $, and the pressure of $ \\\\text{NO}_2 $ will be $ 2P_0\\\\alpha $, since each mole of $ \\\\text{N}_2\\\\text{O}_4 $ produces 2 moles of $ \\\\text{NO}_2 $.\\n\\nThe equilibrium expression for $ K_p $ is:\\n\\n$$\\nK_p = \\\\frac{(P_{\\\\text{NO}_2})^2}{P_{\\\\text{N}_2\\\\text{O}_4}} = \\\\frac{(2P_0\\\\alpha)^2}{P_0(1 - \\\\alpha)}\\n$$\\n\\nSubstitute $ P_0 = 1.00 $ atm:\\n\\n$$\\nK_p = \\\\frac{(2\\\\alpha)^2}{1 - \\\\alpha} = \\\\frac{4\\\\alpha^2}{1 - \\\\alpha}\\n$$\\n\\n---\\n\\n### **Step 2: Solve for $ \\\\alpha $**\\n\\nWe are given $ K_p = 0.144 $. Substitute into the equation:\\n\\n$$\\n0.144 = \\\\frac{4\\\\alpha^2}{1 - \\\\alpha}\\n$$\\n\\nMultiply both sides by $ 1 - \\\\alpha $:\\n\\n$$\\n0.144(1 - \\\\alpha) = 4\\\\alpha^2\\n$$\\n\\nDistribute the left-hand side:\\n\\n$$\\n0.144 - 0.144\\\\alpha = 4\\\\alpha^2\\n$$\\n\\nRearrange into standard quadratic form:\\n\\n$$\\n4\\\\alpha^2 + 0.144\\\\alpha - 0.144 = 0\\n$$\\n\\nThis is a quadratic equation of the form $ a\\\\alpha^2 + b\\\\alpha + c = 0 $, where:\\n\\n- $ a = 4 $\\n- $ b = 0.144 $\\n- $ c = -0.144 $\\n\\nUse the quadratic formula:\\n\\n$$\\n\\\\alpha = \\\\frac{-b \\\\pm \\\\sqrt{b^2 - 4ac}}{2a}\\n$$\\n\\nSubstitute the values:\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{(0.144)^2 - 4(4)(-0.144)}}{2(4)}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{0.020736 + 2.304}}{8}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm \\\\sqrt{2.324736}}{8}\\n$$\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 \\\\pm 1.5247}{8}\\n$$\\n\\nWe take the positive root (since $ \\\\alpha $ must be between 0 and 1):\\n\\n$$\\n\\\\alpha = \\\\frac{-0.144 + 1.5247}{8} = \\\\frac{1.3807}{8} \\\\approx 0.1726\\n$$\\n\\n---\\n\\n### **Final Answer**\\n\\n$$\\n\\\\boxed{\\\\alpha \\\\approx 0.173}\\n$$\\n\\nThis means that approximately 17.3% of the initial $ \\\\text{N}_2\\\\text{O}_4 $ dissociates at equilibrium.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":135522.52},\"elapsed_ms\":135522.6}",
+      "display_output": "To solve this problem, we start by analyzing the chemical equilibrium reaction:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nThe equilibrium constant $ K_p $ is given as 0.144 at 298 K. Initially, the vessel contains pure $ \\text{N}_2\\text{O}_4 $ at a pressure of 1.00 atm. Let $ \\alpha $ be the fraction of $ \\text{N}_2\\text{O}_4 $ that dissociates. Our goal is to derive the equilibrium equation and calculate $ \\alpha $.\n\n---\n\n### **Step 1: Define the Equilibrium Expressions**\n\nLet the initial pressure of $ \\text{N}_2\\text{O}_4 $ be $ P_0 = 1.00 $ atm. At equilibrium, the pressure of $ \\text{N}_2\\text{O}_4 $ will be $ P_0(1 - \\alpha) $, and the pressure of $ \\text{NO}_2 $ will be $ 2P_0\\alpha $, since each mole of $ \\text{N}_2\\text{O}_4 $ produces 2 moles of $ \\text{NO}_2 $.\n\nThe equilibrium expression for $ K_p $ is:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstitute $ P_0 = 1.00 $ atm:\n\n$$\nK_p = \\frac{(2\\alpha)^2}{1 - \\alpha} = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\n---\n\n### **Step 2: Solve for $ \\alpha $**\n\nWe are given $ K_p = 0.144 $. Substitute into the equation:\n\n$$\n0.144 = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\nMultiply both sides by $ 1 - \\alpha $:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\nDistribute the left-hand side:\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\nRearrange into standard quadratic form:\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nThis is a quadratic equation of the form $ a\\alpha^2 + b\\alpha + c = 0 $, where:\n\n- $ a = 4 $\n- $ b = 0.144 $\n- $ c = -0.144 $\n\nUse the quadratic formula:\n\n$$\n\\alpha = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n\nSubstitute the values:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4(4)(-0.144)}}{2(4)}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\nWe take the positive root (since $ \\alpha $ must be between 0 and 1):\n\n$$\n\\alpha = \\frac{-0.144 + 1.5247}{8} = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n---\n\n### **Final Answer**\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$\n\nThis means that approximately 17.3% of the initial $ \\text{N}_2\\text{O}_4 $ dissociates at equilibrium.",
+      "structured_output": "To solve this problem, we start by analyzing the chemical equilibrium reaction:\n\n$$\n\\text{N}_2\\text{O}_4(g) \\rightleftharpoons 2\\text{NO}_2(g)\n$$\n\nThe equilibrium constant $ K_p $ is given as 0.144 at 298 K. Initially, the vessel contains pure $ \\text{N}_2\\text{O}_4 $ at a pressure of 1.00 atm. Let $ \\alpha $ be the fraction of $ \\text{N}_2\\text{O}_4 $ that dissociates. Our goal is to derive the equilibrium equation and calculate $ \\alpha $.\n\n---\n\n### **Step 1: Define the Equilibrium Expressions**\n\nLet the initial pressure of $ \\text{N}_2\\text{O}_4 $ be $ P_0 = 1.00 $ atm. At equilibrium, the pressure of $ \\text{N}_2\\text{O}_4 $ will be $ P_0(1 - \\alpha) $, and the pressure of $ \\text{NO}_2 $ will be $ 2P_0\\alpha $, since each mole of $ \\text{N}_2\\text{O}_4 $ produces 2 moles of $ \\text{NO}_2 $.\n\nThe equilibrium expression for $ K_p $ is:\n\n$$\nK_p = \\frac{(P_{\\text{NO}_2})^2}{P_{\\text{N}_2\\text{O}_4}} = \\frac{(2P_0\\alpha)^2}{P_0(1 - \\alpha)}\n$$\n\nSubstitute $ P_0 = 1.00 $ atm:\n\n$$\nK_p = \\frac{(2\\alpha)^2}{1 - \\alpha} = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\n---\n\n### **Step 2: Solve for $ \\alpha $**\n\nWe are given $ K_p = 0.144 $. Substitute into the equation:\n\n$$\n0.144 = \\frac{4\\alpha^2}{1 - \\alpha}\n$$\n\nMultiply both sides by $ 1 - \\alpha $:\n\n$$\n0.144(1 - \\alpha) = 4\\alpha^2\n$$\n\nDistribute the left-hand side:\n\n$$\n0.144 - 0.144\\alpha = 4\\alpha^2\n$$\n\nRearrange into standard quadratic form:\n\n$$\n4\\alpha^2 + 0.144\\alpha - 0.144 = 0\n$$\n\nThis is a quadratic equation of the form $ a\\alpha^2 + b\\alpha + c = 0 $, where:\n\n- $ a = 4 $\n- $ b = 0.144 $\n- $ c = -0.144 $\n\nUse the quadratic formula:\n\n$$\n\\alpha = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n\nSubstitute the values:\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{(0.144)^2 - 4(4)(-0.144)}}{2(4)}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{0.020736 + 2.304}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm \\sqrt{2.324736}}{8}\n$$\n\n$$\n\\alpha = \\frac{-0.144 \\pm 1.5247}{8}\n$$\n\nWe take the positive root (since $ \\alpha $ must be between 0 and 1):\n\n$$\n\\alpha = \\frac{-0.144 + 1.5247}{8} = \\frac{1.3807}{8} \\approx 0.1726\n$$\n\n---\n\n### **Final Answer**\n\n$$\n\\boxed{\\alpha \\approx 0.173}\n$$\n\nThis means that approximately 17.3% of the initial $ \\text{N}_2\\text{O}_4 $ dissociates at equilibrium.",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "chemistry_hard_equilibrium",
+      "difficulty": "hard",
+      "domain": "chemistry",
+      "question": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+      "ms": 229961.61629993003,
+      "response": {
+        "success": false,
+        "query": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 78096.12,
+        "mcq_generation_elapsed_ms": 151851.85,
+        "hint_elapsed_ms": 151851.85,
+        "elapsed_ms": 229948.18,
+        "guided_estimated_steps": 5,
+        "guided_advisory_tokens": 350,
+        "mcq_elapsed_ms": 151851.85
+      },
+      "raw": "{\"success\":false,\"query\":\"For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":78096.12,\"mcq_generation_elapsed_ms\":151851.85,\"hint_elapsed_ms\":151851.85,\"elapsed_ms\":229948.18,\"guided_estimated_steps\":5,\"guided_advisory_tokens\":350,\"mcq_elapsed_ms\":151851.85}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "cs_easy_complexity",
+      "difficulty": "easy",
+      "domain": "computer_science",
+      "mode": "off",
+      "question": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+      "ms": 2598.219700041227,
+      "response": {
+        "success": true,
+        "answer": "O(n) and O(1)",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 2572.91
+        },
+        "elapsed_ms": 2573.04
+      },
+      "raw": "{\"success\":true,\"answer\":\"O(n) and O(1)\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":2572.91},\"elapsed_ms\":2573.04}",
+      "display_output": "O(n) and O(1)",
+      "structured_output": "O(n) and O(1)",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_easy_complexity",
+      "difficulty": "easy",
+      "domain": "computer_science",
+      "mode": "concise",
+      "question": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+      "ms": 57087.22770004533,
+      "response": {
+        "success": true,
+        "answer": "The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \n\nThe time complexity is $O(n)$ because the loop runs $n$ times.\n\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \n\n$$\n\\text{Time complexity: } O(n)\n$$\n$$\n\\text{Auxiliary space complexity: } O(1)\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 57065.62
+        },
+        "elapsed_ms": 57065.73
+      },
+      "raw": "{\"success\":true,\"answer\":\"The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \\n\\nThe time complexity is $O(n)$ because the loop runs $n$ times.\\n\\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \\n\\n$$\\n\\\\text{Time complexity: } O(n)\\n$$\\n$$\\n\\\\text{Auxiliary space complexity: } O(1)\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":57065.62},\"elapsed_ms\":57065.73}",
+      "display_output": "The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \n\nThe time complexity is $O(n)$ because the loop runs $n$ times.\n\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \n\n$$\n\\text{Time complexity: } O(n)\n$$\n$$\n\\text{Auxiliary space complexity: } O(1)\n$$",
+      "structured_output": "The pseudocode loops from $1$ to $n$, executing the print statement $n$ times. Each iteration of the loop performs a constant amount of work. \n\nThe time complexity is $O(n)$ because the loop runs $n$ times.\n\nThe auxiliary space complexity is $O(1)$ because no additional data structures are used, and the only storage is for the loop variables, which is constant. \n\n$$\n\\text{Time complexity: } O(n)\n$$\n$$\n\\text{Auxiliary space complexity: } O(1)\n$$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_easy_complexity",
+      "difficulty": "easy",
+      "domain": "computer_science",
+      "mode": "detailed",
+      "question": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+      "ms": 31681.281100027263,
+      "response": {
+        "success": true,
+        "answer": "For the pseudocode `for i = 1 to n: print(i)`, the time complexity and auxiliary space complexity can be analyzed as follows:\n\n### Governing Relation:\nThe loop runs from `i = 1` to `n`, inclusive. This means the loop body is executed exactly `n` times. The `print(i)` statement is a constant-time operation, as it involves a simple output operation that does not depend on the value of `i`.\n\n### Time Complexity:\n- The loop runs `n` times.\n- Each iteration of the loop takes constant time `O(1)`.\n- Therefore, the total time complexity is `O(n)`.\n\n### Auxiliary Space Complexity:\n- The loop does not use any additional data structures or variables that grow with `n`.\n- The only variable `i` is a simple integer and does not require additional space proportional to `n`.\n- Therefore, the auxiliary space complexity is `O(1)`.\n\n### Final Answer:\n- **Time Complexity**: $ O(n) $\n- **Auxiliary Space Complexity**: $ O(1) $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 31677.9
+        },
+        "elapsed_ms": 31677.99
+      },
+      "raw": "{\"success\":true,\"answer\":\"For the pseudocode `for i = 1 to n: print(i)`, the time complexity and auxiliary space complexity can be analyzed as follows:\\n\\n### Governing Relation:\\nThe loop runs from `i = 1` to `n`, inclusive. This means the loop body is executed exactly `n` times. The `print(i)` statement is a constant-time operation, as it involves a simple output operation that does not depend on the value of `i`.\\n\\n### Time Complexity:\\n- The loop runs `n` times.\\n- Each iteration of the loop takes constant time `O(1)`.\\n- Therefore, the total time complexity is `O(n)`.\\n\\n### Auxiliary Space Complexity:\\n- The loop does not use any additional data structures or variables that grow with `n`.\\n- The only variable `i` is a simple integer and does not require additional space proportional to `n`.\\n- Therefore, the auxiliary space complexity is `O(1)`.\\n\\n### Final Answer:\\n- **Time Complexity**: $ O(n) $\\n- **Auxiliary Space Complexity**: $ O(1) $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":31677.9},\"elapsed_ms\":31677.99}",
+      "display_output": "For the pseudocode `for i = 1 to n: print(i)`, the time complexity and auxiliary space complexity can be analyzed as follows:\n\n### Governing Relation:\nThe loop runs from `i = 1` to `n`, inclusive. This means the loop body is executed exactly `n` times. The `print(i)` statement is a constant-time operation, as it involves a simple output operation that does not depend on the value of `i`.\n\n### Time Complexity:\n- The loop runs `n` times.\n- Each iteration of the loop takes constant time `O(1)`.\n- Therefore, the total time complexity is `O(n)`.\n\n### Auxiliary Space Complexity:\n- The loop does not use any additional data structures or variables that grow with `n`.\n- The only variable `i` is a simple integer and does not require additional space proportional to `n`.\n- Therefore, the auxiliary space complexity is `O(1)`.\n\n### Final Answer:\n- **Time Complexity**: $ O(n) $\n- **Auxiliary Space Complexity**: $ O(1) $",
+      "structured_output": "For the pseudocode `for i = 1 to n: print(i)`, the time complexity and auxiliary space complexity can be analyzed as follows:\n\n### Governing Relation:\nThe loop runs from `i = 1` to `n`, inclusive. This means the loop body is executed exactly `n` times. The `print(i)` statement is a constant-time operation, as it involves a simple output operation that does not depend on the value of `i`.\n\n### Time Complexity:\n- The loop runs `n` times.\n- Each iteration of the loop takes constant time `O(1)`.\n- Therefore, the total time complexity is `O(n)`.\n\n### Auxiliary Space Complexity:\n- The loop does not use any additional data structures or variables that grow with `n`.\n- The only variable `i` is a simple integer and does not require additional space proportional to `n`.\n- Therefore, the auxiliary space complexity is `O(1)`.\n\n### Final Answer:\n- **Time Complexity**: $ O(n) $\n- **Auxiliary Space Complexity**: $ O(1) $",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "cs_easy_complexity",
+      "difficulty": "easy",
+      "domain": "computer_science",
+      "question": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+      "ms": 65132.683599949814,
+      "response": {
+        "success": false,
+        "query": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 10964.29,
+        "mcq_generation_elapsed_ms": 54153.87,
+        "hint_elapsed_ms": 54153.87,
+        "elapsed_ms": 65118.32,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 54153.87
+      },
+      "raw": "{\"success\":false,\"query\":\"For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":10964.29,\"mcq_generation_elapsed_ms\":54153.87,\"hint_elapsed_ms\":54153.87,\"elapsed_ms\":65118.32,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":54153.87}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "cs_medium_binary_search",
+      "difficulty": "medium",
+      "domain": "computer_science",
+      "mode": "off",
+      "question": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+      "ms": 30219.040399999358,
+      "response": {
+        "success": true,
+        "answer": "$\\\\text{Binary Search}$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 3096.71,
+          "wolfram": 0.0,
+          "final_llm": 27117.48
+        },
+        "elapsed_ms": 30215.51
+      },
+      "raw": "{\"success\":true,\"answer\":\"$\\\\\\\\text{Binary Search}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":3096.71,\"wolfram\":0.0,\"final_llm\":27117.48},\"elapsed_ms\":30215.51}",
+      "display_output": "$\\\\text{Binary Search}$",
+      "structured_output": "$\\\\text{Binary Search}$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_medium_binary_search",
+      "difficulty": "medium",
+      "domain": "computer_science",
+      "mode": "concise",
+      "question": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+      "ms": 41457.76909997221,
+      "response": {
+        "success": true,
+        "answer": "Binary search works by repeatedly dividing the search interval in half. Given a sorted array $A$ of $n$ distinct integers, the algorithm starts with the entire array and repeatedly compares the middle element with the target value $x$.\n\nThe key steps are:\n1. Initialize low and high pointers to the start and end of the array.\n2. While $low \\leq high$, compute the middle index $mid = (low + high) / 2$.\n3. If $A[mid] = x$, return true (x is present).\n4. If $A[mid] < x$, set $low = mid + 1$.\n5. If $A[mid] > x$, set $high = mid - 1$.\n\nThe worst-case time complexity is $O(\\log n)$ because each iteration of the loop reduces the search space by half. This logarithmic behavior arises from the division of the array size by 2 in each step, leading to a number of steps proportional to $\\log_2 n$.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2223.46,
+          "wolfram": 0.0,
+          "final_llm": 39231.15
+        },
+        "elapsed_ms": 41454.73
+      },
+      "raw": "{\"success\":true,\"answer\":\"Binary search works by repeatedly dividing the search interval in half. Given a sorted array $A$ of $n$ distinct integers, the algorithm starts with the entire array and repeatedly compares the middle element with the target value $x$.\\n\\nThe key steps are:\\n1. Initialize low and high pointers to the start and end of the array.\\n2. While $low \\\\leq high$, compute the middle index $mid = (low + high) / 2$.\\n3. If $A[mid] = x$, return true (x is present).\\n4. If $A[mid] < x$, set $low = mid + 1$.\\n5. If $A[mid] > x$, set $high = mid - 1$.\\n\\nThe worst-case time complexity is $O(\\\\log n)$ because each iteration of the loop reduces the search space by half. This logarithmic behavior arises from the division of the array size by 2 in each step, leading to a number of steps proportional to $\\\\log_2 n$.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2223.46,\"wolfram\":0.0,\"final_llm\":39231.15},\"elapsed_ms\":41454.73}",
+      "display_output": "Binary search works by repeatedly dividing the search interval in half. Given a sorted array $A$ of $n$ distinct integers, the algorithm starts with the entire array and repeatedly compares the middle element with the target value $x$.\n\nThe key steps are:\n1. Initialize low and high pointers to the start and end of the array.\n2. While $low \\leq high$, compute the middle index $mid = (low + high) / 2$.\n3. If $A[mid] = x$, return true (x is present).\n4. If $A[mid] < x$, set $low = mid + 1$.\n5. If $A[mid] > x$, set $high = mid - 1$.\n\nThe worst-case time complexity is $O(\\log n)$ because each iteration of the loop reduces the search space by half. This logarithmic behavior arises from the division of the array size by 2 in each step, leading to a number of steps proportional to $\\log_2 n$.",
+      "structured_output": "Binary search works by repeatedly dividing the search interval in half. Given a sorted array $A$ of $n$ distinct integers, the algorithm starts with the entire array and repeatedly compares the middle element with the target value $x$.\n\nThe key steps are:\n1. Initialize low and high pointers to the start and end of the array.\n2. While $low \\leq high$, compute the middle index $mid = (low + high) / 2$.\n3. If $A[mid] = x$, return true (x is present).\n4. If $A[mid] < x$, set $low = mid + 1$.\n5. If $A[mid] > x$, set $high = mid - 1$.\n\nThe worst-case time complexity is $O(\\log n)$ because each iteration of the loop reduces the search space by half. This logarithmic behavior arises from the division of the array size by 2 in each step, leading to a number of steps proportional to $\\log_2 n$.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_medium_binary_search",
+      "difficulty": "medium",
+      "domain": "computer_science",
+      "mode": "detailed",
+      "question": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+      "ms": 70421.1559999967,
+      "response": {
+        "success": true,
+        "answer": "To design a binary search algorithm for a sorted array of $ n $ distinct integers, we can follow these steps:\n\n1. **Initialization**: Start with the entire array and set the initial low and high indices to the first and last elements of the array, respectively.\n2. **Loop**: While the low index is less than or equal to the high index:\n   - Calculate the middle index as the average of the low and high indices.\n   - Compare the middle element with the target value $ x $.\n   - If the middle element is equal to $ x $, return the index of $ x $.\n   - If the middle element is less than $ x $, adjust the low index to be one more than the middle index.\n   - If the middle element is greater than $ x $, adjust the high index to be one less than the middle index.\n3. **Termination**: If the loop exits without finding $ x $, return -1 to indicate that $ x $ is not present in the array.\n\nThe binary search algorithm works by repeatedly dividing the search interval in half, which allows it to efficiently locate the target value in a sorted array.\n\n### Worst-Case Time Complexity\n\nThe worst-case time complexity of binary search is $ O(\\log n) $. This is because each iteration of the loop reduces the search space by half. The number of iterations required to reduce the search space from $ n $ elements to 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Why It Is Logarithmic\n\nThe logarithmic time complexity arises from the nature of binary search. Each comparison in the binary search reduces the problem size by half. This halving process continues until the search space is reduced to a single element or the target is found. The number of times you can halve $ n $ before reaching 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Final Answer\n\nThe binary search algorithm for a sorted array of $ n $ distinct integers has a worst-case time complexity of $ O(\\log n) $. This is because each iteration of the algorithm reduces the search space by half, leading to a logarithmic number of steps.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 1872.97,
+          "wolfram": 0.0,
+          "final_llm": 68524.97
+        },
+        "elapsed_ms": 70398.12
+      },
+      "raw": "{\"success\":true,\"answer\":\"To design a binary search algorithm for a sorted array of $ n $ distinct integers, we can follow these steps:\\n\\n1. **Initialization**: Start with the entire array and set the initial low and high indices to the first and last elements of the array, respectively.\\n2. **Loop**: While the low index is less than or equal to the high index:\\n   - Calculate the middle index as the average of the low and high indices.\\n   - Compare the middle element with the target value $ x $.\\n   - If the middle element is equal to $ x $, return the index of $ x $.\\n   - If the middle element is less than $ x $, adjust the low index to be one more than the middle index.\\n   - If the middle element is greater than $ x $, adjust the high index to be one less than the middle index.\\n3. **Termination**: If the loop exits without finding $ x $, return -1 to indicate that $ x $ is not present in the array.\\n\\nThe binary search algorithm works by repeatedly dividing the search interval in half, which allows it to efficiently locate the target value in a sorted array.\\n\\n### Worst-Case Time Complexity\\n\\nThe worst-case time complexity of binary search is $ O(\\\\log n) $. This is because each iteration of the loop reduces the search space by half. The number of iterations required to reduce the search space from $ n $ elements to 1 is $ \\\\log_2 n $, which is the logarithmic time complexity.\\n\\n### Why It Is Logarithmic\\n\\nThe logarithmic time complexity arises from the nature of binary search. Each comparison in the binary search reduces the problem size by half. This halving process continues until the search space is reduced to a single element or the target is found. The number of times you can halve $ n $ before reaching 1 is $ \\\\log_2 n $, which is the logarithmic time complexity.\\n\\n### Final Answer\\n\\nThe binary search algorithm for a sorted array of $ n $ distinct integers has a worst-case time complexity of $ O(\\\\log n) $. This is because each iteration of the algorithm reduces the search space by half, leading to a logarithmic number of steps.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":1872.97,\"wolfram\":0.0,\"final_llm\":68524.97},\"elapsed_ms\":70398.12}",
+      "display_output": "To design a binary search algorithm for a sorted array of $ n $ distinct integers, we can follow these steps:\n\n1. **Initialization**: Start with the entire array and set the initial low and high indices to the first and last elements of the array, respectively.\n2. **Loop**: While the low index is less than or equal to the high index:\n   - Calculate the middle index as the average of the low and high indices.\n   - Compare the middle element with the target value $ x $.\n   - If the middle element is equal to $ x $, return the index of $ x $.\n   - If the middle element is less than $ x $, adjust the low index to be one more than the middle index.\n   - If the middle element is greater than $ x $, adjust the high index to be one less than the middle index.\n3. **Termination**: If the loop exits without finding $ x $, return -1 to indicate that $ x $ is not present in the array.\n\nThe binary search algorithm works by repeatedly dividing the search interval in half, which allows it to efficiently locate the target value in a sorted array.\n\n### Worst-Case Time Complexity\n\nThe worst-case time complexity of binary search is $ O(\\log n) $. This is because each iteration of the loop reduces the search space by half. The number of iterations required to reduce the search space from $ n $ elements to 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Why It Is Logarithmic\n\nThe logarithmic time complexity arises from the nature of binary search. Each comparison in the binary search reduces the problem size by half. This halving process continues until the search space is reduced to a single element or the target is found. The number of times you can halve $ n $ before reaching 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Final Answer\n\nThe binary search algorithm for a sorted array of $ n $ distinct integers has a worst-case time complexity of $ O(\\log n) $. This is because each iteration of the algorithm reduces the search space by half, leading to a logarithmic number of steps.",
+      "structured_output": "To design a binary search algorithm for a sorted array of $ n $ distinct integers, we can follow these steps:\n\n1. **Initialization**: Start with the entire array and set the initial low and high indices to the first and last elements of the array, respectively.\n2. **Loop**: While the low index is less than or equal to the high index:\n   - Calculate the middle index as the average of the low and high indices.\n   - Compare the middle element with the target value $ x $.\n   - If the middle element is equal to $ x $, return the index of $ x $.\n   - If the middle element is less than $ x $, adjust the low index to be one more than the middle index.\n   - If the middle element is greater than $ x $, adjust the high index to be one less than the middle index.\n3. **Termination**: If the loop exits without finding $ x $, return -1 to indicate that $ x $ is not present in the array.\n\nThe binary search algorithm works by repeatedly dividing the search interval in half, which allows it to efficiently locate the target value in a sorted array.\n\n### Worst-Case Time Complexity\n\nThe worst-case time complexity of binary search is $ O(\\log n) $. This is because each iteration of the loop reduces the search space by half. The number of iterations required to reduce the search space from $ n $ elements to 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Why It Is Logarithmic\n\nThe logarithmic time complexity arises from the nature of binary search. Each comparison in the binary search reduces the problem size by half. This halving process continues until the search space is reduced to a single element or the target is found. The number of times you can halve $ n $ before reaching 1 is $ \\log_2 n $, which is the logarithmic time complexity.\n\n### Final Answer\n\nThe binary search algorithm for a sorted array of $ n $ distinct integers has a worst-case time complexity of $ O(\\log n) $. This is because each iteration of the algorithm reduces the search space by half, leading to a logarithmic number of steps.",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "cs_medium_binary_search",
+      "difficulty": "medium",
+      "domain": "computer_science",
+      "question": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+      "ms": 93851.1690000305,
+      "response": {
+        "success": false,
+        "query": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 24175.5,
+        "mcq_generation_elapsed_ms": 69648.32,
+        "hint_elapsed_ms": 69648.32,
+        "elapsed_ms": 93823.97,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 69648.32
+      },
+      "raw": "{\"success\":false,\"query\":\"A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":24175.5,\"mcq_generation_elapsed_ms\":69648.32,\"hint_elapsed_ms\":69648.32,\"elapsed_ms\":93823.97,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":69648.32}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "cs_hard_dijkstra",
+      "difficulty": "hard",
+      "domain": "computer_science",
+      "mode": "off",
+      "question": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+      "ms": 39648.76470004674,
+      "response": {
+        "success": true,
+        "answer": "$O(\\log V)$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2923.11,
+          "wolfram": 0.0,
+          "final_llm": 36710.32
+        },
+        "elapsed_ms": 39633.64
+      },
+      "raw": "{\"success\":true,\"answer\":\"$O(\\\\log V)$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2923.11,\"wolfram\":0.0,\"final_llm\":36710.32},\"elapsed_ms\":39633.64}",
+      "display_output": "$O(\\log V)$",
+      "structured_output": "$O(\\log V)$",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_hard_dijkstra",
+      "difficulty": "hard",
+      "domain": "computer_science",
+      "mode": "concise",
+      "question": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+      "ms": 42013.81360006053,
+      "response": {
+        "success": true,
+        "answer": "Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\n\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\n\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2948.8,
+          "wolfram": 0.0,
+          "final_llm": 39061.72
+        },
+        "elapsed_ms": 42010.63
+      },
+      "raw": "{\"success\":true,\"answer\":\"Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\\n\\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\\\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\\n\\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2948.8,\"wolfram\":0.0,\"final_llm\":39061.72},\"elapsed_ms\":42010.63}",
+      "display_output": "Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\n\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\n\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.",
+      "structured_output": "Dijkstra's algorithm works by maintaining a priority queue of nodes to visit, always selecting the node with the smallest tentative distance. When all edge weights are non-negative, this greedy approach ensures that once a node is popped from the priority queue, its shortest path is finalized. This is because any subsequent path to that node would have a greater or equal total distance, due to the non-negativity of edge weights.\n\nThe time complexity of Dijkstra's algorithm using a binary heap is $O((V + E) \\log V)$, where $V$ is the number of vertices and $E$ is the number of edges. This complexity arises from the $O(\\log V)$ time required for each heap operation (insertion and extraction) and the $O(V + E)$ time for processing each edge and vertex.\n\nIf a negative-weight edge is allowed, Dijkstra's algorithm may fail because the relaxation step could produce shorter paths for already processed nodes. This can lead to incorrect shortest path calculations, as the algorithm assumes that once a node is finalized, its shortest path is found. Negative-weight edges can create cycles that allow for infinitely decreasing path costs, which Dijkstra's algorithm cannot handle.",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "cs_hard_dijkstra",
+      "difficulty": "hard",
+      "domain": "computer_science",
+      "mode": "detailed",
+      "question": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+      "ms": 82753.26400005724,
+      "response": {
+        "success": true,
+        "answer": "$\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\n\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\n\n$\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\n\n$\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\n\n$\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\n\n$\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 2732.47,
+          "wolfram": 0.0,
+          "final_llm": 80017.51
+        },
+        "elapsed_ms": 82750.12
+      },
+      "raw": "{\"success\":true,\"answer\":\"$\\\\\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\\n\\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\\n\\n$\\\\\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\\n\\n$\\\\\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\\n\\n$\\\\\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\\n\\n$\\\\\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":2732.47,\"wolfram\":0.0,\"final_llm\":80017.51},\"elapsed_ms\":82750.12}",
+      "display_output": "$\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\n\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\n\n$\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\n\n$\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\n\n$\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\n\n$\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$",
+      "structured_output": "$\\\\text{Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative because it guarantees to find the shortest path from a source vertex to all other vertices in the graph.}$\n\nThe algorithm works by maintaining a priority queue (often a binary heap) that stores the vertices based on their current shortest distance from the source. Initially, the source vertex is placed in the priority queue with a distance of 0, and all other vertices are initialized with infinity. The algorithm then repeatedly extracts the vertex with the smallest distance from the priority queue and relaxes its edges, updating the distances of its adjacent vertices if a shorter path is found.\n\n$\\\\text{The correctness of Dijkstra's algorithm when all edge weights are non-negative is guaranteed by the property that once a vertex is extracted from the priority queue, its shortest path to the source has been finalized. This is because all edge weights are non-negative, so any path to a vertex through a previously processed vertex cannot be shorter than the current shortest path.}$\n\n$\\\\text{The time complexity of Dijkstra's algorithm using a binary heap and adjacency lists is O(E log V), where E is the number of edges and V is the number of vertices. This is because each of the V vertices is inserted into the priority queue once, and each of the E edges is processed once. The binary heap allows for efficient extraction of the minimum element (O(log V) time) and insertion of new elements (O(log V) time).}$\n\n$\\\\text{If a negative-weight edge is allowed, Dijkstra's algorithm may fail to find the correct shortest path. This is because the relaxation step may update the distance of a vertex even after it has been processed, which violates the property that once a vertex is extracted from the priority queue, its shortest path is finalized. Negative-weight edges can create situations where a shorter path to a vertex is found after it has been processed, leading to incorrect results.}$\n\n$\\\\text{In the presence of negative-weight edges, Dijkstra's algorithm is not guaranteed to find the shortest path and may produce incorrect results. The presence of negative-weight edges can cause the algorithm to process vertices in an order that does not reflect the true shortest paths, leading to an incorrect final solution.}$",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "cs_hard_dijkstra",
+      "difficulty": "hard",
+      "domain": "computer_science",
+      "question": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+      "ms": 133176.821299945,
+      "response": {
+        "success": false,
+        "query": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 45536.32,
+        "mcq_generation_elapsed_ms": 87626.28,
+        "hint_elapsed_ms": 87626.28,
+        "elapsed_ms": 133162.72,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 87626.28
+      },
+      "raw": "{\"success\":false,\"query\":\"Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":45536.32,\"mcq_generation_elapsed_ms\":87626.28,\"hint_elapsed_ms\":87626.28,\"elapsed_ms\":133162.72,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":87626.28}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
     }
   ],
-  "status": "running"
+  "status": "completed",
+  "finished_at": "2026-10-08T06:34:25.511511+00:00"
 }
