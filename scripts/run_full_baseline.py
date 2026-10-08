@@ -372,26 +372,35 @@ def _latex_to_omml(latex):
 
 
 def _set_omml_font_size(omml, size):
-    """Apply the same point size used by surrounding Word text to native OMML."""
-    # OMML uses WordprocessingML run properties for the actual glyph size.
-    # Store the size in half-points, matching w:sz/w:szCs semantics.
+    """Apply the surrounding Word text size to native OMML math runs."""
+    # Word stores the actual font-size properties in a WordprocessingML
+    # w:rPr child of each math run. The math-specific m:rPr must remain
+    # before w:rPr when both are present.
     half_points = str(max(1, int(round(size * 2))))
     math_run_tag = "{http://schemas.openxmlformats.org/officeDocument/2006/math}r"
     math_run_props_tag = "{http://schemas.openxmlformats.org/officeDocument/2006/math}rPr"
+    word_run_props_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr"
     word_size_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz"
     word_size_cs_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs"
 
     for math_run in omml.iter(math_run_tag):
-        props = math_run.find(math_run_props_tag)
-        if props is None:
-            props = OxmlElement("m:rPr")
-            math_run.insert(0, props)
+        math_props = math_run.find(math_run_props_tag)
+        if math_props is None:
+            math_props = OxmlElement("m:rPr")
+            math_run.insert(0, math_props)
 
-        for tag in (word_size_tag, word_size_cs_tag):
-            node = props.find(tag)
+        word_props = math_run.find(word_run_props_tag)
+        if word_props is None:
+            word_props = OxmlElement("w:rPr")
+            # The OOXML math schema requires m:rPr before the Word rPr.
+            insert_at = list(math_run).index(math_props) + 1
+            math_run.insert(insert_at, word_props)
+
+        for tag_name, tag in (("sz", word_size_tag), ("szCs", word_size_cs_tag)):
+            node = word_props.find(tag)
             if node is None:
-                node = OxmlElement("w:" + ("sz" if tag == word_size_tag else "szCs"))
-                props.append(node)
+                node = OxmlElement("w:" + tag_name)
+                word_props.append(node)
             node.set(qn("w:val"), half_points)
 
 
@@ -470,6 +479,22 @@ def put(cell, value, bold=False, size=7):
             _append_rich_line(paragraph, line, size=size, bold=bold)
 
 
+def set_cell_margins(cell, top=45, start=55, bottom=45, end=55):
+    """Set compact but readable cell padding in twips."""
+    tc_pr = cell._tc.get_or_add_tcPr()
+    tc_mar = tc_pr.first_child_found_in("w:tcMar")
+    if tc_mar is None:
+        tc_mar = OxmlElement("w:tcMar")
+        tc_pr.append(tc_mar)
+    for side, value in (("top", top), ("start", start), ("bottom", bottom), ("end", end)):
+        node = tc_mar.find(qn("w:" + side))
+        if node is None:
+            node = OxmlElement("w:" + side)
+            tc_mar.append(node)
+        node.set(qn("w:w"), str(value))
+        node.set(qn("w:type"), "dxa")
+
+
 def make_table(document, headers, widths):
     table = document.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
@@ -483,6 +508,7 @@ def make_table(document, headers, widths):
     tbl_layout.set(qn("w:type"), "fixed")
     for index, header in enumerate(headers):
         set_cell_width(table.rows[0].cells[index], widths[index])
+        set_cell_margins(table.rows[0].cells[index])
         put(table.rows[0].cells[index], header, True, 7)
         shade(table.rows[0].cells[index])
     set_row_no_split(table.rows[0])
@@ -508,8 +534,9 @@ def atomic_write_json(path, data):
 
 def add_case_header(document, case_number, case):
     paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_before = Pt(8)
-    paragraph.paragraph_format.space_after = Pt(3)
+    paragraph.paragraph_format.space_before = Pt(10)
+    paragraph.paragraph_format.space_after = Pt(5)
+    paragraph.paragraph_format.keep_with_next = True
     run = paragraph.add_run(f"Test {case_number} : ")
     run.bold = True
     run.font.size = Pt(10)
@@ -518,7 +545,9 @@ def add_case_header(document, case_number, case):
     meta = document.add_paragraph(
         f'{case["difficulty"].title()} • {case["domain"].upper()}'
     )
-    meta.paragraph_format.space_after = Pt(4)
+    meta.paragraph_format.space_before = Pt(0)
+    meta.paragraph_format.space_after = Pt(7)
+    meta.paragraph_format.keep_with_next = True
     meta.runs[0].font.size = Pt(7)
 
 
@@ -537,6 +566,7 @@ def make_case_table(document, rows, guided=False):
         set_table_row_widths(table_row, widths)
         values = item
         for index, value in enumerate(values):
+            set_cell_margins(cells[index])
             put(cells[index], value, size=7 if not guided else 6.8)
     return table
 
@@ -550,16 +580,21 @@ def save_docx(report, path, base_url):
     for margin in ("top_margin", "bottom_margin", "left_margin", "right_margin"):
         setattr(section, margin, Inches(0.45))
 
-    document.add_heading("Nova2 — Full Pre-Change STEM Baseline", 0)
-    document.add_paragraph(
+    title = document.add_heading("Nova2 — Full Pre-Change STEM Baseline", 0)
+    title.paragraph_format.space_after = Pt(6)
+    started = document.add_paragraph(
         f"Started: {report['started_at']} | Status: {report.get('status', 'running')} | "
         f"Backend: {base_url}"
     )
-    document.add_paragraph(
+    started.paragraph_format.space_after = Pt(3)
+    started.runs[0].font.size = Pt(8)
+    intro = document.add_paragraph(
         "Each question is shown once, followed by its four tests: Off, Concise, Detailed, "
         "and Guided. Output is rendered as readable text rather than raw JSON. "
         "Accuracy Remarks are intentionally blank for manual evaluation. Mathematical expressions are converted from LaTeX into native Word equations (OMML) when the optional rendering dependencies are installed; a readable Unicode fallback is used otherwise."
     )
+    intro.paragraph_format.space_after = Pt(8)
+    intro.runs[0].font.size = Pt(8)
 
     standard_by_id = {
         case_id: {}
@@ -593,6 +628,11 @@ def save_docx(report, path, base_url):
             ])
         make_case_table(document, rows, guided=False)
 
+        table_gap = document.add_paragraph()
+        table_gap.paragraph_format.space_before = Pt(0)
+        table_gap.paragraph_format.space_after = Pt(4)
+        table_gap.paragraph_format.line_spacing = 0.5
+
         guided_result = guided_by_id.get(case["id"])
         if guided_result is None:
             guided_rows = [["Guided", "", "", "", "", "Not run", ""]]
@@ -613,7 +653,10 @@ def save_docx(report, path, base_url):
         make_case_table(document, guided_rows, guided=True)
 
         if case_number != len(report["cases"]):
-            document.add_paragraph()
+            case_gap = document.add_paragraph()
+            case_gap.paragraph_format.space_before = Pt(2)
+            case_gap.paragraph_format.space_after = Pt(2)
+            case_gap.paragraph_format.line_spacing = 0.5
 
     try:
         document.save(path)
