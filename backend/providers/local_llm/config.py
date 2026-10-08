@@ -27,19 +27,21 @@ class LocalLLMConfig:
     context_size: int = 32768
     threads: int = 6
 
-    # No hard application-level generation cap. The final solver may generate
-    # as much output as the problem requires. Callers may pass an advisory
-    # provider-level value explicitly when appropriate.
-    max_tokens: int | None = None
+    # Transport safety fallback for llama.cpp. This is not a solution-length
+    # policy: callers may explicitly request a different value. It prevents a
+    # malformed local generation from running indefinitely when a caller does
+    # not provide a provider-level completion bound.
+    max_tokens: int | None = 8192
 
     # Deterministic reasoning.
     temperature: float = 0.0
 
     batch_size: int = 128
 
-    # No application-level request timeout. Generation may run until the
-    # local model naturally completes or the caller/server terminates it.
-    request_timeout: int | None = None
+    # Transport safety fallback for the local HTTP request. This is only a
+    # connection/generation watchdog; it does not impose a solver-side time
+    # budget when the caller supplies its own timeout.
+    request_timeout: int | None = 300
 
     def __post_init__(self) -> None:
         profile_path = (
