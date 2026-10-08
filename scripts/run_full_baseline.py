@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import html.entities
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.etree import ElementTree as ET
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -14,6 +17,15 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.shared import Inches, Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+
+try:
+    import latex2mathml.converter
+    import mathml2omml
+    MATH_RENDERING_AVAILABLE = True
+except Exception:
+    latex2mathml = None
+    mathml2omml = None
+    MATH_RENDERING_AVAILABLE = False
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -248,15 +260,136 @@ def safe_text(value):
     return "\n".join(chunks)
 
 
+MATH_DELIMITER_RE = re.compile(
+    r"(\\\\\[.*?\\\\\]|\\\\\(.*?\\\\\)|\\$\\$.*?\\$\\$|\\$[^$\n]+\\$)",
+    re.DOTALL,
+)
+
+LATEX_COMMAND_RE = re.compile(
+    r"\\(?:frac|dfrac|tfrac|sqrt|root|int|sum|prod|lim|ln|log|sin|cos|tan|"
+    r"arcsin|arccos|arctan|exp|Gamma|gamma|Delta|delta|theta|omega|pi|infty|"
+    r"zeta|cdot|times|to|rightarrow|leq|geq|approx|pm|mp|boxed|left|right|"
+    r"begin|end)\\b"
+)
+
+
+def _strip_math_delimiters(text):
+    text = text.strip()
+    if text.startswith("$") and text.endswith("$"):
+        return text[2:-2].strip()
+    if text.startswith("$") and text.endswith("$"):
+        return text[1:-1].strip()
+    if text.startswith(r"\[") and text.endswith(r"\]"):
+        return text[2:-2].strip()
+    if text.startswith(r"\(") and text.endswith(r"\)"):
+        return text[2:-2].strip()
+    return text
+
+
+def _fallback_latex(text):
+    """Readable fallback when the optional native Word-math dependencies are unavailable."""
+    replacements = {
+        r"\\infty": "∞",
+        r"\\pi": "π",
+        r"\\theta": "θ",
+        r"\\omega": "ω",
+        r"\\Gamma": "Γ",
+        r"\\gamma": "γ",
+        r"\\Delta": "Δ",
+        r"\\delta": "δ",
+        r"\\zeta": "ζ",
+        r"\\cdot": "·",
+        r"\\times": "×",
+        r"\\to": "→",
+        r"\\rightarrow": "→",
+        r"\\leq": "≤",
+        r"\\geq": "≥",
+        r"\\approx": "≈",
+        r"\\pm": "±",
+        r"\\mp": "∓",
+        r"\\int": "∫",
+        r"\\sum": "Σ",
+        r"\\prod": "Π",
+        r"\\ln": "ln",
+        r"\\log": "log",
+        r"\\sin": "sin",
+        r"\\cos": "cos",
+        r"\\tan": "tan",
+        r"\\left": "",
+        r"\\right": "",
+        r"\\,": " ",
+        r"\\!": "",
+    }
+    for source, target in replacements.items():
+        text = text.replace(source, target)
+    text = re.sub(r"\\(?:boxed|dfrac|tfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"(\1)/(\2)", text)
+    text = re.sub(r"\^\{([^{}]+)\}", r"^\1", text)
+    text = re.sub(r"_\{([^{}]+)\}", r"_\1", text)
+    text = text.replace("**", "")
+    text = text.replace("\\", "")
+    return text
+
+
+def _latex_to_omml(latex):
+    if not MATH_RENDERING_AVAILABLE:
+        return None
+    try:
+        mathml = latex2mathml.converter.convert(latex, display="inline")
+        return ET.fromstring(mathml2omml.convert(mathml, html.entities.name2codepoint))
+    except Exception:
+        return None
+
+
+def _append_math(paragraph, latex, size=7):
+    latex = _strip_math_delimiters(latex)
+    omml = _latex_to_omml(latex)
+    if omml is None:
+        run = paragraph.add_run(_fallback_latex(latex))
+        run.font.size = Pt(size)
+        return
+    paragraph._p.append(omml)
+
+
+def _looks_like_bare_math(line):
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if LATEX_COMMAND_RE.search(stripped):
+        return True
+    return bool(re.search(r"(?:\^\{[^}]+\}|\^\d|_\{[^}]+\}|\\[A-Za-z]+)", stripped)
+                and len(stripped.split()) <= 18)
+
+
+def _append_rich_line(paragraph, line, size=7, bold=False):
+    matches = list(MATH_DELIMITER_RE.finditer(line))
+    if not matches and _looks_like_bare_math(line):
+        _append_math(paragraph, line, size)
+        return
+
+    cursor = 0
+    for match in matches:
+        if match.start() > cursor:
+            run = paragraph.add_run(safe_text(line[cursor:match.start()]))
+            run.bold = bold
+            run.font.size = Pt(size)
+        _append_math(paragraph, match.group(0), size)
+        cursor = match.end()
+    if cursor < len(line):
+        run = paragraph.add_run(safe_text(line[cursor:]))
+        run.bold = bold
+        run.font.size = Pt(size)
+
+
 def put(cell, value, bold=False, size=7):
     cell.text = ""
-    paragraph = cell.paragraphs[0]
-    paragraph.paragraph_format.space_after = Pt(0)
-    paragraph.paragraph_format.space_before = Pt(0)
-    paragraph.paragraph_format.line_spacing = 1.0
-    run = paragraph.add_run(safe_text(value))
-    run.bold = bold
-    run.font.size = Pt(size)
+    text = "" if value is None else str(value)
+    lines = text.split("\n")
+    for line_index, line in enumerate(lines):
+        paragraph = cell.paragraphs[0] if line_index == 0 else cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(0)
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.line_spacing = 1.0
+        _append_rich_line(paragraph, line, size=size, bold=bold)
 
 
 def make_table(document, headers, widths):
@@ -302,9 +435,7 @@ def add_case_header(document, case_number, case):
     run = paragraph.add_run(f"Test {case_number} : ")
     run.bold = True
     run.font.size = Pt(10)
-    run = paragraph.add_run(case["question"])
-    run.bold = True
-    run.font.size = Pt(10)
+    _append_rich_line(paragraph, case["question"], size=10, bold=True)
 
     meta = document.add_paragraph(
         f'{case["difficulty"].title()} • {case["domain"].upper()}'
@@ -349,7 +480,7 @@ def save_docx(report, path, base_url):
     document.add_paragraph(
         "Each question is shown once, followed by its four tests: Off, Concise, Detailed, "
         "and Guided. Output is rendered as readable text rather than raw JSON. "
-        "Accuracy Remarks are intentionally blank for manual evaluation."
+        "Accuracy Remarks are intentionally blank for manual evaluation. Mathematical expressions are converted from LaTeX into native Word equations (OMML) when the optional rendering dependencies are installed; a readable Unicode fallback is used otherwise."
     )
 
     standard_by_id = {
