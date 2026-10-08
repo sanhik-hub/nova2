@@ -289,7 +289,12 @@ function convertToLatex(value: string): string {
     .replace(/!=/g, "\\neq")
     .replace(/\+\/−|\+\/-/g, "\\pm")
     .replace(/±/g, "\\pm")
-    // Preserve the backend's explicit multiplication operator instead of\n    // rendering `*` as KaTeX `\\cdot`.
+    // Render algebraic multiplication implicitly in the UI:
+    // 2*x -> 2x, x*2 -> x2, x*y -> xy, 2*(x+1) -> 2(x+1).
+    // Keep numeric multiplication such as 2*3 explicit so values do not
+    // accidentally merge into 23.
+    .replace(/(?<=[0-9A-Za-z_)])\*(?=[A-Za-z_(])/g, "")
+    .replace(/(?<=[A-Za-z_)])\*(?=[0-9])/g, "")
     .replace(/÷/g, "\\div")
     .replace(/\bpi\b/gi, "\\pi");
 
