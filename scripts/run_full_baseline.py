@@ -249,8 +249,21 @@ def set_row_no_split(row):
 
 def safe_text(value):
     text = shorten(value)
+    text = html.unescape(text)
+    # Remove Markdown/HTML transport artifacts before writing to Word.
+    text = text.replace("\r\n", "\n").replace("\\r\\n", "\n").replace("\\n", "\n")
+    text = re.sub(r"&#x20;|&nbsp;", " ", text)
+    text = re.sub(r"(?m)^\s*\|\s*(?:-+\s*\|\s*)+$", "", text)
+    text = re.sub(r"(?m)^\s*\|\s*$", "", text)
+    text = re.sub(r"(?m)^\s*\|\s*(.*?)\s*\|\s*$", r"\1", text)
+    text = re.sub(r"(?m)^\s*#{1,6}\s*", "", text)
+    text = re.sub(r"(?m)^\s*\*{3,}\s*$", "", text)
+    text = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", text)
+    text = re.sub(r"(?m)^(\s*)(\d+)\\\.\s*", r"\1\2. ", text)
+
     chunks = []
     for line in text.split("\n"):
+        line = line.rstrip()
         out = []
         for token in line.split(" "):
             if len(token) > 45:
