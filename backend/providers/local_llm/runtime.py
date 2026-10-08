@@ -155,9 +155,15 @@ class LocalLLMRuntime:
             "content": user_content,
         })
 
+        effective_max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else self.config.max_tokens
+        )
+
         payload = {
             "messages": messages,
-            "max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens,
             "temperature": (
                 temperature
                 if temperature is not None
@@ -171,8 +177,9 @@ class LocalLLMRuntime:
         if response_format is not None:
             payload["response_format"] = response_format
 
-        if max_tokens is None:
-            payload.pop("max_tokens", None)
+        # Always retain the configured transport fallback when the caller
+        # does not supply a provider-level completion bound. This prevents
+        # llama.cpp from interpreting an omitted value as unbounded output.
 
         data = json.dumps(payload).encode("utf-8")
 
@@ -188,7 +195,11 @@ class LocalLLMRuntime:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=(request_timeout or self.config.request_timeout),
+                timeout=(
+                    request_timeout
+                    if request_timeout is not None
+                    else self.config.request_timeout
+                ),
             ) as response:
 
                 raw = response.read().decode("utf-8")
