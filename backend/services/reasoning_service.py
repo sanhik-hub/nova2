@@ -168,17 +168,10 @@ class ReasoningService:
             return response
 
         # -----------------------------------------------------
-        # 4. DIRECT QUANTITATIVE STEM HANDOFF
-        #
-        # Numerical STEM word problems are solved directly by the local
-        # reasoning model. Domain alone never selects a CAS provider.
-        # This keeps physics/chemistry calculations with the model that
-        # understands the full semantic problem and its units.
-        if self._is_direct_quantitative_request(problem):
-            response = self._solve_quantitative_direct(problem, explanation)
-            response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
-            return response
-
+        # 4. MODEL-DRIVEN SEMANTIC PLANNING
+        # Numerical word problems use the planner/tool pipeline instead of
+        # being handed blindly to the final local model.
+        # -----------------------------------------------------
         # 5. DIRECT DERIVATION / PROOF FAST PATH
         # -----------------------------------------------------
         # Equation-backed derivations and proofs do not need the planner to
@@ -475,203 +468,162 @@ Scientific display contract:
     # =========================================================
 
     def _solve_complex(self, problem: str, explanation: str = "detailed"):
-        """Run one local-LLM pass."""
-        started = time.perf_counter()
+        """Run the semantic planner/tool pipeline followed by one final solver pass."""
+        planner_system = r"""
+You are Nova's semantic STEM request planner.
+
+Classify the user's request by meaning. Do not solve it and do not write the final answer.
+
+Return ONLY one JSON object with exactly:
+type, intent, needs_wolfram, operation, arguments, answer_tokens
+
+Rules:
+- type must be "plan".
+- needs_wolfram is boolean.
+- Route by semantic intent, never by isolated subject words.
+- Use Wolfram only when exact symbolic or numeric computation is genuinely useful
+  and the request contains enough mathematical information.
+- Conceptual, factual, qualitative, derivation, proof, nomenclature, and ordinary
+  explanation requests normally use needs_wolfram=false.
+- For exact computation, operation must be one of:
+  calculate, simplify, factor, expand, differentiate, integrate, solve, limit.
+- arguments must be a machine-readable object containing mathematical expressions
+  and values from the user's request. Never put natural-language instructions in it.
+- For calculate use {"expression":"..."}.
+- Never invent missing data, formulas, or assumptions.
+- answer_tokens is advisory metadata only, never a hard output ceiling.
+
+For explanation "off", estimate only the requested result. For concise/detailed,
+estimate the complete answer.
+"""
+        planner_started = time.perf_counter()
+        try:
+            planner = self.router.plan(
+                prompt=json.dumps(
+                    {"explanation_preference": explanation, "user_request": problem},
+                    ensure_ascii=False,
+                ),
+                system_prompt=planner_system,
+                max_tokens=self.PLANNER_TOKENS,
+                request_timeout=None,
+            )
+        except Exception as exc:
+            planner = {"success": False, "error": str(exc)}
+
+        planner_ms = round((time.perf_counter() - planner_started) * 1000, 2)
+        plan = self._parse_json(planner.get("result")) if planner.get("success") else None
+
+        # Planner output is advisory. Never expose malformed planner JSON as a
+        # user-visible routing failure.
+        if not isinstance(plan, dict):
+            recovered = self._detect_explicit_operation(problem)
+            if recovered is not None:
+                operation, arguments = recovered
+                plan = {
+                    "type": "plan",
+                    "intent": "exact",
+                    "needs_wolfram": True,
+                    "operation": operation,
+                    "arguments": arguments,
+                    "answer_tokens": None,
+                }
+            else:
+                plan = {
+                    "type": "plan",
+                    "intent": "reasoning",
+                    "needs_wolfram": False,
+                    "operation": None,
+                    "arguments": None,
+                    "answer_tokens": None,
+                }
+
+        if plan.get("type") != "plan":
+            plan["type"] = "plan"
+
+        needs_wolfram = plan.get("needs_wolfram")
+        if isinstance(needs_wolfram, str):
+            needs_wolfram = needs_wolfram.strip().lower() in {"true", "yes", "1"}
+        if not isinstance(needs_wolfram, bool):
+            needs_wolfram = False
+
+        operation = plan.get("operation")
+        arguments = plan.get("arguments")
+
+        # Preserve the deterministic chemistry guard already used by the
+        # routing architecture.
+        if self._is_semantic_chemistry_request(problem):
+            needs_wolfram = False
+            operation = None
+            arguments = None
+
+        # Explicit supported operations are a deterministic recovery path.
+        recovered = self._detect_explicit_operation(problem)
+        if recovered is not None and not needs_wolfram:
+            operation, arguments = recovered
+            needs_wolfram = True
+
+        if not needs_wolfram or not isinstance(operation, str) or not isinstance(arguments, dict):
+            needs_wolfram = False
+            operation = None
+            arguments = None
+
+        tool_results = []
+        wolfram_ms = 0.0
+
+        if needs_wolfram:
+            validated = self._validate_tool_call({
+                "tool": operation,
+                "arguments": arguments,
+            })
+            if validated.get("valid"):
+                tool_started = time.perf_counter()
+                result = self._execute_tool(operation, arguments)
+                wolfram_ms = round((time.perf_counter() - tool_started) * 1000, 2)
+                if result.get("success"):
+                    tool_results.append({
+                        "tool": operation,
+                        "arguments": arguments,
+                        "result": result.get("result"),
+                    })
+                else:
+                    return self._error("Wolfram verification failed: " + str(result.get("error")))
+            else:
+                # Invalid advisory routing falls back to semantic solving.
+                needs_wolfram = False
+                operation = None
+                arguments = None
+
+        answer_tokens = plan.get("answer_tokens")
+        if isinstance(answer_tokens, str) and answer_tokens.strip().isdigit():
+            answer_tokens = int(answer_tokens.strip())
+        if type(answer_tokens) is not int or answer_tokens <= 0:
+            answer_tokens = None
+
+        if explanation == "off" and tool_results:
+            response = self._cas_result_only(tool_results)
+            response["timings_ms"] = {
+                "planner": planner_ms,
+                "wolfram": wolfram_ms,
+                "final_llm": 0.0,
+            }
+            response["llm_passes"] = 0
+            return response
+
         response = self._final_explanation(
             problem=problem,
             idea="",
             reasoning=[],
-            tool_results=[],
+            tool_results=tool_results,
             explanation=explanation,
-            estimated_answer_tokens=None,
+            estimated_answer_tokens=answer_tokens,
         )
         response["timings_ms"] = {
-            "planner": 0.0,
-            "wolfram": 0.0,
+            "planner": planner_ms,
+            "wolfram": wolfram_ms,
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
         response["llm_passes"] = 1
-        response["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
         return response
-
-    def _solve_quantitative_direct(self, problem: str, explanation: str):
-        """Solve a numerical STEM word problem directly with the local model.
-
-        This path deliberately does not invoke Wolfram. The model is given the
-        complete problem so it can preserve units, prefixes, powers, signs,
-        and the semantic relationship between quantities.
-        """
-        if explanation == "off":
-            final_system = """
-Return ONLY the final requested result. Do not include a heading, explanation,
-derivation, or sentence such as "the answer is". Include the unit when the
-requested result has a unit.
-"""
-        elif explanation == "concise":
-            final_system = r"""
-You are Nova's concise STEM solution writer.
-
-Produce a compact, genuinely worked solution to the actual user problem.
-This is the short version of a full solution: show the necessary
-intermediate transformations, but remove teaching filler and background.
-
-This is domain-general. Handle mathematics, physics, chemistry, and general
-science according to the actual problem. Never use a subject-specific
-template, hardcoded formula sequence, or fixed number of steps.
-
-Required format:
-- Begin immediately with the first necessary equation, relation,
-  transformation, or factual inference. No title, introduction, "Solution",
-  "Answer", or paragraph that merely restates the problem.
-- Make the solution visually open and easy to scan. Use generous blank lines
-  between distinct reasoning/equation groups.
-- Put each important standalone equation in a display-math block using
-  $$...$$. The frontend renders these blocks as large, centered,
-  professionally typeset equations.
-- Keep explanatory prose outside math blocks. Use a short sentence immediately
-  before an equation group when it explains what the next equation represents
-  or why the next transformation is being made.
-- Use $...$ for short inline mathematical expressions inside prose.
-- For continuous algebraic transformations, use a display block with aligned
-  or gathered equations when appropriate.
-- Use standard LaTeX mathematical notation inside the delimiters. Preserve
-  meaningful subscripts, superscripts, fractions, roots, integrals, matrices,
-  Greek symbols, units, charges, bonds, and reaction arrows.
-- Keep scientific notation transport-safe outside math delimiters: never emit
-  raw Unicode subscript/superscript digits, Greek letters, reaction arrows, or
-  similar special symbols in prose. Put them in LaTeX instead, for example
-  $\\mathrm{CH_3CH_2OH}$, $\\omega$, or $\\rightarrow$.
-- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
-  If a scientific symbol is needed, express it in LaTeX or unambiguous ASCII;
-  never output a damaged Unicode fragment.
-- Never put equations inside backticks or code blocks.
-- For chemistry, keep reaction and structure equations in display math when
-  they benefit from clear visual separation, and preserve scientifically
-  meaningful charges and bonds.
-- Do not restate the question.
-- Do not add background, alternative methods, generic explanations, a recap,
-  or a second final-answer section.
-- Do not stop after merely stating the governing formula.
-- Do not replace necessary algebra, substitution, unit conversion, or logical
-  transformation with phrases such as "using the formula" or "simplifying".
-- End immediately after the requested result has been established.
-- There is NO hard output/token limit. Never truncate a complete solution or
-  remove necessary work just to make it shorter.
-- Before writing the answer, perform a private adversarial verification pass:
-  independently recompute the requested result from the original problem,
-  challenge the most likely assumption or error, and reconcile any discrepancy
-  before emitting the solution.
-- For scientific transformations, verify the stated starting entities,
-  transformations, intermediate states, final entities, quantities, units,
-  conservation relationships, charges, and structural constraints against the
-  original request. Do not infer a result merely because it sounds plausible;
-  apply the governing rule that actually applies.
-
-Example of the intended visual structure:
-
-The linear velocity of a segment at distance $r$ from the axis is
-
-$$
-v = r\omega
-$$
-
-The emf across a small segment is
-
-$$
-dE = Bv\,dr
-$$
-
-Substituting $v=r\omega$:
-
-$$
-dE = B(r\omega)\,dr
-$$
-
-Integrating along the rod:
-
-$$
-E = \int_0^L B\omega r\,dr
-$$
-
-Therefore,
-
-$$
-\boxed{E=\frac{1}{2}B\omega L^2}
-$$
-
-This example defines formatting and solution density only. Do not copy its
-subject matter into other problems. For every concise solution, the first
-visible content must be the first necessary equation, relation,
-transformation, or factual inference.
-
-Return ONLY the complete solution text. No metadata or commentary.
-"""
-        else:
-            final_system = """
-Give a complete worked solution. Show the governing relation, substitutions,
-units, intermediate calculations, and final result. Explain only the reasoning
-needed to make the calculation clear.
-"""
-
-        system_prompt = """
-You are Nova's local STEM numerical solver.
-
-Solve the complete numerical problem yourself. Do not delegate the arithmetic
-to another tool.
-
-Read every stated quantity, unit, prefix, exponent, denominator, sign, and
-power before calculating. Convert units explicitly when required. Never drop
-an SI prefix: for example, micro means 10^-6, milli means 10^-3, kilo means
-10^3, and so on. Preserve powers on converted quantities. Check the numerical
-scale and dimensions before returning the answer.
-
-The problem may belong to any scientific domain. Do not assume a subject or
-formula from keywords alone. Identify the governing relation from the actual
-problem, then calculate from the supplied data. Do not invent missing values.
-
-""" + final_system
-
-        started = time.perf_counter()
-        try:
-            response = self.router.generate(
-                prompt=problem,
-                system_prompt=system_prompt,
-                temperature=0.0,
-                request_timeout=None,
-            )
-        except Exception as exc:
-            return self._error(f"Numerical processing failed: {exc}")
-
-        elapsed = round((time.perf_counter() - started) * 1000, 2)
-
-        if not response.get("success"):
-            return self._error(
-                response.get("error") or "Numerical processing failed."
-            )
-
-        answer = str(response.get("result") or "").strip()
-        if not answer:
-            return self._error("The reasoning model returned no numerical solution.")
-
-        if explanation == "off":
-            answer = self._sanitize_result_only_answer(answer)
-            if not answer:
-                return self._error("The reasoning model returned no numerical result.")
-
-        return {
-            "success": True,
-            "answer": answer,
-            "engine": "local_llm",
-            "tool_calls": [],
-            "cached": False,
-            "result_only": explanation == "off",
-            "timings_ms": {
-                "planner": 0.0,
-                "wolfram": 0.0,
-                "final_llm": elapsed,
-            },
-        }
-
 
     def _extract_scaled_numeric_values(problem: str) -> list[float]:
         """Find explicitly prefixed numeric quantities without knowing their domain."""
