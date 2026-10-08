@@ -289,6 +289,42 @@ def atomic_write_json(path, data):
     temporary.replace(path)
 
 
+def add_case_header(document, case_number, case):
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(8)
+    paragraph.paragraph_format.space_after = Pt(3)
+    run = paragraph.add_run(f"Test {case_number} : ")
+    run.bold = True
+    run.font.size = Pt(10)
+    run = paragraph.add_run(case["question"])
+    run.bold = True
+    run.font.size = Pt(10)
+
+    meta = document.add_paragraph(
+        f'{case["difficulty"].title()} • {case["domain"].upper()}'
+    )
+    meta.paragraph_format.space_after = Pt(4)
+    meta.runs[0].font.size = Pt(7)
+
+
+def make_case_table(document, rows, guided=False):
+    if guided:
+        headers = ["Test", "Actual MCQs + Hints", "MCQ Time", "Full Solution", "Solution Time", "Error", "Accuracy Remarks"]
+        widths = [0.75, 4.15, 0.75, 2.55, 0.80, 0.80, 1.00]
+    else:
+        headers = ["Test", "Actual Result", "Elapsed", "Error", "Accuracy Remarks"]
+        widths = [1.05, 5.45, 0.80, 1.15, 1.15]
+
+    table = make_table(document, headers, widths)
+    for item in rows:
+        row = table.add_row().cells
+        set_table_row_widths(row, widths)
+        values = item
+        for index, value in enumerate(values):
+            put(row[index], value, size=7 if not guided else 6.8)
+    return table
+
+
 def save_docx(report, path, base_url):
     document = Document()
     section = document.sections[0]
@@ -303,78 +339,56 @@ def save_docx(report, path, base_url):
         f"Backend: {base_url}"
     )
     document.add_paragraph(
-        "Standard modes: Off / Concise / Detailed. "
-        "Guided: MCQs + hints + full solution. "
+        "Each question is shown once, followed by its four tests: Off, Concise, Detailed, "
+        "and Guided. Output is rendered as readable text rather than raw JSON. "
         "Accuracy Remarks are intentionally blank for manual evaluation."
     )
 
-    standard = make_table(
-        document,
-        [
-            "Difficulty",
-            "Domain",
-            "Mode",
-            "Question",
-            "Actual Output",
-            "Elapsed",
-            "Error",
-            "Accuracy Remarks",
-        ],
-        [0.75, 0.85, 0.75, 2.15, 3.05, 0.72, 1.05, 1.10],
-    )
+    standard_by_id = {
+        case_id: {}
+        for case_id in (case["id"] for case in report["cases"])
+    }
+    guided_by_id = {}
     for result in report["results"]:
-        if result["kind"] != "standard":
-            continue
-        row = standard.add_row().cells
-        values = [
-            result["difficulty"],
-            result["domain"],
-            result["mode"].title(),
-            result["question"],
-            result.get("display_output", standard_output(result)),
-            format_seconds(result["ms"]),
-            result.get("error", "") or "",
-            "",
-        ]
-        set_table_row_widths(row, [0.75, 0.85, 0.75, 2.15, 3.05, 0.72, 1.05, 1.10])
-        for index, value in enumerate(values):
-            put(row[index], value, size=7)
+        if result["kind"] == "standard":
+            standard_by_id.setdefault(result["id"], {})[result["mode"]] = result
+        elif result["kind"] == "guided":
+            guided_by_id[result["id"]] = result
 
-    document.add_page_break()
-    document.add_heading("Guided Attempts", 1)
-    guided = make_table(
-        document,
-        [
-            "Difficulty",
-            "Domain",
-            "Question",
-            "Actual MCQs + Hints",
-            "MCQ Time",
-            "Full Solution",
-            "Solution Time",
-            "Error",
-            "Accuracy Remarks",
-        ],
-        [0.70, 0.80, 1.75, 2.65, 0.70, 2.10, 0.72, 0.95, 1.05],
-    )
-    for result in report["results"]:
-        if result["kind"] != "guided":
-            continue
-        row = guided.add_row().cells
-        values = [
-            result["difficulty"],
-            result["domain"],
-            result["question"],
-            result.get("display_guided", guided_output(result.get("response"))),
-            format_seconds(result["ms"]),
-            result.get("display_solution", solution_output(result.get("solution"))),
-            format_seconds(result.get("solution_ms", 0)),
-            result.get("error", "") or "",
-            "",
-        ]
-        set_table_row_widths(row, [0.70, 0.80, 1.75, 2.65, 0.70, 2.10, 0.72, 0.95, 1.05])
-        for index, value in enumerate(values):
-            put(row[index], value, size=6.8)
+    for case_number, case in enumerate(report["cases"], 1):
+        add_case_header(document, case_number, case)
+        rows = []
+        for mode in MODES:
+            result = standard_by_id.get(case["id"], {}).get(mode)
+            if result is None:
+                rows.append([mode.title(), "", "", "Not run", ""])
+                continue
+            rows.append([
+                mode.title(),
+                result.get("display_output", standard_output(result)),
+                format_seconds(result["ms"]),
+                result.get("error", "") or "",
+                "",
+            ])
+        make_case_table(document, rows, guided=False)
+
+        guided_result = guided_by_id.get(case["id"])
+        if guided_result is None:
+            guided_rows = [["Guided", "", "", "", "", "Not run", ""]]
+        else:
+            guided_rows = [[
+                "Guided",
+                guided_result.get("display_guided", guided_output(guided_result.get("response"))),
+                format_seconds(guided_result["ms"]),
+                guided_result.get("display_solution", solution_output(guided_result.get("solution"))),
+                format_seconds(guided_result.get("solution_ms", 0)),
+                guided_result.get("error", "") or "",
+                "",
+            ]]
+        make_case_table(document, guided_rows, guided=True)
+
+        if case_number != len(report["cases"]):
+            document.add_paragraph()
 
     try:
         document.save(path)
@@ -383,7 +397,6 @@ def save_docx(report, path, base_url):
         document.save(fallback)
         return fallback
     return path
-
 
 def save_report(report, stamp, base_url):
     OUT.mkdir(parents=True, exist_ok=True)
