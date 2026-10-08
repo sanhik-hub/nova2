@@ -1224,7 +1224,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # SOLVE
         match = re.match(
-            r"(?is)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s+(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:solve|find\s+(?:the\s+)?(?:roots|solutions))\s*:?[\s]*(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
