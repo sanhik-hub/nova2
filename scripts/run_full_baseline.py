@@ -383,12 +383,28 @@ def put(cell, value, bold=False, size=7):
     cell.text = ""
     text = "" if value is None else str(value)
     lines = text.split("\n")
-    for line_index, line in enumerate(lines):
-        paragraph = cell.paragraphs[0] if line_index == 0 else cell.add_paragraph()
+    in_display_math = False
+    paragraph_index = 0
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("$", r"\[", r"\]"):
+            if stripped in ("$", r"\["):
+                in_display_math = True
+            else:
+                in_display_math = False
+            continue
+
+        paragraph = cell.paragraphs[0] if paragraph_index == 0 else cell.add_paragraph()
+        paragraph_index += 1
         paragraph.paragraph_format.space_after = Pt(0)
         paragraph.paragraph_format.space_before = Pt(0)
         paragraph.paragraph_format.line_spacing = 1.0
-        _append_rich_line(paragraph, line, size=size, bold=bold)
+
+        if in_display_math and stripped:
+            _append_math(paragraph, stripped, size)
+        else:
+            _append_rich_line(paragraph, line, size=size, bold=bold)
 
 
 def make_table(document, headers, widths):
