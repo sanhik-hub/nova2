@@ -365,7 +365,14 @@ Scientific display contract:
         # Bare expressions may contain known functions/constants and
         # single-letter variables. Multi-letter identifiers are accepted only
         # when they are known mathematical functions/constants.
-        allowed_identifiers = set(FUNCTION_MAP) | set(CONSTANT_MAP)
+        allowed_identifiers = (
+            set(FUNCTION_MAP)
+            | set(CONSTANT_MAP)
+            | {
+                "N", "Sqrt", "Sin", "Cos", "Tan", "Solve", "With",
+                "Exp", "Log", "Abs", "Min", "Max",
+            }
+        )
         identifiers = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text)
 
         if not identifiers:
@@ -490,6 +497,21 @@ Rules:
 - arguments must be a machine-readable object containing mathematical expressions
   and values from the user's request. Never put natural-language instructions in it.
 - For calculate use {"expression":"..."}.
+- A determinate numerical STEM word problem with enough numerical data for an
+  exact calculation should normally use needs_wolfram=true and operation=calculate.
+  Do NOT classify such a request as pure reasoning merely because it is written
+  in natural language or because it is physics, chemistry, or another STEM domain.
+- For a numerical word problem, construct a self-contained Wolfram Language
+  expression that computes the requested quantities from the stated data. You
+  may derive the necessary equations internally while constructing that
+  expression, but never invent unstated data or assumptions.
+- When several requested numerical quantities can be evaluated together, return
+  one calculate expression that produces all of them as a compact list or rule
+  set. Prefer explicit numerical substitution and standard mathematical
+  functions such as Sqrt, Sin, Cos, Tan, Pi, Exp, Log, N, Solve, or With when
+  they are genuinely required.
+- Do not use calculate for factual or qualitative requests with no determinate
+  numerical computation.
 - Never invent missing data, formulas, or assumptions.
 - answer_tokens is advisory metadata only, never a hard output ceiling.
 
