@@ -317,11 +317,12 @@ def make_case_table(document, rows, guided=False):
 
     table = make_table(document, headers, widths)
     for item in rows:
-        row = table.add_row().cells
-        set_table_row_widths(row, widths)
+        table_row = table.add_row()
+        cells = table_row.cells
+        set_table_row_widths(table_row, widths)
         values = item
         for index, value in enumerate(values):
-            put(row[index], value, size=7 if not guided else 6.8)
+            put(cells[index], value, size=7 if not guided else 6.8)
     return table
 
 
