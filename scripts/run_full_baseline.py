@@ -373,6 +373,10 @@ def _looks_like_bare_math(line):
 
 
 def _append_rich_line(paragraph, line, size=7, bold=False):
+    line = html.unescape(line)
+    # Markdown hard-break escapes should not appear in the finished DOCX.
+    line = re.sub(r"\\\\\\s*$", "", line)
+    line = re.sub(r"(?<!\\)\\\\\\.", ".", line)
     matches = list(MATH_DELIMITER_RE.finditer(line))
     if not matches and _looks_like_bare_math(line):
         _append_math(paragraph, line, size)
