@@ -405,8 +405,10 @@ def put(cell, value, bold=False, size=7):
 
     for line in lines:
         stripped = line.strip()
-        if stripped in ("$", r"\[", r"\]"):
-            if stripped in ("$", r"\["):
+        if stripped in ("\u0024\u0024", "\u0024", r"\\[", r"\\]"):
+            if stripped == "\u0024\u0024":
+                in_display_math = not in_display_math
+            elif stripped in ("\u0024", r"\\["):
                 in_display_math = True
             else:
                 in_display_math = False
