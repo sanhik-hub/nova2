@@ -56,6 +56,27 @@ class LocalLLMRuntime:
                 "Start llama-server first."
             ) from exc
 
+    def supports_tool_calls(self) -> bool:
+        """Return whether the loaded llama-server exposes a tool-use template."""
+        try:
+            with urllib.request.urlopen(
+                f"{self._base_url()}/props",
+                timeout=3,
+            ) as response:
+                props = json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, json.JSONDecodeError, OSError):
+            return False
+
+        tool_template = props.get("chat_template_tool_use")
+        if isinstance(tool_template, str):
+            return bool(tool_template.strip())
+
+        # Some llama.cpp builds expose the selected template only through
+        # chat_template. Keep this conservative: ordinary chat templates are
+        # not treated as tool-capable unless the server explicitly advertises
+        # a tool-use template.
+        return False
+
     @staticmethod
     def _repair_mojibake(value: str) -> str:
         """Repair text that was accidentally decoded as Latin-1/CP1252.
@@ -129,6 +150,8 @@ class LocalLLMRuntime:
         enable_thinking: bool = False,
         response_format: Optional[dict[str, Any]] = None,
         request_timeout: Optional[int] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
+        tool_choice: Optional[str] = None,
     ) -> str:
 
         if not self.loaded:
@@ -176,6 +199,12 @@ class LocalLLMRuntime:
 
         if response_format is not None:
             payload["response_format"] = response_format
+
+        if tools is not None:
+            payload["tools"] = tools
+
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
 
         # Always retain the configured transport fallback when the caller
         # does not supply a provider-level completion bound. This prevents
