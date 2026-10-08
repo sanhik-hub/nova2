@@ -549,13 +549,6 @@ estimate the complete answer.
         operation = plan.get("operation")
         arguments = plan.get("arguments")
 
-        # Preserve the deterministic chemistry guard already used by the
-        # routing architecture.
-        if self._is_semantic_chemistry_request(problem):
-            needs_wolfram = False
-            operation = None
-            arguments = None
-
         # Explicit supported operations are a deterministic recovery path.
         recovered = self._detect_explicit_operation(problem)
         if recovered is not None and not needs_wolfram:
