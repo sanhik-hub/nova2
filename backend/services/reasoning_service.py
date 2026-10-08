@@ -98,9 +98,22 @@ class ReasoningService:
             tool_result = self._execute_tool(operation, arguments)
 
             if not tool_result.get("success"):
-                return self._error(
-                    tool_result.get("error") or "The computation failed."
+                # A deterministic parser is only an optimization. If Wolfram
+                # rejects its normalized arguments, hand the original request
+                # to the main local reasoning model instead of exposing the CAS
+                # error directly to the user. The model can reformulate the
+                # request and the Wolfram result is still verified afterward.
+                response = self._solve_llm_wolfram(
+                    problem,
+                    explanation=explanation,
                 )
+                response["elapsed_ms"] = round(
+                    (time.perf_counter() - started) * 1000,
+                    2,
+                )
+                if response.get("success"):
+                    self._cache_set(problem, response, explanation)
+                return response
 
             if explanation == "off":
                 response = {
@@ -140,9 +153,20 @@ class ReasoningService:
             )
 
             if not calculation.get("success"):
-                return self._error(
-                    calculation.get("error") or "The computation failed."
+                # Bare-expression evaluation is also only a fast path. Let the
+                # main reasoning model reformulate anything Wolfram cannot
+                # evaluate directly, rather than surfacing the raw CAS error.
+                response = self._solve_llm_wolfram(
+                    problem,
+                    explanation=explanation,
                 )
+                response["elapsed_ms"] = round(
+                    (time.perf_counter() - started) * 1000,
+                    2,
+                )
+                if response.get("success"):
+                    self._cache_set(problem, response, explanation)
+                return response
 
             if explanation == "off":
                 response = {
@@ -968,7 +992,15 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                         "result": result.get("result"),
                     })
                 else:
-                    return self._error("Wolfram verification failed: " + str(result.get("error")))
+                    # The lightweight planner is not the final computational
+                    # authority. If its Wolfram call fails, immediately retry
+                    # through the main local reasoning + Wolfram formulation
+                    # path, which can reinterpret the original request.
+                    fallback = self._solve_llm_wolfram(
+                        problem,
+                        explanation=explanation,
+                    )
+                    return fallback
             else:
                 # Invalid advisory routing falls back to semantic solving.
                 needs_wolfram = False
