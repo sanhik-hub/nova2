@@ -515,8 +515,9 @@ Rules:
 - Never invent missing data, formulas, or assumptions.
 - answer_tokens is advisory metadata only, never a hard output ceiling.
 
-For explanation "off", estimate only the requested result. For concise/detailed,
-estimate the complete answer.
+For explanation "off", estimate the complete requested result payload, including every quantity,
+formula, equation, reaction, or other result explicitly requested by the user. For concise/detailed,
+estimate the complete answer. Never use answer_tokens to omit requested results.
 """
         planner_started = time.perf_counter()
         try:
@@ -1340,8 +1341,13 @@ estimate the complete answer.
 
         if explanation == "off":
             final_system = r"""
-Return ONLY the exact result requested by the user. No explanation, heading,
+Return ONLY the complete result payload requested by the user. No explanation, heading,
 lead-in, summary, justification, or commentary.
+
+If the user requests multiple quantities, parts, conditions, equations, products, values,
+or other outputs, you MUST return ALL of them. Treat the original question as a checklist
+and internally verify that every explicit requested output is present before responding.
+Never answer only the last or easiest part.
 
 For chemistry, check the complete atom mapping, bond changes, valence, charge,
 stoichiometry, regiochemistry, and product identity internally. Preserve the
@@ -1372,15 +1378,16 @@ When explanation is off, an instruction such as "derive", "prove", "show",
 sentence in the response. Perform the reasoning internally and emit only the
 requested final payload. For a requested formula, emit only the formula. For a
 requested value, emit only the value with its unit when the unit is part of the
-requested result. For a requested equation or reaction, emit only that equation
-or reaction.
+requested result. For multiple requested values, emit every requested value,
+each clearly separated but without explanatory prose. For a requested equation
+or reaction, emit only that equation or reaction.
 
 Output only the requested payload itself.
 Never write a sentence such as "The answer is ...", "The result is ...",
 "The formula is ...", or "The value is ...". Do not add a label, lead-in,
-explanation, justification, or concluding sentence. If the requested result
-is a formula, equation, value, name, unit, reaction, structure, or law, output
-only that result.
+explanation, justification, or concluding sentence. If several outputs are
+requested, output all of them in a compact structured form, using mathematical
+notation or line separation as appropriate. Do not omit any requested output.
 """
         elif explanation == "concise":
             final_system = r"""
