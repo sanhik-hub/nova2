@@ -1177,7 +1177,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # DIFFERENTIATE
         match = re.match(
-            r"(?is)^\s*(?:differentiate\s+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?|the\s+derivative\s+of\s+)(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:differentiate\s*:?[\s]+|find\s+(?:the\s+)?derivative\s+(?:of\s+)?:?[\s]+|the\s+derivative\s+of\s*:?[\s]+)(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
@@ -1219,7 +1219,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # INTEGRATE
         match = re.match(
-            r"(?is)^\s*(?:integrate|find\s+(?:the\s+)?integral\s+(?:of\s+)?)(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:integrate|find\s+(?:the\s+)?integral\s+(?:of\s+)?):?[\s]+(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
@@ -1243,9 +1243,9 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # FACTOR / EXPAND / SIMPLIFY
         for operation, pattern in (
-            ("factor", r"(?is)^\s*(?:factor|factorize)\s+(.+?)\s*[.!?]?\s*$"),
-            ("expand", r"(?is)^\s*expand\s+(.+?)\s*[.!?]?\s*$"),
-            ("simplify", r"(?is)^\s*simplify\s+(.+?)\s*[.!?]?\s*$"),
+            ("factor", r"(?is)^\s*(?:factor|factorize)\s*:?[\s]+(.+?)\s*[.!?]?\s*$"),
+            ("expand", r"(?is)^\s*expand\s*:?[\s]+(.+?)\s*[.!?]?\s*$"),
+            ("simplify", r"(?is)^\s*simplify\s*:?[\s]+(.+?)\s*[.!?]?\s*$"),
         ):
             match = re.match(pattern, text)
             if match:
@@ -1276,7 +1276,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         # LIMIT
         match = re.match(
-            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s+(?:of\s+)?(.+?)\s*[.!?]?\s*$",
+            r"(?is)^\s*(?:limit|evaluate\s+(?:the\s+)?limit)\s*:?[\s]+(?:of\s+)?(.+?)\s*[.!?]?\s*$",
             text,
         )
         if match:
