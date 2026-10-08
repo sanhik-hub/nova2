@@ -1449,6 +1449,15 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         for key, value in arguments.items():
             if key not in symbolic_fields or not isinstance(value, str):
                 continue
+
+            # calculate expressions already pass the dedicated Wolfram
+            # calculation validator above. That validator intentionally allows
+            # richer executable syntax such as immediate rules (->), local
+            # assignments, comparisons, lists, and function calls needed to
+            # return several computed quantities in one expression.
+            if tool == "calculate" and key == "expression":
+                continue
+
             if not self._is_safe_structured_argument(
                 value,
                 allow_equals=(tool == "solve" and key == "equation"),
