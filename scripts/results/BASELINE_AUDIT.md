@@ -50,3 +50,10 @@ Source: `scripts/results/baseline_20261008_103618.json`
 ## Not changed
 
 The baseline's measured outputs are not silently corrected. Incorrect/incomplete outputs are flagged for evaluation; the original `response` and `raw` fields remain intact.
+
+
+## Concise-mode quality audit
+
+Several concise responses are substantially longer than the intended concise level. The worst cases are the definite integral, circular-orbit, weak-acid buffer, and N2O4 equilibrium responses; these are effectively detailed derivations. The infinite-integral and binary-search responses are much closer to an appropriate concise level. Some concise responses are useful but still slightly verbose, while the projectile and chemistry-geometry responses have correctness issues independent of length.
+
+The baseline records preserve these outputs exactly; this audit is a classification of response quality, not a correction of the measured baseline.
