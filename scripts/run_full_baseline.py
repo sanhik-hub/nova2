@@ -371,6 +371,30 @@ def _latex_to_omml(latex):
         return None
 
 
+def _set_omml_font_size(omml, size):
+    """Apply the same point size used by surrounding Word text to native OMML."""
+    # OMML uses WordprocessingML run properties for the actual glyph size.
+    # Store the size in half-points, matching w:sz/w:szCs semantics.
+    half_points = str(max(1, int(round(size * 2))))
+    math_run_tag = "{http://schemas.openxmlformats.org/officeDocument/2006/math}r"
+    math_run_props_tag = "{http://schemas.openxmlformats.org/officeDocument/2006/math}rPr"
+    word_size_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz"
+    word_size_cs_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs"
+
+    for math_run in omml.iter(math_run_tag):
+        props = math_run.find(math_run_props_tag)
+        if props is None:
+            props = OxmlElement("m:rPr")
+            math_run.insert(0, props)
+
+        for tag in (word_size_tag, word_size_cs_tag):
+            node = props.find(tag)
+            if node is None:
+                node = OxmlElement("w:" + ("sz" if tag == word_size_tag else "szCs"))
+                props.append(node)
+            node.set(qn("w:val"), half_points)
+
+
 def _append_math(paragraph, latex, size=7):
     latex = _strip_math_delimiters(latex)
     omml = _latex_to_omml(latex)
@@ -378,6 +402,7 @@ def _append_math(paragraph, latex, size=7):
         run = paragraph.add_run(_fallback_latex(latex))
         run.font.size = Pt(size)
         return
+    _set_omml_font_size(omml, size)
     paragraph._p.append(omml)
 
 
