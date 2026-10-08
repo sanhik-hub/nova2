@@ -469,7 +469,7 @@ Scientific display contract:
             return False
         return bool(
             re.match(
-                r"(?is)^\\s*(?:differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\\b",
+                r"(?is)^\s*(?:differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\b",
                 text,
             )
         )
@@ -494,11 +494,11 @@ Scientific display contract:
         if self._has_explicit_operation_intent(text):
             return True
 
-        if not re.search(r"(?<![A-Za-z])[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?", text):
+        if not re.search(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", text):
             return False
 
         computational_intent = re.search(
-            r"\\b(?:calculate|compute|determine|evaluate|find|obtain|work\\s+out|how\\s+much|how\\s+many|what\\s+is|what\\s+are)\\b",
+            r"\b(?:calculate|compute|determine|evaluate|find|obtain|work\s+out|how\s+much|how\s+many|what\s+is|what\s+are)\b",
             text,
             flags=re.IGNORECASE,
         )
