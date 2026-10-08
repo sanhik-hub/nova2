@@ -548,10 +548,12 @@ The expression must be a SINGLE self-contained Wolfram Language expression
 that computes EVERY requested result from the stated data.
 
 For multiple requested results, return a list of immediate rules, for example:
-{time_of_flight -> N[...], maximum_height -> N[...], range -> N[...], impact_speed -> N[...]}
+{timeOfFlight -> N[...], maximumHeight -> N[...], range -> N[...], impactSpeed -> N[...]}
 
-Use lowercase snake_case symbols for result labels. Do not use strings in the
-Wolfram expression. Prefer With[...] to define intermediate quantities and
+Use simple Wolfram symbols for result labels, preferably lowerCamelCase such as
+timeOfFlight, maximumHeight, horizontalRange, or impactSpeed. NEVER use
+snake_case or underscores in Wolfram symbols: underscore is Wolfram's pattern
+syntax. Do not use strings in the Wolfram expression. Prefer With[...] to define intermediate quantities and
 make all substitutions explicit. Use standard Wolfram functions such as N,
 Sqrt, Sin, Cos, Tan, Exp, Log, Abs, Solve, and With when needed.
 
@@ -636,10 +638,101 @@ Return no markdown, no prose outside the JSON object, and no code fences.
         )
 
         if not result.get("success"):
-            return self._error(
-                "Wolfram verification failed: "
-                + str(result.get("error") or "unknown error")
+            # The LLM may produce a syntactically valid-looking expression
+            # that Wolfram rejects. Give it one targeted repair pass using the
+            # actual Wolfram failure, rather than falling back to an unverified
+            # numerical answer.
+            repair_system = r"""
+You are repairing a Wolfram Language expression generated from a STEM word
+problem.
+
+The expression was rejected by Wolfram. Return ONLY one JSON object:
+{"expression":"..."}
+
+Preserve the original problem and all requested quantities. Correct the
+expression's Wolfram syntax and mathematical formulation. Do not answer the
+problem yourself.
+
+Critical Wolfram syntax rules:
+- Never use underscores in symbols. "_" is pattern syntax in Wolfram Language.
+- Use simple lowerCamelCase symbols for result labels, or return a plain list
+  if labels are unnecessary.
+- The expression must be one executable Wolfram Language expression.
+- It must compute EVERY explicitly requested result, not merely an intermediate
+  equation.
+- Do not use strings, external functions, files, URLs, or programming side
+  effects.
+- Do not invent data or assumptions.
+"""
+            repair_prompt = json.dumps(
+                {
+                    "user_request": problem,
+                    "previous_expression": expression,
+                    "wolfram_error": str(result.get("error") or "unknown error"),
+                },
+                ensure_ascii=False,
             )
+            repair_started = time.perf_counter()
+            try:
+                repaired = self.router.generate(
+                    prompt=repair_prompt,
+                    system_prompt=repair_system,
+                    temperature=0.0,
+                    request_timeout=None,
+                )
+            except Exception as exc:
+                repaired = {"success": False, "error": str(exc)}
+            formulation_ms += round(
+                (time.perf_counter() - repair_started) * 1000,
+                2,
+            )
+
+            repaired_plan = (
+                self._parse_json(repaired.get("result"))
+                if repaired.get("success")
+                else None
+            )
+            repaired_expression = (
+                repaired_plan.get("expression")
+                if isinstance(repaired_plan, dict)
+                else None
+            )
+            if (
+                not isinstance(repaired_expression, str)
+                or not self._is_planner_calculate_expression(repaired_expression)
+            ):
+                return self._error(
+                    "Wolfram verification failed: "
+                    + str(result.get("error") or "unknown error")
+                )
+
+            repair_validation = self._validate_tool_call(
+                {
+                    "tool": "calculate",
+                    "arguments": {"expression": repaired_expression},
+                }
+            )
+            if not repair_validation.get("valid"):
+                return self._error(
+                    repair_validation.get("error")
+                    or "The repaired computational expression was rejected."
+                )
+
+            wolfram_retry_started = time.perf_counter()
+            result = self._execute_tool(
+                "calculate",
+                {"expression": repaired_expression},
+            )
+            wolfram_ms += round(
+                (time.perf_counter() - wolfram_retry_started) * 1000,
+                2,
+            )
+            if not result.get("success"):
+                return self._error(
+                    "Wolfram verification failed: "
+                    + str(result.get("error") or "unknown error")
+                )
+            expression = repaired_expression
 
         tool_results = [
             {
