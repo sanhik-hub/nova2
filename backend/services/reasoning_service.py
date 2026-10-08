@@ -89,6 +89,14 @@ class ReasoningService:
 
         explicit_operation = self._detect_explicit_operation(problem)
 
+        # A request can contain a clean symbolic operation followed by a
+        # natural-language instruction (for example, "solve x^2-5x+4 = 0;
+        # find the roots"). Normalize only the explicit symbolic prefix before
+        # invoking the semantic planner. This keeps deterministic CAS requests
+        # fast without introducing subject-specific routing rules.
+        if explicit_operation is None:
+            explicit_operation = self._detect_normalized_explicit_operation(problem)
+
         # Result-only mode may also use the exact CAS path for clear natural-language calculus requests.
         if explanation == "off" and explicit_operation is None:
             explicit_operation = self._detect_result_only_operation(problem)
@@ -1082,6 +1090,51 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         if re.search(rf"[^{allowed}]", text):
             return False
         return bool(re.search(r"[A-Za-z0-9]", text))
+
+    def _detect_normalized_explicit_operation(self, problem: str):
+        """Recover a clean explicit operation from noisy trailing instructions.
+
+        This is intentionally structural: it only strips separators/connectors
+        after an explicit operation and accepts a candidate when the existing
+        deterministic operation detector can validate it. It does not infer a
+        STEM domain or invent mathematical content.
+        """
+        text = problem.strip()
+        if not text or len(text) > 500:
+            return None
+
+        # Only attempt normalization when the request explicitly starts with
+        # one of the deterministic operation forms already understood below.
+        prefix = re.match(
+            r"(?is)^\\s*(differentiate|integrate|factor(?:ize)?|expand|simplify|solve|limit)\\b",
+            text,
+        )
+        if not prefix:
+            return None
+
+        # Try progressively shorter candidates. A semicolon is the strongest
+        # structural separator; then handle common connective phrases without
+        # requiring any domain vocabulary.
+        candidates = [text]
+        body = text[prefix.end():].strip()
+        for pattern in (
+            r"\\s*;\\s*",
+            r"\\s+(?:and then|then|and)\\s+",
+        ):
+            parts = re.split(pattern, body, maxsplit=1, flags=re.IGNORECASE)
+            if len(parts) == 2 and parts[0].strip():
+                candidates.append(text[:prefix.end()] + " " + parts[0].strip())
+
+        # For phrases such as "solve ... ; find ...", the first candidate
+        # above is enough. For nested punctuation, progressively trim at each
+        # separator and retain only candidates that the existing detector
+        # accepts as a complete symbolic request.
+        for candidate in candidates[1:]:
+            detected = self._detect_explicit_operation(candidate)
+            if detected is not None:
+                return detected
+
+        return None
 
     def _detect_explicit_operation(self, problem: str):
         """Detect an unambiguous symbolic operation and build safe arguments."""
