@@ -17,6 +17,9 @@ class LocalLLMProvider(ComputationProvider):
         self.config = config or LocalLLMConfig()
         self.runtime = LocalLLMRuntime(self.config)
 
+    def supports_tool_calls(self) -> bool:
+        return self.runtime.supports_tool_calls()
+
     def calculate(self, query: str) -> dict[str, Any]:
         return {
             "success": False,
