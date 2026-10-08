@@ -261,7 +261,7 @@ def safe_text(value):
 
 
 MATH_DELIMITER_RE = re.compile(
-    r"(\\\\\[.*?\\\\\]|\\\\\(.*?\\\\\)|\\$\\$.*?\\$\\$|\\$[^$\n]+\\$)",
+    r"(\\\[.*?\\\]|\\\(.*?\\\)|\$\$.*?\$\$|\$[^$\n]+\$)",
     re.DOTALL,
 )
 
@@ -269,13 +269,13 @@ LATEX_COMMAND_RE = re.compile(
     r"\\(?:frac|dfrac|tfrac|sqrt|root|int|sum|prod|lim|ln|log|sin|cos|tan|"
     r"arcsin|arccos|arctan|exp|Gamma|gamma|Delta|delta|theta|omega|pi|infty|"
     r"zeta|cdot|times|to|rightarrow|leq|geq|approx|pm|mp|boxed|left|right|"
-    r"begin|end)\\b"
+    r"begin|end)\b"
 )
 
 
 def _strip_math_delimiters(text):
     text = text.strip()
-    if text.startswith("$") and text.endswith("$"):
+    if text.startswith("$$") and text.endswith("$$"):
         return text[2:-2].strip()
     if text.startswith("$") and text.endswith("$"):
         return text[1:-1].strip()
@@ -289,36 +289,36 @@ def _strip_math_delimiters(text):
 def _fallback_latex(text):
     """Readable fallback when the optional native Word-math dependencies are unavailable."""
     replacements = {
-        r"\\infty": "∞",
-        r"\\pi": "π",
-        r"\\theta": "θ",
-        r"\\omega": "ω",
-        r"\\Gamma": "Γ",
-        r"\\gamma": "γ",
-        r"\\Delta": "Δ",
-        r"\\delta": "δ",
-        r"\\zeta": "ζ",
-        r"\\cdot": "·",
-        r"\\times": "×",
-        r"\\to": "→",
-        r"\\rightarrow": "→",
-        r"\\leq": "≤",
-        r"\\geq": "≥",
-        r"\\approx": "≈",
-        r"\\pm": "±",
-        r"\\mp": "∓",
-        r"\\int": "∫",
-        r"\\sum": "Σ",
-        r"\\prod": "Π",
-        r"\\ln": "ln",
-        r"\\log": "log",
-        r"\\sin": "sin",
-        r"\\cos": "cos",
-        r"\\tan": "tan",
-        r"\\left": "",
-        r"\\right": "",
-        r"\\,": " ",
-        r"\\!": "",
+        r"\infty": "∞",
+        r"\pi": "π",
+        r"\theta": "θ",
+        r"\omega": "ω",
+        r"\Gamma": "Γ",
+        r"\gamma": "γ",
+        r"\Delta": "Δ",
+        r"\delta": "δ",
+        r"\zeta": "ζ",
+        r"\cdot": "·",
+        r"\times": "×",
+        r"\to": "→",
+        r"\rightarrow": "→",
+        r"\leq": "≤",
+        r"\geq": "≥",
+        r"\approx": "≈",
+        r"\pm": "±",
+        r"\mp": "∓",
+        r"\int": "∫",
+        r"\sum": "Σ",
+        r"\prod": "Π",
+        r"\ln": "ln",
+        r"\log": "log",
+        r"\sin": "sin",
+        r"\cos": "cos",
+        r"\tan": "tan",
+        r"\left": "",
+        r"\right": "",
+        r"\,": " ",
+        r"\!": "",
     }
     for source, target in replacements.items():
         text = text.replace(source, target)
@@ -328,7 +328,6 @@ def _fallback_latex(text):
     text = text.replace("**", "")
     text = text.replace("\\", "")
     return text
-
 
 def _latex_to_omml(latex):
     if not MATH_RENDERING_AVAILABLE:
