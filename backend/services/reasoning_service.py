@@ -6,7 +6,6 @@ from threading import Lock
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
-from backend.services.complexity_classifier import ComplexityClassifier
 from backend.services.expression_normalizer import (
     CONSTANT_MAP,
     FUNCTION_MAP,
@@ -35,7 +34,6 @@ class ReasoningService:
         # keeps the persistent Wolfram session identical across
         # /api/reason, /api/compute, and the health/control endpoints.
         self.router = router or ProviderRouter()
-        self.complexity_classifier = ComplexityClassifier()
 
         self._cache = OrderedDict()
         self._cache_lock = Lock()
@@ -312,9 +310,6 @@ Scientific display contract:
         prompt = prompt + "\n\n" + "\n\n".join(turns)
 
         started = time.perf_counter()
-        assessment = self.complexity_classifier.analyze(
-            original_question + "\n" + follow_up
-        )
         try:
             result = self.router.generate(
                 prompt=prompt,
@@ -324,7 +319,6 @@ Scientific display contract:
                     "Answer the current follow-up using the complete supplied session context. "
                     "Be correct, direct, and scientifically precise."
                 ),
-                enable_thinking=assessment.thinking,
                 request_timeout=None,
             )
         except Exception as exc:
@@ -345,7 +339,6 @@ Scientific display contract:
             "cached": False,
             "result_only": False,
             "follow_up": True,
-            "complexity": assessment.to_dict(),
             "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
         }
 
@@ -482,9 +475,8 @@ Scientific display contract:
     # =========================================================
 
     def _solve_complex(self, problem: str, explanation: str = "detailed"):
-        """Run one local-LLM pass with deterministic thinking selection."""
+        """Run one local-LLM pass."""
         started = time.perf_counter()
-        assessment = self.complexity_classifier.analyze(problem)
         response = self._final_explanation(
             problem=problem,
             idea="",
@@ -492,9 +484,7 @@ Scientific display contract:
             tool_results=[],
             explanation=explanation,
             estimated_answer_tokens=None,
-            enable_thinking=assessment.thinking,
         )
-        response["complexity"] = assessment.to_dict()
         response["timings_ms"] = {
             "planner": 0.0,
             "wolfram": 0.0,
@@ -622,8 +612,6 @@ Give a complete worked solution. Show the governing relation, substitutions,
 units, intermediate calculations, and final result. Explain only the reasoning
 needed to make the calculation clear.
 """
-
-        assessment = self.complexity_classifier.analyze(problem)
 
         system_prompt = """
 You are Nova's local STEM numerical solver.
@@ -1383,7 +1371,6 @@ problem, then calculate from the supplied data. Do not invent missing values.
         tool_results: list | None = None,
         explanation: str = "detailed",
         estimated_answer_tokens: int | None = None,
-        enable_thinking: bool | None = None,
     ):
 
         if explanation == "off":
@@ -1617,11 +1604,6 @@ Scientific display contract:
             # provider max_tokens ceiling; a difficult STEM request may need
             # substantially more output than the planner estimates.
             temperature=0,
-            enable_thinking=(
-                self.complexity_classifier.analyze(problem).thinking
-                if enable_thinking is None
-                else enable_thinking
-            ),
             request_timeout=None,
         )
 
