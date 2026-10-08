@@ -438,6 +438,28 @@ Scientific display contract:
 
         return True
 
+    def _is_complex_computational_request(self, problem: str) -> bool:
+        """
+        Detect a natural-language request that contains an explicit
+        computational payload without depending on a subject/domain word.
+        """
+        text = problem.strip()
+        if not text or len(text) > 1200:
+            return False
+        if self._is_simple_expression(text):
+            return False
+        if self._detect_explicit_operation(text) is not None:
+            return False
+        if not re.search(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", text):
+            return False
+
+        computational_intent = re.search(
+            r"\b(?:calculate|compute|determine|evaluate|find|obtain|work\s+out|how\s+much|how\s+many|what\s+is|what\s+are)\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+        return bool(computational_intent)
+
     def _is_direct_quantitative_request(self, problem: str) -> bool:
         text = problem.strip()
         if not text or len(text) > 500 or not re.search(r"\d", text):
@@ -577,6 +599,65 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         if recovered is not None and not needs_wolfram:
             operation, arguments = recovered
             needs_wolfram = True
+
+        # The planner's boolean is advisory. For a structurally identified
+        # determinate numerical request, give the planner a second, narrowly
+        # scoped extraction pass if it incorrectly classified the request as
+        # pure reasoning. This remains domain-agnostic.
+        if self._is_complex_computational_request(problem) and not needs_wolfram:
+            extraction_started = time.perf_counter()
+            try:
+                extraction = self.router.plan(
+                    prompt=json.dumps({"user_request": problem}, ensure_ascii=False),
+                    system_prompt=r"""
+You are Nova's computational expression planner.
+
+The request below has already been structurally identified as a determinate
+numerical/computational request. Do NOT answer it and do NOT explain it.
+
+Return ONLY one JSON object:
+{"type":"plan","intent":"exact","needs_wolfram":true,"operation":"calculate","arguments":{"expression":"..."},"answer_tokens":null}
+
+Construct one self-contained Wolfram Language expression that computes EVERY
+explicitly requested numerical result from the information in the request.
+
+Use explicit numerical substitution and ordinary Wolfram Language constructs
+such as With, N, Sqrt, Sin, Cos, Tan, Exp, Log, Abs, Min, Max, Solve, lists,
+and rules when useful. A list of results is preferred when several values are
+requested.
+
+You may derive the governing equations internally, but do not invent data or
+assumptions. Preserve the user's stated quantities and units. The expression
+must be executable as a single calculate expression.
+
+Do not return natural-language instructions. Do not return prose or markdown.
+""",
+                    max_tokens=256,
+                    request_timeout=None,
+                )
+            except Exception:
+                extraction = {"success": False}
+
+            extraction_plan = (
+                self._parse_json(extraction.get("result"))
+                if extraction.get("success")
+                else None
+            )
+            if (
+                isinstance(extraction_plan, dict)
+                and extraction_plan.get("type") == "plan"
+                and extraction_plan.get("needs_wolfram") is True
+                and extraction_plan.get("operation") == "calculate"
+                and isinstance(extraction_plan.get("arguments"), dict)
+            ):
+                operation = "calculate"
+                arguments = extraction_plan["arguments"]
+                needs_wolfram = True
+
+            planner_ms += round(
+                (time.perf_counter() - extraction_started) * 1000,
+                2,
+            )
 
         if not needs_wolfram or not isinstance(operation, str) or not isinstance(arguments, dict):
             needs_wolfram = False
@@ -872,6 +953,40 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         return None
 
+    @staticmethod
+    def _is_planner_calculate_expression(expression: str) -> bool:
+        """
+        Validate a planner-produced Wolfram calculation expression.
+        """
+        text = expression.strip()
+        if not text or len(text) > 2000:
+            return False
+
+        # Reject strings and general programming/network/file syntax.
+        if re.search(r"""["'\\#&?|:$]""", text):
+            return False
+
+        identifiers = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text)
+        blocked = {
+            "Run", "RunProcess", "StartProcess", "SystemOpen",
+            "Import", "Export", "Get", "Needs", "Put", "PutAppend",
+            "OpenRead", "OpenWrite", "Read", "ReadString", "Write",
+            "URLRead", "URLExecute", "URLDownload", "ExternalEvaluate",
+            "CloudEvaluate", "CloudDeploy", "APIFunction",
+            "NotebookOpen", "NotebookPut", "FrontEndExecute",
+            "ToExpression", "Symbol", "Unset", "Clear", "ClearAll",
+            "SetDelayed", "RuleDelayed",
+        }
+        if any(identifier in blocked for identifier in identifiers):
+            return False
+
+        # Allow arithmetic, comparisons, function calls, With/local
+        # assignments, lists, and immediate rules.
+        if re.search(r"[^A-Za-z0-9_+\-*/^%().,\[\]{}=<>;@\s]", text):
+            return False
+
+        return bool(re.search(r"\d|[A-Za-z]", text))
+
     def _validate_tool_call(self, call: dict):
 
         if not isinstance(call, dict):
@@ -959,14 +1074,13 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                     "error": "calculate requires an expression.",
                 }
 
-            # Keep this general and structural: calculate accepts the same
-            # mathematical expression grammar as the direct CAS path, while
-            # rejecting natural-language instructions and arbitrary Wolfram
-            # code.
-            if not self._is_simple_expression(expression):
+            # Planner-generated calculations may use named variables, With
+            # scopes, lists, and rules, so the bare-expression grammar is too
+            # narrow for this validation step.
+            if not self._is_planner_calculate_expression(expression):
                 return {
                     "valid": False,
-                    "error": "calculate requires a valid mathematical expression.",
+                    "error": "calculate requires a valid computational expression.",
                 }
 
         if tool in {
