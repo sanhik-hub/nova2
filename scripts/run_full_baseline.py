@@ -160,8 +160,14 @@ def pretty_value(value, indent=0):
 
 
 def standard_output(result):
-    if result.get("json") is not None:
-        return shorten(pretty_value(result["json"]))
+    payload = result.get("json")
+    if isinstance(payload, dict):
+        answer = payload.get("answer")
+        if answer is not None:
+            return shorten(str(answer).strip())
+        for key in ("result", "solution", "explanation"):
+            if payload.get(key) is not None:
+                return shorten(pretty_value(payload[key]).strip())
     return shorten(result.get("raw", ""))
 
 
@@ -203,7 +209,7 @@ def solution_output(payload):
     for key in ("solution", "answer", "explanation", "result"):
         if payload.get(key):
             return shorten(pretty_value(payload[key]))
-    return shorten(pretty_value(payload))
+    return ""
 
 
 def shade(cell, color="E8EDF3"):
@@ -509,6 +515,11 @@ def main():
                         "response": response["json"],
                         "raw": response["raw"],
                         "display_output": standard_output(response),
+                "structured_output": (
+                    response["json"].get("answer")
+                    if isinstance(response.get("json"), dict)
+                    else None
+                ),
                         "error": error,
                     }
                 )
