@@ -312,6 +312,9 @@ Scientific display contract:
         prompt = prompt + "\n\n" + "\n\n".join(turns)
 
         started = time.perf_counter()
+        assessment = self.complexity_classifier.analyze(
+            original_question + "\n" + follow_up
+        )
         try:
             result = self.router.generate(
                 prompt=prompt,
@@ -321,7 +324,7 @@ Scientific display contract:
                     "Answer the current follow-up using the complete supplied session context. "
                     "Be correct, direct, and scientifically precise."
                 ),
-                enable_thinking=False,
+                enable_thinking=assessment.thinking,
                 request_timeout=None,
             )
         except Exception as exc:
@@ -342,6 +345,7 @@ Scientific display contract:
             "cached": False,
             "result_only": False,
             "follow_up": True,
+            "complexity": assessment.to_dict(),
             "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
         }
 
