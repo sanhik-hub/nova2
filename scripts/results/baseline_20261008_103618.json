@@ -383,7 +383,38 @@
       "raw": "{\"success\":true,\"answer\":\"The integral $ I = \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\\n\\n$$\\n\\\\int_0^\\\\infty \\\\frac{x^{s-1}}{e^x - 1} \\\\, dx = \\\\Gamma(s) \\\\zeta(s)\\n$$\\n\\nwhere $ \\\\Gamma(s) $ is the **gamma function** and $ \\\\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4)\\n$$\\n\\n### Step 1: Evaluate $ \\\\Gamma(4) $\\n\\nThe gamma function is defined as:\\n\\n$$\\n\\\\Gamma(s) = \\\\int_0^\\\\infty t^{s-1} e^{-t} \\\\, dt\\n$$\\n\\nFor integer $ n \\\\geq 1 $, $ \\\\Gamma(n) = (n-1)! $. Therefore:\\n\\n$$\\n\\\\Gamma(4) = 3! = 6\\n$$\\n\\n### Step 2: Evaluate $ \\\\zeta(4) $\\n\\nThe Riemann zeta function is defined as:\\n\\n$$\\n\\\\zeta(s) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^s}\\n$$\\n\\nFor $ s = 4 $, we have:\\n\\n$$\\n\\\\zeta(4) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^4} = \\\\frac{\\\\pi^4}{90}\\n$$\\n\\nThis is a known result from the **Basel problem** for $ s = 4 $.\\n\\n### Step 3: Combine the results\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4) = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\\n$$\\n\\n### Final Answer:\\n\\n$$\\n\\\\boxed{I = \\\\frac{\\\\pi^4}{15}}\\n$$\\n\\n### Justification:\\n\\nThe integral $ \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\\\Gamma(4) = 6 $ and $ \\\\zeta(4) = \\\\frac{\\\\pi^4}{90} $, the exact value of the integral is $ \\\\frac{\\\\pi^4}{15} $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":72325.29},\"elapsed_ms\":72325.4}",
       "display_output": "Answer: The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $.\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 72325.29\nElapsed Ms: 72325.4",
       "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "math_hard_infinite_series",
+      "difficulty": "hard",
+      "domain": "math",
+      "question": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+      "ms": 101352.16110001784,
+      "response": {
+        "success": false,
+        "query": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 36088.43,
+        "mcq_generation_elapsed_ms": 65254.41,
+        "hint_elapsed_ms": 65254.41,
+        "elapsed_ms": 101343.25,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 65254.41
+      },
+      "raw": "{\"success\":false,\"query\":\"Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":36088.43,\"mcq_generation_elapsed_ms\":65254.41,\"hint_elapsed_ms\":65254.41,\"elapsed_ms\":101343.25,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":65254.41}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
     }
   ],
-  "status": "paused"
+  "status": "running"
 }
