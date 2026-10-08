@@ -10,11 +10,11 @@ from backend.services.reasoning_service import ReasoningService
 
 
 class GuidedAttemptService:
-    """Build reliable Guided Attempts from an authoritative solution.
+    """Build reliable Guided Attempts in one local-LLM generation pass.
 
-    The solver establishes the STEM result first. A separate generation pass
-    then turns that result into progressive MCQs. Hints are opt-in and the full
-    worked solution is lazy, so neither is generated during the default start.
+    The model emits the solution stages and stage-aligned MCQs together.
+    Python validates the contract, owns option ordering/correct_index, and
+    retains the verified solution for the optional full-solution view.
     """
 
     def __init__(self, router: ProviderRouter | None = None):
@@ -183,6 +183,10 @@ STEP records."""
 
             question = fields[1]
             options = fields[2:6]
+
+            # This legacy parser is kept for compatibility with older cached
+            # records. New generation uses _parse_generated_records(), where
+            # Python derives correct_index from the semantic correct answer.
             correct_index_raw = fields[6]
             hint = fields[7] if include_hints else None
 
@@ -849,7 +853,7 @@ STEP records."""
             question = fields[1]
             correct = fields[2]
             distractors = fields[3:6]
-            hint = fields[5] if include_hints else None
+            hint = fields[6] if include_hints else None
 
             if (
                 not question
