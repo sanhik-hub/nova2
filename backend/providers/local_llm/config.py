@@ -12,7 +12,7 @@ class LocalLLMConfig:
 
     model_path: str = os.getenv(
         "LOCAL_LLM_MODEL",
-        "models/local/Qwen3-4B-Q4_K_M.gguf",
+        "models/chemistry_test/base/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
     )
 
     # llama.cpp server
