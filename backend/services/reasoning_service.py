@@ -1310,15 +1310,6 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return False
         return bool(re.search(r"[A-Za-z0-9]", text))
 
-    def _validate_tool_call(self, call: dict):?|:]""", text):
-            return False
-        allowed = r"A-Za-z0-9_+\\-*/^%().,\\[\\]{}\\sπ∞√"
-        if allow_equals:
-            allowed += "="
-        if re.search(rf"[^{allowed}]", text):
-            return False
-        return bool(re.search(r"[A-Za-z0-9]", text))
-
     def _validate_tool_call(self, call: dict):
 
         if not isinstance(call, dict):
