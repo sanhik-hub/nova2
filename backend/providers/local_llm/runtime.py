@@ -67,15 +67,14 @@ class LocalLLMRuntime:
         except (urllib.error.URLError, json.JSONDecodeError, OSError):
             return False
 
-        tool_template = props.get("chat_template_tool_use")
-        if isinstance(tool_template, str):
-            return bool(tool_template.strip())
+        caps = props.get("chat_template_caps")
+        if isinstance(caps, dict):
+            return bool(caps.get("supports_tool_calls"))
 
-        # Some llama.cpp builds expose the selected template only through
-        # chat_template. Keep this conservative: ordinary chat templates are
-        # not treated as tool-capable unless the server explicitly advertises
-        # a tool-use template.
-        return False
+        # Older llama.cpp builds may expose a separate tool-use template
+        # property instead of chat_template_caps.
+        tool_template = props.get("chat_template_tool_use")
+        return isinstance(tool_template, str) and bool(tool_template.strip())
 
     @staticmethod
     def _repair_mojibake(value: str) -> str:
