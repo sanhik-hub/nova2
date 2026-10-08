@@ -1,0 +1,389 @@
+{
+  "started_at": "2026-10-08T05:06:18.177819+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "stamp": "20261008_103618",
+  "cases": [
+    {
+      "id": "math_easy_derivative",
+      "domain": "math",
+      "difficulty": "easy",
+      "question": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+      "reference": "dy/dx = 12x^3 - 10x + 7."
+    },
+    {
+      "id": "math_medium_definite_integral",
+      "domain": "math",
+      "difficulty": "medium",
+      "question": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+      "reference": "The value is -1/9."
+    },
+    {
+      "id": "math_hard_infinite_series",
+      "domain": "math",
+      "difficulty": "hard",
+      "question": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+      "reference": "I = Γ(4)ζ(4) = π^4/15."
+    },
+    {
+      "id": "physics_easy_projectile",
+      "domain": "physics",
+      "difficulty": "easy",
+      "question": "A particle is projected vertically upward from the ground with speed 20 m/s. Take g = 10 m/s² and neglect air resistance. Find its maximum height and total time of flight.",
+      "reference": "Maximum height = 20 m; total time = 4 s."
+    },
+    {
+      "id": "physics_medium_rod_emf",
+      "domain": "physics",
+      "difficulty": "medium",
+      "question": "A conducting rod of length L rotates about one end with constant angular speed ω in a uniform magnetic field B perpendicular to the plane of rotation. Derive the motional emf between its ends.",
+      "reference": "ε = (1/2)BωL²."
+    },
+    {
+      "id": "physics_hard_orbit",
+      "domain": "physics",
+      "difficulty": "hard",
+      "question": "A satellite moves in a circular orbit of radius r around a planet of mass M. Derive its orbital speed, kinetic energy, total mechanical energy, and escape speed from the same orbital radius. State the relation between orbital and escape speed.",
+      "reference": "v=sqrt(GM/r); K=GMm/(2r); E=-GMm/(2r); v_escape=sqrt(2GM/r)."
+    },
+    {
+      "id": "chemistry_easy_molecular_geometry",
+      "domain": "chemistry",
+      "difficulty": "easy",
+      "question": "Determine the Lewis structure, electron-pair geometry, molecular geometry, and approximate bond angle of NH3.",
+      "reference": "Three N-H bonds, one lone pair; tetrahedral electron-pair geometry; trigonal pyramidal molecular geometry; about 107°."
+    },
+    {
+      "id": "chemistry_medium_buffer",
+      "domain": "chemistry",
+      "difficulty": "medium",
+      "question": "A weak acid HA has concentration 0.20 M and Ka = 1.8×10^-5. 100 mL of this solution is mixed with 50 mL of 0.10 M NaOH. Calculate the resulting pH. Perform stoichiometric neutralization first, then the equilibrium calculation.",
+      "reference": "HA=0.015 mol, A-=0.005 mol; buffer; pH≈4.27."
+    },
+    {
+      "id": "chemistry_hard_equilibrium",
+      "domain": "chemistry",
+      "difficulty": "hard",
+      "question": "For N2O4(g) ⇌ 2NO2(g), Kp = 0.144 at 298 K. Pure N2O4 initially has pressure 1.00 atm in a rigid vessel. Let α be the fraction dissociated. Derive the equilibrium equation and calculate α.",
+      "reference": "Kp=4α²/(1-α)=0.144; α≈0.173."
+    },
+    {
+      "id": "cs_easy_complexity",
+      "domain": "computer_science",
+      "difficulty": "easy",
+      "question": "For pseudocode: for i = 1 to n: print(i). Give time complexity and auxiliary space complexity, excluding output storage.",
+      "reference": "Time Θ(n); auxiliary space Θ(1)."
+    },
+    {
+      "id": "cs_medium_binary_search",
+      "domain": "computer_science",
+      "difficulty": "medium",
+      "question": "A sorted array contains n distinct integers. Design binary search to determine whether x is present, give worst-case time complexity, and explain why it is logarithmic.",
+      "reference": "Repeatedly halve the interval; Θ(log n) comparisons and Θ(1) iterative auxiliary space."
+    },
+    {
+      "id": "cs_hard_dijkstra",
+      "domain": "computer_science",
+      "difficulty": "hard",
+      "question": "Explain why Dijkstra's shortest-path algorithm is correct when all edge weights are non-negative. Analyze its complexity with a binary heap and adjacency lists, and explain what fails if a negative-weight edge is allowed.",
+      "reference": "Greedy extraction is safe with non-negative edges; O((V+E)log V), commonly O(E log V); negative edges invalidate the settled-distance invariant."
+    }
+  ],
+  "results": [
+    {
+      "kind": "standard",
+      "id": "math_easy_derivative",
+      "difficulty": "easy",
+      "domain": "math",
+      "mode": "off",
+      "question": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+      "ms": 2.5957999750971794,
+      "response": {
+        "success": true,
+        "answer": "0 == 7 - 10*x + 12*x^3",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": true,
+        "elapsed_ms": 0.03
+      },
+      "raw": "{\"success\":true,\"answer\":\"0 == 7 - 10*x + 12*x^3\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":true,\"elapsed_ms\":0.03}",
+      "display_output": "Answer: 0 == 7 - 10*x + 12*x^3\nResult Only: Yes\nEngine: wolfram\nCached: Yes\nElapsed Ms: 0.03",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_easy_derivative",
+      "difficulty": "easy",
+      "domain": "math",
+      "mode": "concise",
+      "question": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+      "ms": 12308.371599996462,
+      "response": {
+        "success": true,
+        "answer": "Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nTherefore,\n\n$$\n\\boxed{\\frac{dy}{dx} = 12x^3 - 10x + 7}\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "0 == 7 - 10*x + 12*x^3",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 12301.65,
+        "elapsed_ms": 12305.69
+      },
+      "raw": "{\"success\":true,\"answer\":\"Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\\n\\nTherefore,\\n\\n$$\\n\\\\boxed{\\\\frac{dy}{dx} = 12x^3 - 10x + 7}\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"0 == 7 - 10*x + 12*x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":12301.65,\"elapsed_ms\":12305.69}",
+      "display_output": "Answer: Differentiating $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nTherefore,\n\n$$\n\\boxed{\\frac{dy}{dx} = 12x^3 - 10x + 7}\n$$\nEngine: local_llm+wolfram\nTool Calls: 1. Result: 0 == 7 - 10*x + 12*x^3\nCached: No\nResult Only: No\n Final Llm Ms: 12301.65\nElapsed Ms: 12305.69",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_easy_derivative",
+      "difficulty": "easy",
+      "domain": "math",
+      "mode": "detailed",
+      "question": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+      "ms": 36525.6037999643,
+      "response": {
+        "success": true,
+        "answer": "To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\nWe differentiate each term of the function individually:\n\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\cdot 3x^3 = 12x^3 $.\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\cdot (-5)x = -10x $.\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$",
+        "engine": "local_llm+wolfram",
+        "tool_calls": [
+          {
+            "success": true,
+            "result": "0 == 7 - 10*x + 12*x^3",
+            "error": null
+          }
+        ],
+        "cached": false,
+        "result_only": false,
+        "_final_llm_ms": 36519.79,
+        "elapsed_ms": 36523.12
+      },
+      "raw": "{\"success\":true,\"answer\":\"To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\\n\\nWe differentiate each term of the function individually:\\n\\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\\\cdot 3x^3 = 12x^3 $.\\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\\\cdot (-5)x = -10x $.\\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\\n\\nAdding these derivatives together, we get:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\\n\\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\\n\\n$$\\n\\\\frac{dy}{dx} = 12x^3 - 10x + 7\\n$$\",\"engine\":\"local_llm+wolfram\",\"tool_calls\":[{\"success\":true,\"result\":\"0 == 7 - 10*x + 12*x^3\",\"error\":null}],\"cached\":false,\"result_only\":false,\"_final_llm_ms\":36519.79,\"elapsed_ms\":36523.12}",
+      "display_output": "Answer: To differentiate the function $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $, we apply the power rule of differentiation. The power rule states that the derivative of $ x^n $ with respect to $ x $ is $ nx^{n-1} $.\n\nWe differentiate each term of the function individually:\n\n1. The derivative of $ 3x^4 $ with respect to $ x $ is $ 4 \\cdot 3x^3 = 12x^3 $.\n2. The derivative of $ -5x^2 $ with respect to $ x $ is $ 2 \\cdot (-5)x = -10x $.\n3. The derivative of $ 7x $ with respect to $ x $ is $ 7 $.\n4. The derivative of the constant $ -9 $ with respect to $ x $ is $ 0 $.\n\nAdding these derivatives together, we get:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\n\nThus, the derivative of $ y = 3x^4 - 5x^2 + 7x - 9 $ with respect to $ x $ is:\n\n$$\n\\frac{dy}{dx} = 12x^3 - 10x + 7\n$$\nEngine: local_llm+wolfram\nTool Calls: 1. Result: 0 == 7 - 10*x + 12*x^3\nCached: No\nResult Only: No\n Final Llm Ms: 36519.79\nElapsed Ms: 36523.12",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "math_easy_derivative",
+      "difficulty": "easy",
+      "domain": "math",
+      "question": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+      "ms": 90522.93829992414,
+      "response": {
+        "success": false,
+        "query": "Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 14817.38,
+        "mcq_generation_elapsed_ms": 75700.55,
+        "hint_elapsed_ms": 75700.55,
+        "elapsed_ms": 90519.07,
+        "guided_estimated_steps": 4,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 75700.55
+      },
+      "raw": "{\"success\":false,\"query\":\"Differentiate y = 3x^4 - 5x^2 + 7x - 9 with respect to x.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":14817.38,\"mcq_generation_elapsed_ms\":75700.55,\"hint_elapsed_ms\":75700.55,\"elapsed_ms\":90519.07,\"guided_estimated_steps\":4,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":75700.55}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "math_medium_definite_integral",
+      "difficulty": "medium",
+      "domain": "math",
+      "mode": "off",
+      "question": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+      "ms": 8532.323400024325,
+      "response": {
+        "success": true,
+        "answer": "-1/4",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 8520.5
+        },
+        "elapsed_ms": 8528.82
+      },
+      "raw": "{\"success\":true,\"answer\":\"-1/4\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":8520.5},\"elapsed_ms\":8528.82}",
+      "display_output": "Answer: -1/4\nEngine: local_llm\nCached: No\nResult Only: Yes\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 8520.5\nElapsed Ms: 8528.82",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_medium_definite_integral",
+      "difficulty": "medium",
+      "domain": "math",
+      "mode": "concise",
+      "question": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+      "ms": 113985.1900000358,
+      "response": {
+        "success": true,
+        "answer": "We evaluate the integral using integration by parts. Let $ u = \\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\frac{1}{x} dx $ and $ v = \\frac{x^3}{3} $.\n\nUsing the integration by parts formula:\n\n$$\n\\int u\\,dv = uv - \\int v\\,du\n$$\n\nWe have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^3}{3} \\cdot \\frac{1}{x} dx\n$$\n\nSimplifying:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^2}{3} dx\n$$\n\nEvaluating the boundary terms and the integral:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left( \\frac{1^3}{3} \\ln(1) - \\lim_{x \\to 0^+} \\frac{x^3}{3} \\ln(x) \\right) - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nSince $ \\ln(1) = 0 $ and $ \\lim_{x \\to 0^+} x^3 \\ln(x) = 0 $, we have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nEvaluating the remaining integral:\n\n$$\n\\int_0^1 x^2 dx = \\left. \\frac{x^3}{3} \\right|_0^1 = \\frac{1}{3}\n$$\n\nTherefore:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\cdot \\frac{1}{3} = -\\frac{1}{9}\n$$\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 113982.07
+        },
+        "elapsed_ms": 113982.17
+      },
+      "raw": "{\"success\":true,\"answer\":\"We evaluate the integral using integration by parts. Let $ u = \\\\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\\\frac{1}{x} dx $ and $ v = \\\\frac{x^3}{3} $.\\n\\nUsing the integration by parts formula:\\n\\n$$\\n\\\\int u\\\\,dv = uv - \\\\int v\\\\,du\\n$$\\n\\nWe have:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left. \\\\frac{x^3}{3} \\\\ln(x) \\\\right|_0^1 - \\\\int_0^1 \\\\frac{x^3}{3} \\\\cdot \\\\frac{1}{x} dx\\n$$\\n\\nSimplifying:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left. \\\\frac{x^3}{3} \\\\ln(x) \\\\right|_0^1 - \\\\int_0^1 \\\\frac{x^2}{3} dx\\n$$\\n\\nEvaluating the boundary terms and the integral:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = \\\\left( \\\\frac{1^3}{3} \\\\ln(1) - \\\\lim_{x \\\\to 0^+} \\\\frac{x^3}{3} \\\\ln(x) \\\\right) - \\\\frac{1}{3} \\\\int_0^1 x^2 dx\\n$$\\n\\nSince $ \\\\ln(1) = 0 $ and $ \\\\lim_{x \\\\to 0^+} x^3 \\\\ln(x) = 0 $, we have:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = - \\\\frac{1}{3} \\\\int_0^1 x^2 dx\\n$$\\n\\nEvaluating the remaining integral:\\n\\n$$\\n\\\\int_0^1 x^2 dx = \\\\left. \\\\frac{x^3}{3} \\\\right|_0^1 = \\\\frac{1}{3}\\n$$\\n\\nTherefore:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) dx = - \\\\frac{1}{3} \\\\cdot \\\\frac{1}{3} = -\\\\frac{1}{9}\\n$$\\n\\n$$\\n\\\\boxed{-\\\\frac{1}{9}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":113982.07},\"elapsed_ms\":113982.17}",
+      "display_output": "Answer: We evaluate the integral using integration by parts. Let $ u = \\ln(x) $ and $ dv = x^2 dx $. Then, $ du = \\frac{1}{x} dx $ and $ v = \\frac{x^3}{3} $.\n\nUsing the integration by parts formula:\n\n$$\n\\int u\\,dv = uv - \\int v\\,du\n$$\n\nWe have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^3}{3} \\cdot \\frac{1}{x} dx\n$$\n\nSimplifying:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left. \\frac{x^3}{3} \\ln(x) \\right|_0^1 - \\int_0^1 \\frac{x^2}{3} dx\n$$\n\nEvaluating the boundary terms and the integral:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = \\left( \\frac{1^3}{3} \\ln(1) - \\lim_{x \\to 0^+} \\frac{x^3}{3} \\ln(x) \\right) - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nSince $ \\ln(1) = 0 $ and $ \\lim_{x \\to 0^+} x^3 \\ln(x) = 0 $, we have:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\int_0^1 x^2 dx\n$$\n\nEvaluating the remaining integral:\n\n$$\n\\int_0^1 x^2 dx = \\left. \\frac{x^3}{3} \\right|_0^1 = \\frac{1}{3}\n$$\n\nTherefore:\n\n$$\n\\int_0^1 x^2 \\ln(x) dx = - \\frac{1}{3} \\cdot \\frac{1}{3} = -\\frac{1}{9}\n$$\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 113982.07\nElapsed Ms: 113982.17",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_medium_definite_integral",
+      "difficulty": "medium",
+      "domain": "math",
+      "mode": "detailed",
+      "question": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+      "ms": 88993.33640001714,
+      "response": {
+        "success": true,
+        "answer": "To evaluate the definite integral $\\int_0^1 x^2 \\ln(x) \\, dx$, we use integration by parts. The formula for integration by parts is:\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\n\nLet:\n- $u = \\ln(x)$, so $du = \\frac{1}{x} dx$\n- $dv = x^2 dx$, so $v = \\frac{x^3}{3}$\n\nNow apply the integration by parts formula:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\ln(x) \\cdot \\frac{x^3}{3} - \\int \\frac{x^3}{3} \\cdot \\frac{1}{x} \\, dx\n$$\n\nSimplify the integral:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\frac{x^3}{3} \\ln(x) - \\int \\frac{x^2}{3} \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\int x^2 \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\cdot \\frac{x^3}{3} + C\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} + C\n$$\n\nNow evaluate the definite integral from 0 to 1:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = \\left[ \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right]_0^1\n$$\n\nAt $x = 1$:\n\n$$\n\\frac{1^3}{3} \\ln(1) - \\frac{1^3}{9} = 0 - \\frac{1}{9} = -\\frac{1}{9}\n$$\n\nAt $x = 0$:\n\n$$\n\\lim_{x \\to 0^+} \\left( \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right)\n$$\n\nAs $x \\to 0^+$, $\\ln(x) \\to -\\infty$, but $x^3 \\to 0$. The term $\\frac{x^3}{3} \\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\ln(x)$ approaches $-\\infty$. Similarly, $\\frac{x^3}{9} \\to 0$. So the limit is 0.\n\nThus, the definite integral is:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = -\\frac{1}{9} - 0 = -\\frac{1}{9}\n$$\n\n**Final Answer:**\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 88989.75
+        },
+        "elapsed_ms": 88989.92
+      },
+      "raw": "{\"success\":true,\"answer\":\"To evaluate the definite integral $\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx$, we use integration by parts. The formula for integration by parts is:\\n\\n$$\\n\\\\int u \\\\, dv = uv - \\\\int v \\\\, du\\n$$\\n\\nLet:\\n- $u = \\\\ln(x)$, so $du = \\\\frac{1}{x} dx$\\n- $dv = x^2 dx$, so $v = \\\\frac{x^3}{3}$\\n\\nNow apply the integration by parts formula:\\n\\n$$\\n\\\\int x^2 \\\\ln(x) \\\\, dx = \\\\ln(x) \\\\cdot \\\\frac{x^3}{3} - \\\\int \\\\frac{x^3}{3} \\\\cdot \\\\frac{1}{x} \\\\, dx\\n$$\\n\\nSimplify the integral:\\n\\n$$\\n\\\\int x^2 \\\\ln(x) \\\\, dx = \\\\frac{x^3}{3} \\\\ln(x) - \\\\int \\\\frac{x^2}{3} \\\\, dx\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{1}{3} \\\\int x^2 \\\\, dx\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{1}{3} \\\\cdot \\\\frac{x^3}{3} + C\\n$$\\n\\n$$\\n= \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} + C\\n$$\\n\\nNow evaluate the definite integral from 0 to 1:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx = \\\\left[ \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} \\\\right]_0^1\\n$$\\n\\nAt $x = 1$:\\n\\n$$\\n\\\\frac{1^3}{3} \\\\ln(1) - \\\\frac{1^3}{9} = 0 - \\\\frac{1}{9} = -\\\\frac{1}{9}\\n$$\\n\\nAt $x = 0$:\\n\\n$$\\n\\\\lim_{x \\\\to 0^+} \\\\left( \\\\frac{x^3}{3} \\\\ln(x) - \\\\frac{x^3}{9} \\\\right)\\n$$\\n\\nAs $x \\\\to 0^+$, $\\\\ln(x) \\\\to -\\\\infty$, but $x^3 \\\\to 0$. The term $\\\\frac{x^3}{3} \\\\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\\\ln(x)$ approaches $-\\\\infty$. Similarly, $\\\\frac{x^3}{9} \\\\to 0$. So the limit is 0.\\n\\nThus, the definite integral is:\\n\\n$$\\n\\\\int_0^1 x^2 \\\\ln(x) \\\\, dx = -\\\\frac{1}{9} - 0 = -\\\\frac{1}{9}\\n$$\\n\\n**Final Answer:**\\n\\n$$\\n\\\\boxed{-\\\\frac{1}{9}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":88989.75},\"elapsed_ms\":88989.92}",
+      "display_output": "Answer: To evaluate the definite integral $\\int_0^1 x^2 \\ln(x) \\, dx$, we use integration by parts. The formula for integration by parts is:\n\n$$\n\\int u \\, dv = uv - \\int v \\, du\n$$\n\nLet:\n- $u = \\ln(x)$, so $du = \\frac{1}{x} dx$\n- $dv = x^2 dx$, so $v = \\frac{x^3}{3}$\n\nNow apply the integration by parts formula:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\ln(x) \\cdot \\frac{x^3}{3} - \\int \\frac{x^3}{3} \\cdot \\frac{1}{x} \\, dx\n$$\n\nSimplify the integral:\n\n$$\n\\int x^2 \\ln(x) \\, dx = \\frac{x^3}{3} \\ln(x) - \\int \\frac{x^2}{3} \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\int x^2 \\, dx\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{1}{3} \\cdot \\frac{x^3}{3} + C\n$$\n\n$$\n= \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} + C\n$$\n\nNow evaluate the definite integral from 0 to 1:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = \\left[ \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right]_0^1\n$$\n\nAt $x = 1$:\n\n$$\n\\frac{1^3}{3} \\ln(1) - \\frac{1^3}{9} = 0 - \\frac{1}{9} = -\\frac{1}{9}\n$$\n\nAt $x = 0$:\n\n$$\n\\lim_{x \\to 0^+} \\left( \\frac{x^3}{3} \\ln(x) - \\frac{x^3}{9} \\right)\n$$\n\nAs $x \\to 0^+$, $\\ln(x) \\to -\\infty$, but $x^3 \\to 0$. The term $\\frac{x^3}{3} \\ln(x)$ approaches 0 because $x^3$ approaches 0 faster than $\\ln(x)$ approaches $-\\infty$. Similarly, $\\frac{x^3}{9} \\to 0$. So the limit is 0.\n\nThus, the definite integral is:\n\n$$\n\\int_0^1 x^2 \\ln(x) \\, dx = -\\frac{1}{9} - 0 = -\\frac{1}{9}\n$$\n\n**Final Answer:**\n\n$$\n\\boxed{-\\frac{1}{9}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 88989.75\nElapsed Ms: 88989.92",
+      "error": null
+    },
+    {
+      "kind": "guided",
+      "id": "math_medium_definite_integral",
+      "difficulty": "medium",
+      "domain": "math",
+      "question": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+      "ms": 152380.71329996455,
+      "response": {
+        "success": false,
+        "query": "Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.",
+        "steps": [],
+        "include_hints": true,
+        "include_full_solution": false,
+        "full_solution": null,
+        "error": "Guided generator returned fewer than two valid step records.",
+        "solution_generation_elapsed_ms": 68634.21,
+        "mcq_generation_elapsed_ms": 83743.18,
+        "hint_elapsed_ms": 83743.18,
+        "elapsed_ms": 152377.59,
+        "guided_estimated_steps": 3,
+        "guided_advisory_tokens": 300,
+        "mcq_elapsed_ms": 83743.18
+      },
+      "raw": "{\"success\":false,\"query\":\"Evaluate the definite integral ∫_0^1 x^2 ln(x) dx.\",\"steps\":[],\"include_hints\":true,\"include_full_solution\":false,\"full_solution\":null,\"error\":\"Guided generator returned fewer than two valid step records.\",\"solution_generation_elapsed_ms\":68634.21,\"mcq_generation_elapsed_ms\":83743.18,\"hint_elapsed_ms\":83743.18,\"elapsed_ms\":152377.59,\"guided_estimated_steps\":3,\"guided_advisory_tokens\":300,\"mcq_elapsed_ms\":83743.18}",
+      "display_guided": "",
+      "solution": null,
+      "solution_raw": "",
+      "display_solution": "",
+      "solution_ms": 0,
+      "error": "backend failure"
+    },
+    {
+      "kind": "standard",
+      "id": "math_hard_infinite_series",
+      "difficulty": "hard",
+      "domain": "math",
+      "mode": "off",
+      "question": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+      "ms": 33356.37689998839,
+      "response": {
+        "success": true,
+        "answer": "I = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 33353.14
+        },
+        "elapsed_ms": 33353.27
+      },
+      "raw": "{\"success\":true,\"answer\":\"I = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":33353.14},\"elapsed_ms\":33353.27}",
+      "display_output": "Answer: I = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\nEngine: local_llm\nCached: No\nResult Only: Yes\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 33353.14\nElapsed Ms: 33353.27",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_hard_infinite_series",
+      "difficulty": "hard",
+      "domain": "math",
+      "mode": "concise",
+      "question": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+      "ms": 26033.6933999788,
+      "response": {
+        "success": true,
+        "answer": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\Gamma(4) $, where $ \\Gamma $ is the gamma function.\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\nWe know that:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n$$\n\\zeta(4) = \\frac{\\pi^4}{90}\n$$\n\nTherefore:\n\n$$\nI = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 26029.98
+        },
+        "elapsed_ms": 26030.09
+      },
+      "raw": "{\"success\":true,\"answer\":\"The integral $ I = \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\\\Gamma(4) $, where $ \\\\Gamma $ is the gamma function.\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4)\\n$$\\n\\nWe know that:\\n\\n$$\\n\\\\Gamma(4) = 3! = 6\\n$$\\n\\n$$\\n\\\\zeta(4) = \\\\frac{\\\\pi^4}{90}\\n$$\\n\\nTherefore:\\n\\n$$\\nI = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\\n$$\\n\\n$$\\n\\\\boxed{I = \\\\frac{\\\\pi^4}{15}}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":26029.98},\"elapsed_ms\":26030.09}",
+      "display_output": "Answer: The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the Riemann zeta function at $ s = 4 $, multiplied by $ \\Gamma(4) $, where $ \\Gamma $ is the gamma function.\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\nWe know that:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n$$\n\\zeta(4) = \\frac{\\pi^4}{90}\n$$\n\nTherefore:\n\n$$\nI = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 26029.98\nElapsed Ms: 26030.09",
+      "error": null
+    },
+    {
+      "kind": "standard",
+      "id": "math_hard_infinite_series",
+      "difficulty": "hard",
+      "domain": "math",
+      "mode": "detailed",
+      "question": "Evaluate I = ∫_0^∞ x^3/(e^x - 1) dx. Give the exact value and justify the result.",
+      "ms": 72328.5465000663,
+      "response": {
+        "success": true,
+        "answer": "The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": false,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 72325.29
+        },
+        "elapsed_ms": 72325.4
+      },
+      "raw": "{\"success\":true,\"answer\":\"The integral $ I = \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\\n\\n$$\\n\\\\int_0^\\\\infty \\\\frac{x^{s-1}}{e^x - 1} \\\\, dx = \\\\Gamma(s) \\\\zeta(s)\\n$$\\n\\nwhere $ \\\\Gamma(s) $ is the **gamma function** and $ \\\\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4)\\n$$\\n\\n### Step 1: Evaluate $ \\\\Gamma(4) $\\n\\nThe gamma function is defined as:\\n\\n$$\\n\\\\Gamma(s) = \\\\int_0^\\\\infty t^{s-1} e^{-t} \\\\, dt\\n$$\\n\\nFor integer $ n \\\\geq 1 $, $ \\\\Gamma(n) = (n-1)! $. Therefore:\\n\\n$$\\n\\\\Gamma(4) = 3! = 6\\n$$\\n\\n### Step 2: Evaluate $ \\\\zeta(4) $\\n\\nThe Riemann zeta function is defined as:\\n\\n$$\\n\\\\zeta(s) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^s}\\n$$\\n\\nFor $ s = 4 $, we have:\\n\\n$$\\n\\\\zeta(4) = \\\\sum_{n=1}^\\\\infty \\\\frac{1}{n^4} = \\\\frac{\\\\pi^4}{90}\\n$$\\n\\nThis is a known result from the **Basel problem** for $ s = 4 $.\\n\\n### Step 3: Combine the results\\n\\n$$\\nI = \\\\Gamma(4) \\\\zeta(4) = 6 \\\\cdot \\\\frac{\\\\pi^4}{90} = \\\\frac{\\\\pi^4}{15}\\n$$\\n\\n### Final Answer:\\n\\n$$\\n\\\\boxed{I = \\\\frac{\\\\pi^4}{15}}\\n$$\\n\\n### Justification:\\n\\nThe integral $ \\\\int_0^\\\\infty \\\\frac{x^3}{e^x - 1} \\\\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\\\Gamma(4) = 6 $ and $ \\\\zeta(4) = \\\\frac{\\\\pi^4}{90} $, the exact value of the integral is $ \\\\frac{\\\\pi^4}{15} $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":false,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":72325.29},\"elapsed_ms\":72325.4}",
+      "display_output": "Answer: The integral $ I = \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a well-known representation of the **Riemann zeta function** multiplied by the **gamma function**. Specifically, it is related to the **Dirichlet eta function** and the **Riemann zeta function** through the identity:\n\n$$\n\\int_0^\\infty \\frac{x^{s-1}}{e^x - 1} \\, dx = \\Gamma(s) \\zeta(s)\n$$\n\nwhere $ \\Gamma(s) $ is the **gamma function** and $ \\zeta(s) $ is the **Riemann zeta function**. For $ s = 4 $, we have:\n\n$$\nI = \\Gamma(4) \\zeta(4)\n$$\n\n### Step 1: Evaluate $ \\Gamma(4) $\n\nThe gamma function is defined as:\n\n$$\n\\Gamma(s) = \\int_0^\\infty t^{s-1} e^{-t} \\, dt\n$$\n\nFor integer $ n \\geq 1 $, $ \\Gamma(n) = (n-1)! $. Therefore:\n\n$$\n\\Gamma(4) = 3! = 6\n$$\n\n### Step 2: Evaluate $ \\zeta(4) $\n\nThe Riemann zeta function is defined as:\n\n$$\n\\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}\n$$\n\nFor $ s = 4 $, we have:\n\n$$\n\\zeta(4) = \\sum_{n=1}^\\infty \\frac{1}{n^4} = \\frac{\\pi^4}{90}\n$$\n\nThis is a known result from the **Basel problem** for $ s = 4 $.\n\n### Step 3: Combine the results\n\n$$\nI = \\Gamma(4) \\zeta(4) = 6 \\cdot \\frac{\\pi^4}{90} = \\frac{\\pi^4}{15}\n$$\n\n### Final Answer:\n\n$$\n\\boxed{I = \\frac{\\pi^4}{15}}\n$$\n\n### Justification:\n\nThe integral $ \\int_0^\\infty \\frac{x^3}{e^x - 1} \\, dx $ is a standard representation of the **Riemann zeta function** multiplied by the **gamma function**. Using the known values $ \\Gamma(4) = 6 $ and $ \\zeta(4) = \\frac{\\pi^4}{90} $, the exact value of the integral is $ \\frac{\\pi^4}{15} $.\nEngine: local_llm\nCached: No\nResult Only: No\nTimings Ms: Planner: 0.0\nWolfram: 0.0\nFinal Llm: 72325.29\nElapsed Ms: 72325.4",
+      "error": null
+    }
+  ],
+  "status": "paused"
+}

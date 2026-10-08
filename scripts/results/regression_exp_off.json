@@ -1,0 +1,667 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-06T06:17:15.052867+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "cases_file": "scripts\\stem_regression_cases.json",
+  "configuration": {
+    "standard_explanations": [
+      "off"
+    ],
+    "guided": false,
+    "guided_hints": false,
+    "request_timeout_seconds": 180.0
+  },
+  "health": {
+    "http_status": 200,
+    "elapsed_ms": 39.45,
+    "json": {
+      "status": "healthy",
+      "wolfram": true,
+      "wolfram_session": {
+        "session_exists": true,
+        "session_started": true,
+        "startup_error": null
+      },
+      "executable": "C:\\Program Files\\Wolfram Research\\WolframScript\\wolframscript.EXE"
+    },
+    "raw_response": "{\"status\":\"healthy\",\"wolfram\":true,\"wolfram_session\":{\"session_exists\":true,\"session_started\":true,\"startup_error\":null},\"executable\":\"C:\\\\Program Files\\\\Wolfram Research\\\\WolframScript\\\\wolframscript.EXE\"}",
+    "exception": null,
+    "traceback": null
+  },
+  "results": [
+    {
+      "kind": "standard",
+      "case_id": "math_derivative",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+      "request": {
+        "query": "Differentiate x^3 + 5x^2 - 7x + 2 with respect to x.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 29.73,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "-7 + 10*x + 3*x^2",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 6.17
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"-7 + 10*x + 3*x^2\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":6.17}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_equation",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Solve x^2 - 5x + 6 = 0.",
+      "request": {
+        "query": "Solve x^2 - 5x + 6 = 0.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 57.47,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "{{x -> 2}, {x -> 3}}",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 54.83
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"{{x -> 2}, {x -> 3}}\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":54.83}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_integral",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Integrate 3x^2 + 4x - 1 with respect to x.",
+      "request": {
+        "query": "Integrate 3x^2 + 4x - 1 with respect to x.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 14.86,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "-x + 2*x^2 + x^3",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 5.56
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"-x + 2*x^2 + x^3\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":5.56}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_limit",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+      "request": {
+        "query": "Evaluate the limit of (sin(x))/x as x approaches 0.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 165.63,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "of",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 155.74
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"of\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":155.74}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_simplify",
+      "domain": "math",
+      "explanation": "off",
+      "question": "Simplify (x^2 - 1)/(x - 1).",
+      "request": {
+        "query": "Simplify (x^2 - 1)/(x - 1).",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 27.04,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "1 + x",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 4.32
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"1 + x\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":4.32}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "math_expression",
+      "domain": "math",
+      "explanation": "off",
+      "question": "(3 + 5)^2 / 4",
+      "request": {
+        "query": "(3 + 5)^2 / 4",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 17.99,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "16",
+        "result_only": true,
+        "engine": "wolfram",
+        "tool_calls": [],
+        "cached": false,
+        "elapsed_ms": 4.13
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"16\",\"result_only\":true,\"engine\":\"wolfram\",\"tool_calls\":[],\"cached\":false,\"elapsed_ms\":4.13}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_emf_rotation",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+      "request": {
+        "query": "Derive the formula for emf induced in a rod of length l rotating with angular velocity omega perpendicular to a magnetic field.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8849.5,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "The induced emf in a rod of length $ l $ rotating with angular velocity $ \\omega $ perpendicular to a magnetic field $ B $ is given by $ \\mathcal{E} = \\frac{1}{2} B \\omega l^2 $.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 8846.21,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 8845.89
+        }
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"The induced emf in a rod of length $ l $ rotating with angular velocity $ \\\\omega $ perpendicular to a magnetic field $ B $ is given by $ \\\\mathcal{E} = \\\\frac{1}{2} B \\\\omega l^2 $.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":8846.21,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":8845.89}}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_projectile",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+      "request": {
+        "query": "A ball is projected vertically upward with speed 20 m/s. Taking g = 10 m/s^2, find the maximum height.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 15738.62,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ h = \\frac{v^2}{2g} = \\frac{20^2}{2 \\times 10} = \\frac{400}{20} = 20 $ meters.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 3539.9,
+          "wolfram": 0.0,
+          "final_llm": 12195.33
+        },
+        "elapsed_ms": 15735.83
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ h = \\\\frac{v^2}{2g} = \\\\frac{20^2}{2 \\\\times 10} = \\\\frac{400}{20} = 20 $ meters.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":3539.9,\"wolfram\":0.0,\"final_llm\":12195.33},\"elapsed_ms\":15735.83}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_ohm",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "State Ohm's law and explain the meaning of resistance.",
+      "request": {
+        "query": "State Ohm's law and explain the meaning of resistance.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8800.75,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Ohm's law is $V = IR$, where $V$ is the voltage, $I$ is the current, and $R$ is the resistance. Resistance is a measure of how much a material opposes the flow of electric current.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 8797.99,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 8797.9
+        }
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Ohm's law is $V = IR$, where $V$ is the voltage, $I$ is the current, and $R$ is the resistance. Resistance is a measure of how much a material opposes the flow of electric current.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":8797.99,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":8797.9}}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_work",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+      "request": {
+        "query": "A constant force of 10 N moves an object through 5 m in the direction of the force. Find the work done.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8459.62,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$10 \\, \\text{N} \\times 5 \\, \\text{m} = 50 \\, \\text{J}$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1844.53,
+          "wolfram": 0.0,
+          "final_llm": 6612.43
+        },
+        "elapsed_ms": 8457.09
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$10 \\\\, \\\\text{N} \\\\times 5 \\\\, \\\\text{m} = 50 \\\\, \\\\text{J}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1844.53,\"wolfram\":0.0,\"final_llm\":6612.43},\"elapsed_ms\":8457.09}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_coulomb",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+      "request": {
+        "query": "Two point charges 2 microC and 3 microC are 0.5 m apart in vacuum. Calculate the electrostatic force between them using k = 9e9 N m^2/C^2.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 119607.93,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\nF = k \\frac{|q_1 q_2|}{r^2} = 9 \\times 10^9 \\frac{|2 \\times 10^{-6} \\times 3 \\times 10^{-6}|}{(0.5)^2} = 9 \\times 10^9 \\frac{6 \\times 10^{-12}}{0.25} = 216 \\times 10^{-3} = 0.216 \\, \\text{N}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 99395.15,
+          "wolfram": 0.0,
+          "final_llm": 20209.06
+        },
+        "elapsed_ms": 119605.03
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\nF = k \\\\frac{|q_1 q_2|}{r^2} = 9 \\\\times 10^9 \\\\frac{|2 \\\\times 10^{-6} \\\\times 3 \\\\times 10^{-6}|}{(0.5)^2} = 9 \\\\times 10^9 \\\\frac{6 \\\\times 10^{-12}}{0.25} = 216 \\\\times 10^{-3} = 0.216 \\\\, \\\\text{N}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":99395.15,\"wolfram\":0.0,\"final_llm\":20209.06},\"elapsed_ms\":119605.03}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_nitrobenzene",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "What is the molecular formula of nitrobenzene?",
+      "request": {
+        "query": "What is the molecular formula of nitrobenzene?",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 3899.6,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$\\mathrm{C_6H_5NO_2}$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 3896.73,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 3896.63
+        }
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$\\\\mathrm{C_6H_5NO_2}$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":3896.73,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":3896.63}}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_moles",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+      "request": {
+        "query": "How many moles are present in 18 g of water? Use molar mass 18 g/mol.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 4434.38,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$1$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1691.62,
+          "wolfram": 0.0,
+          "final_llm": 2739.75
+        },
+        "elapsed_ms": 4431.49
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$1$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1691.62,\"wolfram\":0.0,\"final_llm\":2739.75},\"elapsed_ms\":4431.49}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ideal_gas",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+      "request": {
+        "query": "An ideal gas has pressure 1 atm, volume 22.4 L, and temperature 273 K. Using R = 0.0821 L atm mol^-1 K^-1, calculate the number of moles.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 16283.94,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$$\nn = \\frac{PV}{RT} = \\frac{(1 \\, \\text{atm})(22.4 \\, \\text{L})}{(0.0821 \\, \\text{L atm mol}^{-1} \\text{K}^{-1})(273 \\, \\text{K})}\n$$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2528.83,
+          "wolfram": 0.0,
+          "final_llm": 13751.24
+        },
+        "elapsed_ms": 16280.17
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$$\\nn = \\\\frac{PV}{RT} = \\\\frac{(1 \\\\, \\\\text{atm})(22.4 \\\\, \\\\text{L})}{(0.0821 \\\\, \\\\text{L atm mol}^{-1} \\\\text{K}^{-1})(273 \\\\, \\\\text{K})}\\n$$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2528.83,\"wolfram\":0.0,\"final_llm\":13751.24},\"elapsed_ms\":16280.17}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_balancing",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+      "request": {
+        "query": "Balance the chemical equation Fe + O2 -> Fe2O3.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 12127.17,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$4\\text{Fe} + 3\\text{O}_2 \\rightarrow 2\\text{Fe}_2\\text{O}_3$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1887.76,
+          "wolfram": 0.0,
+          "final_llm": 10235.44
+        },
+        "elapsed_ms": 12123.82
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$4\\\\text{Fe} + 3\\\\text{O}_2 \\\\rightarrow 2\\\\text{Fe}_2\\\\text{O}_3$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1887.76,\"wolfram\":0.0,\"final_llm\":10235.44},\"elapsed_ms\":12123.82}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "chem_ph",
+      "domain": "chemistry",
+      "explanation": "off",
+      "question": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+      "request": {
+        "query": "Calculate the pH of a 0.001 M strong hydrochloric acid solution.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 6240.33,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$3$",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 2632.11,
+          "wolfram": 0.0,
+          "final_llm": 3604.3
+        },
+        "elapsed_ms": 6236.57
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$3$\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":2632.11,\"wolfram\":0.0,\"final_llm\":3604.3},\"elapsed_ms\":6236.57}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_newton",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "What is Newton's second law of motion?",
+      "request": {
+        "query": "What is Newton's second law of motion?",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8221.19,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "Newton's second law of motion is $F = ma$, where $F$ is the net force applied to an object, $m$ is the mass of the object, and $a$ is the acceleration of the object.",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 8217.64,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 8217.54
+        }
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"Newton's second law of motion is $F = ma$, where $F$ is the net force applied to an object, $m$ is the mass of the object, and $a$ is the acceleration of the object.\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":8217.64,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":8217.54}}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_density",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+      "request": {
+        "query": "A substance has mass 200 g and volume 50 cm^3. Calculate its density.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 13641.18,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ \\text{Density} = \\frac{\\text{mass}}{\\text{volume}} = \\frac{200 \\, \\text{g}}{50 \\, \\text{cm}^3} = 4 \\, \\text{g/cm}^3 $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1764.75,
+          "wolfram": 0.0,
+          "final_llm": 11872.76
+        },
+        "elapsed_ms": 13637.65
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ \\\\text{Density} = \\\\frac{\\\\text{mass}}{\\\\text{volume}} = \\\\frac{200 \\\\, \\\\text{g}}{50 \\\\, \\\\text{cm}^3} = 4 \\\\, \\\\text{g/cm}^3 $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1764.75,\"wolfram\":0.0,\"final_llm\":11872.76},\"elapsed_ms\":13637.65}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "science_percentage",
+      "domain": "general_science",
+      "explanation": "off",
+      "question": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+      "request": {
+        "query": "A sample contains 25 g of salt and 75 g of water. What percentage of the total mass is salt?",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 8132.91,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ \\frac{25}{25 + 75} \\times 100 = 25\\% $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "timings_ms": {
+          "planner": 1759.27,
+          "wolfram": 0.0,
+          "final_llm": 6369.78
+        },
+        "elapsed_ms": 8129.2
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ \\\\frac{25}{25 + 75} \\\\times 100 = 25\\\\% $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"timings_ms\":{\"planner\":1759.27,\"wolfram\":0.0,\"final_llm\":6369.78},\"elapsed_ms\":8129.2}",
+      "exception": null,
+      "traceback": null
+    },
+    {
+      "kind": "standard",
+      "case_id": "physics_circular",
+      "domain": "physics",
+      "explanation": "off",
+      "question": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+      "request": {
+        "query": "A particle of mass m moves in a circle of radius r with speed v. Derive the expression for its centripetal acceleration.",
+        "explanation": "off"
+      },
+      "status": "pass",
+      "error": null,
+      "timing_ms": 4385.17,
+      "http_status": 200,
+      "response": {
+        "success": true,
+        "answer": "$ a = \\frac{v^2}{r} $",
+        "engine": "local_llm",
+        "tool_calls": [],
+        "cached": false,
+        "result_only": true,
+        "elapsed_ms": 4381.96,
+        "timings_ms": {
+          "planner": 0.0,
+          "wolfram": 0.0,
+          "final_llm": 4381.89
+        }
+      },
+      "raw_response": "{\"success\":true,\"answer\":\"$ a = \\\\frac{v^2}{r} $\",\"engine\":\"local_llm\",\"tool_calls\":[],\"cached\":false,\"result_only\":true,\"elapsed_ms\":4381.96,\"timings_ms\":{\"planner\":0.0,\"wolfram\":0.0,\"final_llm\":4381.89}}",
+      "exception": null,
+      "traceback": null
+    }
+  ],
+  "summary": {
+    "total_tests": 20,
+    "status_counts": {
+      "pass": 20
+    },
+    "failed_tests": 0,
+    "standard_tests": 20,
+    "guided_tests": 0,
+    "average_ms": {
+      "standard": 11956.75
+    },
+    "max_ms": {
+      "standard": 119607.93
+    }
+  },
+  "progress": {
+    "completed_tests": 20,
+    "total_tests": 20,
+    "current_index": 20,
+    "current_test": null,
+    "percent": 100.0
+  },
+  "finished_at": "2026-10-06T06:21:14.285291+00:00",
+  "run_status": "completed"
+}
