@@ -746,19 +746,13 @@ STEP records."""
         if not answer:
             answer = self._verified_solution_cache.get(problem.casefold(), "").strip()
 
-        # Backward compatibility for older clients: if the verified solution
-        # was not carried in the request and is no longer in this process,
-        # recover it once through the normal solver.
+        # Never invoke the reasoning model a second time. Guided generation
+        # owns the single model pass and carries its solution in the attempt.
         if not answer:
-            result = self.reasoning.solve(problem, explanation="concise")
-            if not result.get("success"):
-                return {
-                    "success": False,
-                    "error": result.get("error") or "Unable to generate the full solution.",
-                }
-            answer = str(result.get("answer") or "").strip()
-            if not answer:
-                return {"success": False, "error": "The solution model returned no solution."}
+            return {
+                "success": False,
+                "error": "No verified solution is attached to this guided attempt. Start a new guided attempt to generate it in one pass.",
+            }
 
         self._verified_solution_cache[problem.casefold()] = answer
 
