@@ -637,7 +637,6 @@ problem, then calculate from the supplied data. Do not invent missing values.
                 prompt=problem,
                 system_prompt=system_prompt,
                 temperature=0.0,
-                enable_thinking=assessment.thinking,
                 request_timeout=None,
             )
         except Exception as exc:
@@ -666,7 +665,6 @@ problem, then calculate from the supplied data. Do not invent missing values.
             "tool_calls": [],
             "cached": False,
             "result_only": explanation == "off",
-            "complexity": assessment.to_dict(),
             "timings_ms": {
                 "planner": 0.0,
                 "wolfram": 0.0,
