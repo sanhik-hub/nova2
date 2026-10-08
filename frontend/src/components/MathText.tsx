@@ -289,7 +289,7 @@ function convertToLatex(value: string): string {
     .replace(/!=/g, "\\neq")
     .replace(/\+\/−|\+\/-/g, "\\pm")
     .replace(/±/g, "\\pm")
-    .replace(/\*/g, "\\cdot")
+    // Preserve the backend's explicit multiplication operator instead of\n    // rendering `*` as KaTeX `\\cdot`.
     .replace(/÷/g, "\\div")
     .replace(/\bpi\b/gi, "\\pi");
 
