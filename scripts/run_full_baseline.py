@@ -253,6 +253,7 @@ def safe_text(value):
     # Remove Markdown/HTML transport artifacts before writing to Word.
     text = text.replace("\r\n", "\n").replace("\\r\\n", "\n").replace("\\n", "\n")
     text = re.sub(r"&#x20;|&nbsp;", " ", text)
+    text = re.sub(r"(?m)^\s*\|\s*\|\s*$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*(?:-+\s*\|\s*)+$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*$", "", text)
     text = re.sub(r"(?m)^\s*\|\s*(.*?)\s*\|\s*$", r"\1", text)
@@ -301,6 +302,8 @@ def _strip_math_delimiters(text):
 
 def _fallback_latex(text):
     """Readable fallback when the optional native Word-math dependencies are unavailable."""
+    text = html.unescape(text)
+    text = re.sub(r"\\boxed\s*\{(.+)\}", r"\1", text)
     replacements = {
         r"\infty": "∞",
         r"\pi": "π",
@@ -347,7 +350,14 @@ def _latex_to_omml(latex):
         return None
     try:
         mathml = latex2mathml.converter.convert(latex, display="inline")
-        return ET.fromstring(mathml2omml.convert(mathml, html.entities.name2codepoint))
+        omml = mathml2omml.convert(mathml, html.entities.name2codepoint)
+        if isinstance(omml, str) and "xmlns:m=" not in omml:
+            omml = omml.replace(
+                "<m:oMath",
+                '<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"',
+                1,
+            )
+        return ET.fromstring(omml)
     except Exception:
         return None
 
