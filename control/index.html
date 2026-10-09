@@ -259,6 +259,7 @@ pre {
             <button onclick="restartAll()">Restart All</button>
             <button class="danger" onclick="terminateAll()">Terminate All</button>
             <button id="refreshButton" onclick="manualRefresh()">Refresh</button>
+            <button class="danger" onclick="closeControlCenter()">Close Control Center</button>
         </div>
     </div>
 
@@ -606,9 +607,30 @@ function terminateAll() {
 }
 
 function restartAll() {
-    if (confirm("Restart all Nova services using run_nova.ps1?")) {
+    if (confirm("Restart all Nova services?")) {
         action("/api/restart");
     }
+}
+
+async function closeControlCenter() {
+    if (!confirm("Close Control Center and stop all Nova services?")) return;
+
+    document.querySelectorAll("button").forEach(button => button.disabled = true);
+    document.getElementById("lastUpdate").textContent =
+        "Stopping Nova services and closing Control Center...";
+
+    try {
+        await fetch("/api/shutdown", { method: "POST", cache: "no-store" });
+    } catch (error) {
+        // The server intentionally stops accepting requests during shutdown.
+    }
+
+    document.body.innerHTML = `
+        <main style="max-width:760px;margin:12vh auto;padding:32px;font-family:Segoe UI,Arial,sans-serif;color:#edf1f7;background:#12151b;border:1px solid #282e38;border-radius:12px;">
+            <h1>Control Center closed</h1>
+            <p>Nova services have been asked to stop. You can close this tab.</p>
+            <p style="color:#8f98a7">To start Nova again, run control\\start_control.ps1.</p>
+        </main>`;
 }
 
 async function testWolfram() {
