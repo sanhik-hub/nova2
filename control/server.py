@@ -49,6 +49,7 @@ PLANNER_PORT = 8081
 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
+CONTROL_SERVER: ThreadingHTTPServer | None = None
 
 
 def log(message: str):
@@ -690,6 +691,8 @@ def start_backend():
             "-m", "uvicorn", "backend.main:app",
             "--host", HOST,
             "--port", str(BACKEND_PORT),
+            "--reload",
+            "--reload-dir", str(NOVA_ROOT / "backend"),
         ],
         NOVA_ROOT,
     )
@@ -893,6 +896,11 @@ def start_all():
 
     except Exception as exc:
         log(f"Start All failed: {exc}")
+        log("Rolling back partially started Nova services...")
+        try:
+            terminate_all()
+        except Exception as cleanup_exc:
+            log(f"Startup rollback failed: {cleanup_exc}")
 
     finally:
         global START_ALL_RUNNING
@@ -1393,6 +1401,22 @@ class Handler(BaseHTTPRequestHandler):
                 })
                 return
 
+            if parsed.path == "/api/shutdown":
+                api_response(
+                    self,
+                    {"ok": True, "message": "Control Center is shutting down; Nova services will stop."},
+                    202,
+                )
+                server = CONTROL_SERVER
+                if server is not None:
+                    threading.Thread(
+                        target=shutdown_control_center,
+                        args=(server,),
+                        name="nova-control-shutdown",
+                        daemon=True,
+                    ).start()
+                return
+
             if parsed.path == "/api/start":
                 api_response(
                     self,
@@ -1478,26 +1502,46 @@ class Handler(BaseHTTPRequestHandler):
             )
 
 
+def shutdown_control_center(server: ThreadingHTTPServer):
+    """Stop Nova services, then stop the Control Center HTTP server."""
+    log("Control Center closing; stopping all Nova services...")
+    try:
+        terminate_all()
+    except Exception as exc:
+        log(f"Service shutdown encountered an error: {exc}")
+    finally:
+        log("Stopping Control Center HTTP server.")
+        server.shutdown()
+
+
 def main():
-    log(
-        "PrismOffline Control Center starting."
-    )
+    global CONTROL_SERVER
 
-    log(
-        f"Nova root: {NOVA_ROOT}"
-    )
+    log("PrismOffline Control Center starting.")
+    log(f"Nova root: {NOVA_ROOT}")
+    log(f"Control URL: http://{HOST}:{PORT}")
 
-    log(
-        f"Control URL: "
-        f"http://{HOST}:{PORT}"
-    )
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    server.daemon_threads = True
+    CONTROL_SERVER = server
 
-    server = ThreadingHTTPServer(
-        (HOST, PORT),
-        Handler,
-    )
+    try:
+        # Start the complete local stack whenever Control Center starts.
+        # The startup worker is asynchronous so the dashboard remains responsive
+        # while local model files load.
+        start_all_background()
+        server.serve_forever(poll_interval=0.5)
+    except KeyboardInterrupt:
+        log("Control Center interrupted; stopping Nova services...")
+    finally:
+        server.server_close()
+        try:
+            terminate_all()
+        except Exception as exc:
+            log(f"Final service cleanup failed: {exc}")
+        CONTROL_SERVER = None
+        log("Control Center stopped.")
 
-    server.serve_forever()
 
 
 if __name__ == "__main__":
