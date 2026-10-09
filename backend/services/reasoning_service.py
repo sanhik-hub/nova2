@@ -298,7 +298,6 @@ class ReasoningService:
             self._cache_set(problem, response, explanation)
 
         return response
-
     def solve_follow_up(
         self,
         original_question: str,
@@ -590,6 +589,7 @@ prose and do not return numerical answers yourself.
 First reason internally about:
 - every quantity explicitly given;
 - every quantity explicitly requested;
+- a concise, distinct machine-readable label for each requested output;
 - the governing mathematical/scientific relationships;
 - units and necessary conversions;
 - initial conditions, geometry, constraints, and signs;
@@ -597,8 +597,9 @@ First reason internally about:
   quantitative problem.
 
 Return ONLY one JSON object in exactly this form:
-{"operation":"...","arguments":{...}}
+{"operation":"...","arguments":{...},"requested_outputs":["outputLabel1","outputLabel2"]}
 
+requested_outputs is required. Include one short lowerCamelCase label for EVERY distinct output the user asks for, in the same order as the request. Do not include intermediate values unless the user requests them. For a single-output request, include exactly one label.
 Supported operations and argument shapes:
 - {"operation":"calculate","arguments":{"expression":"..."}}
 - {"operation":"simplify","arguments":{"expression":"..."}}
@@ -660,6 +661,11 @@ Return no markdown, prose, or code fences outside the JSON object.
         formulation_schema = {
             "type": "object",
             "properties": {
+                "requested_outputs": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1},
+                    "minItems": 1,
+                },
                 "operation": {
                     "type": "string",
                     "enum": [
@@ -686,7 +692,7 @@ Return no markdown, prose, or code fences outside the JSON object.
                     "additionalProperties": False,
                 },
             },
-            "required": ["operation", "arguments"],
+            "required": ["operation", "arguments", "requested_outputs"],
             "additionalProperties": False,
         }
 
@@ -750,6 +756,14 @@ Return no markdown, prose, or code fences outside the JSON object.
 
         operation = plan.get("operation")
         arguments = plan.get("arguments")
+        requested_outputs = plan.get("requested_outputs")
+
+        if (
+            not isinstance(requested_outputs, list)
+            or not requested_outputs
+            or any(not isinstance(item, str) or not item.strip() for item in requested_outputs)
+        ):
+            requested_outputs = []
 
         # Backward-compatible recovery for a model that still emits the older
         # {"expression":"..."} contract. New generations are explicitly
@@ -897,12 +911,97 @@ effects. Never use underscores in Wolfram symbols.
                 2,
             )
             if not result.get("success"):
-                return self._error(
-                    "Wolfram verification failed: "
+                return self._error(                    "Wolfram verification failed: "
                     + str(result.get("error") or "unknown error")
                 )
             operation = repaired_operation
             arguments = repaired_arguments
+
+        # A successful CAS evaluation can still be incomplete: e.g. it can
+        # calculate time of flight while omitting the requested maximum height.
+        # Check the labelled payload, and spend another model pass only when
+        # one or more explicitly requested outputs are missing.
+        if requested_outputs and not self._requested_outputs_present(
+            requested_outputs, result.get("result")
+        ):
+            completion_system = formulation_system + r"""
+
+COMPLETENESS REPAIR:
+The previous expression executed, but its result did not contain every
+requested output. Return a corrected single Wolfram operation that computes
+all requested outputs in one result. Treat the supplied checklist as mandatory.
+For a multi-output calculate expression, label every value with the requested
+output symbols or equivalent lowerCamelCase labels. Do not return a Solve
+result for only one intermediate variable when more quantities were requested.
+"""
+            completion_prompt = json.dumps(
+                {
+                    "user_request": problem,
+                    "required_outputs": requested_outputs,
+                    "previous_tool_call": {
+                        "operation": operation,
+                        "arguments": arguments,
+                    },
+                    "previous_wolfram_result": result.get("result"),
+                    "explanation_preference": explanation,
+                },
+                ensure_ascii=False,
+            )
+            repair_started = time.perf_counter()
+            try:
+                completion = self.router.generate(
+                    prompt=completion_prompt,
+                    system_prompt=completion_system,
+                    temperature=0.0,
+                    request_timeout=None,
+                    **structured_kwargs,
+                )
+            except Exception as exc:
+                completion = {"success": False, "error": str(exc)}
+            formulation_ms += round(
+                (time.perf_counter() - repair_started) * 1000, 2
+            )
+            completion_plan = (
+                self._parse_json(completion.get("result"))
+                if completion.get("success") else None
+            )
+            if isinstance(completion_plan, dict):
+                completion_operation = completion_plan.get("operation")
+                completion_arguments = completion_plan.get("arguments")
+                completion_validation = self._validate_tool_call(
+                    {"tool": completion_operation, "arguments": completion_arguments}
+                ) if isinstance(completion_operation, str) and isinstance(completion_arguments, dict) else {"valid": False}
+                if completion_validation.get("valid"):
+                    retry_started = time.perf_counter()
+                    retry_result = self._execute_tool(
+                        completion_validation["tool"],
+                        completion_validation["arguments"],
+                    )
+                    wolfram_ms += round(
+                        (time.perf_counter() - retry_started) * 1000, 2
+                    )
+                    if (
+                        retry_result.get("success")
+                        and self._requested_outputs_present(
+                            requested_outputs, retry_result.get("result")
+                        )
+                    ):
+                        operation = completion_validation["tool"]
+                        arguments = completion_validation["arguments"]
+                        result = retry_result
+                    else:
+                        return self._error(
+                            "The computation executed, but the solver could not verify that every requested result was produced. Try asking for each requested quantity explicitly."
+                        )
+                else:
+                    return self._error(
+                        completion_validation.get("error")
+                        or "The completeness repair produced an invalid computation."
+                    )
+            else:
+                return self._error(
+                    "The solver could not produce a complete structured computation for every requested result."
+                )
 
         tool_results = [
             {
@@ -1197,8 +1296,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             r"(?is)^\s*(?:∫|\\int)\s*_?\{?([^,{}]+)\}?\s*\^\s*\{?([^}\s]+)\}?\s*(.*?)\s+d\s*([A-Za-z])\s*[.!?]?\s*$",
             text,
         )
-        if definite:
-            lower, upper, expression, variable = definite.groups()
+        if definite:            lower, upper, expression, variable = definite.groups()
             expression = normalize_expression(expression.strip())
             if expression:
                 return "integrate_definite", {"expression": expression, "variable": variable, "lower": normalize_expression(lower.strip()), "upper": normalize_expression(upper.strip())}
@@ -1497,8 +1595,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 r"\bcontinuous\b",
                 r"\bfunction\s+f\b",
                 r"\bprove\b",
-                r"\bfind\s+the\b",
-            ]
+                r"\bfind\s+the\b",            ]
 
             if any(
                 re.search(pattern, lowered)
@@ -1797,8 +1894,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
             if raw.success:
 
-                return {
-                    "success": True,
+                return {                    "success": True,
                     "result": raw.result,
                     "error": None,
                 }
@@ -2097,7 +2193,6 @@ established. Stop when the solution is complete.
 
 Never stop at an intermediate setup or partial argument. Never invent missing
 information or assumptions.
-
 Before emitting the solution, perform a private adversarial verification pass.
 Recompute the requested result independently from the original problem,
 challenge the most likely assumption or tempting but incorrect interpretation,
@@ -2349,6 +2444,20 @@ Scientific display contract:
 
         return None
 
+    @staticmethod
+    def _requested_outputs_present(requested_outputs: list[str], result: Any) -> bool:
+        """Check that each requested output label appears in a computed result."""
+        if not isinstance(result, str) or not result.strip():
+            return False
+        normalized_result = re.sub(r"[^a-z0-9]", "", result.lower())
+        if not normalized_result:
+            return False
+        for output in requested_outputs:
+            label = re.sub(r"[^a-z0-9]", "", output.lower())
+            if not label or label not in normalized_result:
+                return False
+        return True
+
     # =========================================================
     # CACHE
     # =========================================================
@@ -2398,7 +2507,6 @@ Scientific display contract:
             return
         if result.get("engine") != "wolfram":
             return
-
         with self._cache_lock:
 
             self._cache[key] = json.loads(
