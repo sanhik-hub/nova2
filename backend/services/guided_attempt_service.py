@@ -857,7 +857,7 @@ STEP records."""
             if (
                 not question
                 or not correct
-                or len(distractors) != 2
+                or len(distractors) != 3
                 or any(not value for value in distractors)
             ):
                 continue
