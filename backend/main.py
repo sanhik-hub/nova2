@@ -1,5 +1,9 @@
 ﻿from contextlib import asynccontextmanager
+import logging
+from pathlib import Path
+from threading import get_ident
 from time import perf_counter
+import time
 
 from fastapi import FastAPI, Header, HTTPException
 
@@ -65,6 +69,117 @@ app = FastAPI(
 # Reuse the same provider router so Wolfram has one persistent session.
 reasoning = ReasoningService(router=computation.router)
 guided_attempts = GuidedAttemptService(router=computation.router)
+
+# Temporary request-stage diagnostics for investigating slow /api/reason calls.
+# The log records timings and metadata only; it does not write prompt contents.
+_timing_logger = logging.getLogger("nova.reasoning_timing")
+_timing_logger.setLevel(logging.INFO)
+_timing_logger.propagate = False
+if not _timing_logger.handlers:
+    _timing_handler = logging.FileHandler(
+        Path(__file__).resolve().parent / "reasoning_timing.log",
+        encoding="utf-8",
+    )
+    _timing_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    )
+    _timing_logger.addHandler(_timing_handler)
+
+
+def _install_reasoning_timing_diagnostics() -> None:
+    """Log stage entry/exit so a stalled synchronous call can be located."""
+    original_generate = reasoning.router.generate
+
+    def timed_generate(*args, **kwargs):
+        started = perf_counter()
+        call_id = f"{get_ident()}-{time.time_ns()}"
+        prompt = kwargs.get("prompt", "")
+        _timing_logger.info(
+            "llm_generate START call=%s prompt_chars=%s max_tokens=%s timeout=%s tool_call=%s json_mode=%s",
+            call_id,
+            len(prompt) if isinstance(prompt, str) else "unknown",
+            kwargs.get("max_tokens", "default"),
+            kwargs.get("request_timeout", "default"),
+            bool(kwargs.get("tools")),
+            bool(kwargs.get("response_format")),
+        )
+        try:
+            result = original_generate(*args, **kwargs)
+        except Exception:
+            _timing_logger.exception(
+                "llm_generate ERROR call=%s elapsed_ms=%.2f",
+                call_id,
+                (perf_counter() - started) * 1000,
+            )
+            raise
+        _timing_logger.info(
+            "llm_generate END call=%s elapsed_ms=%.2f success=%s result_chars=%s",
+            call_id,
+            (perf_counter() - started) * 1000,
+            result.get("success") if isinstance(result, dict) else "unknown",
+            len(str(result.get("result") or "")) if isinstance(result, dict) else "unknown",
+        )
+        return result
+
+    reasoning.router.generate = timed_generate
+
+    original_execute_tool = reasoning._execute_tool
+
+    def timed_execute_tool(operation, arguments):
+        started = perf_counter()
+        _timing_logger.info(
+            "wolfram_execute START operation=%s thread=%s",
+            operation,
+            get_ident(),
+        )
+        try:
+            result = original_execute_tool(operation, arguments)
+        except Exception:
+            _timing_logger.exception(
+                "wolfram_execute ERROR operation=%s elapsed_ms=%.2f",
+                operation,
+                (perf_counter() - started) * 1000,
+            )
+            raise
+        _timing_logger.info(
+            "wolfram_execute END operation=%s elapsed_ms=%.2f success=%s",
+            operation,
+            (perf_counter() - started) * 1000,
+            result.get("success") if isinstance(result, dict) else "unknown",
+        )
+        return result
+
+    reasoning._execute_tool = timed_execute_tool
+
+    original_pipeline = reasoning._solve_llm_wolfram
+
+    def timed_pipeline(problem, explanation="detailed"):
+        started = perf_counter()
+        _timing_logger.info(
+            "llm_wolfram_pipeline START explanation=%s question_chars=%s thread=%s",
+            explanation,
+            len(problem),
+            get_ident(),
+        )
+        try:
+            result = original_pipeline(problem, explanation=explanation)
+        except Exception:
+            _timing_logger.exception(
+                "llm_wolfram_pipeline ERROR elapsed_ms=%.2f",
+                (perf_counter() - started) * 1000,
+            )
+            raise
+        _timing_logger.info(
+            "llm_wolfram_pipeline END elapsed_ms=%.2f success=%s",
+            (perf_counter() - started) * 1000,
+            result.get("success") if isinstance(result, dict) else "unknown",
+        )
+        return result
+
+    reasoning._solve_llm_wolfram = timed_pipeline
+
+
+_install_reasoning_timing_diagnostics()
 
 
 def _current_user(authorization: str | None) -> dict:
@@ -185,12 +300,30 @@ def remove_saved_item(item_id: int, authorization: str | None = Header(default=N
 
 @app.post("/api/reason")
 def reason(request: ComputationRequest):
+    started = perf_counter()
+    _timing_logger.info(
+        "reason_request START explanation=%s question_chars=%s thread=%s",
+        request.explanation,
+        len(request.query or ""),
+        get_ident(),
+    )
     try:
-        return reasoning.solve(
+        result = reasoning.solve(
             request.query,
             explanation=request.explanation,
         )
+        _timing_logger.info(
+            "reason_request END elapsed_ms=%.2f success=%s engine=%s",
+            (perf_counter() - started) * 1000,
+            result.get("success") if isinstance(result, dict) else "unknown",
+            result.get("engine") if isinstance(result, dict) else "unknown",
+        )
+        return result
     except Exception as exc:
+        _timing_logger.exception(
+            "reason_request ERROR elapsed_ms=%.2f",
+            (perf_counter() - started) * 1000,
+        )
         return {
             "success": False,
             "answer": None,
