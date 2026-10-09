@@ -51,6 +51,7 @@ LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
 CONTROL_SERVER: ThreadingHTTPServer | None = None
 BACKEND_PROCESS: subprocess.Popen | None = None
+SHUTDOWN_EVENT = threading.Event()
 
 
 def log(message: str):
@@ -821,11 +822,15 @@ def start_llm():
 def wait_for_http(url: str, timeout: int, name: str):
     deadline = time.time() + timeout
 
-    while time.time() < deadline:
+    while time.time() < deadline and not SHUTDOWN_EVENT.is_set():
         if http_check(url).get("ok"):
             log(f"{name} is ready.")
             return True
         time.sleep(0.5)
+
+    if SHUTDOWN_EVENT.is_set():
+        log(f"Stopping wait for {name} because Control Center is closing.")
+        return False
 
     log(f"{name} did not become ready within {timeout} seconds.")
     return False
@@ -843,8 +848,12 @@ def start_all(restart_existing_backend: bool = False):
 
     try:
         start_llm()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         start_planner()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
         planner_config = load_planner_config()
         planner_url = str(
             planner_config.get("server_url", "")
@@ -883,6 +892,8 @@ def start_all(restart_existing_backend: bool = False):
                 raise RuntimeError("The existing backend did not stop; refusing to launch a second backend.")
 
         start_backend()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         if not wait_for_http(
             f"http://{HOST}:{BACKEND_PORT}/docs",
@@ -894,8 +905,12 @@ def start_all(restart_existing_backend: bool = False):
             )
 
         start_wolfram()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         start_frontend()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         if not wait_for_http(
             f"http://{HOST}:{FRONTEND_PORT}/",
@@ -1537,6 +1552,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def shutdown_control_center(server: ThreadingHTTPServer):
     """Stop Nova services, then stop the Control Center HTTP server."""
+    SHUTDOWN_EVENT.set()
     log("Control Center closing; stopping all Nova services...")
     try:
         terminate_all()
@@ -1557,6 +1573,7 @@ def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
     CONTROL_SERVER = server
+    SHUTDOWN_EVENT.clear()
 
     try:
         # Start the complete local stack whenever Control Center starts.
@@ -1567,6 +1584,7 @@ def main():
     except KeyboardInterrupt:
         log("Control Center interrupted; stopping Nova services...")
     finally:
+        SHUTDOWN_EVENT.set()
         server.server_close()
         try:
             terminate_all()
