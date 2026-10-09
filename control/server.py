@@ -49,6 +49,9 @@ PLANNER_PORT = 8081
 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
+CONTROL_SERVER: ThreadingHTTPServer | None = None
+BACKEND_PROCESS: subprocess.Popen | None = None
+SHUTDOWN_EVENT = threading.Event()
 
 
 def log(message: str):
@@ -673,6 +676,8 @@ def start_planner():
 
 
 def start_backend():
+    global BACKEND_PROCESS
+
     if port_listener(BACKEND_PORT):
         return {"ok": True, "message": "Backend is already running."}
 
@@ -690,9 +695,13 @@ def start_backend():
             "-m", "uvicorn", "backend.main:app",
             "--host", HOST,
             "--port", str(BACKEND_PORT),
+            "--reload",
+            "--reload-dir", str(NOVA_ROOT / "backend"),
         ],
         NOVA_ROOT,
     )
+
+    BACKEND_PROCESS = process
 
     # Uvicorn can spend time in FastAPI lifespan startup while the persistent
     # Wolfram session is being initialized. Do not report success merely
@@ -813,17 +822,21 @@ def start_llm():
 def wait_for_http(url: str, timeout: int, name: str):
     deadline = time.time() + timeout
 
-    while time.time() < deadline:
+    while time.time() < deadline and not SHUTDOWN_EVENT.is_set():
         if http_check(url).get("ok"):
             log(f"{name} is ready.")
             return True
         time.sleep(0.5)
 
+    if SHUTDOWN_EVENT.is_set():
+        log(f"Stopping wait for {name} because Control Center is closing.")
+        return False
+
     log(f"{name} did not become ready within {timeout} seconds.")
     return False
 
 
-def start_all():
+def start_all(restart_existing_backend: bool = False):
     """Start Nova services in sequence.
 
     This function may take several minutes because model servers can need
@@ -835,8 +848,12 @@ def start_all():
 
     try:
         start_llm()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         start_planner()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
         planner_config = load_planner_config()
         planner_url = str(
             planner_config.get("server_url", "")
@@ -865,7 +882,18 @@ def start_all():
                 "The local model server did not become ready."
             )
 
+        if restart_existing_backend and port_listener(BACKEND_PORT):
+            log("Replacing the existing backend so current source is loaded with automatic reload enabled...")
+            terminate_backend()
+            release_deadline = time.time() + 10
+            while port_listener(BACKEND_PORT) and time.time() < release_deadline:
+                time.sleep(0.25)
+            if port_listener(BACKEND_PORT):
+                raise RuntimeError("The existing backend did not stop; refusing to launch a second backend.")
+
         start_backend()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         if not wait_for_http(
             f"http://{HOST}:{BACKEND_PORT}/docs",
@@ -877,8 +905,12 @@ def start_all():
             )
 
         start_wolfram()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         start_frontend()
+        if SHUTDOWN_EVENT.is_set():
+            raise RuntimeError("Control Center is closing.")
 
         if not wait_for_http(
             f"http://{HOST}:{FRONTEND_PORT}/",
@@ -893,6 +925,11 @@ def start_all():
 
     except Exception as exc:
         log(f"Start All failed: {exc}")
+        log("Rolling back partially started Nova services...")
+        try:
+            terminate_all()
+        except Exception as cleanup_exc:
+            log(f"Startup rollback failed: {cleanup_exc}")
 
     finally:
         global START_ALL_RUNNING
@@ -903,7 +940,7 @@ START_ALL_RUNNING = False
 START_ALL_LOCK = threading.Lock()
 
 
-def start_all_background():
+def start_all_background(restart_existing_backend: bool = False):
     """Queue Start All and return immediately to the browser."""
     global START_ALL_RUNNING
 
@@ -919,6 +956,7 @@ def start_all_background():
 
     thread = threading.Thread(
         target=start_all,
+        args=(restart_existing_backend,),
         name="nova-start-all",
         daemon=True,
     )
@@ -964,6 +1002,24 @@ def terminate_process_list(
 
 
 def terminate_backend():
+    global BACKEND_PROCESS
+
+    # With Uvicorn --reload, the process owning port 8000 is a worker
+    # underneath the reloader. Kill the original launcher PID as a tree so
+    # the reloader cannot respawn the backend during shutdown.
+    if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
+        pid = BACKEND_PROCESS.pid
+        log(f"Terminating Nova backend/reloader process tree PID {pid}...")
+        result = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+        )
+        BACKEND_PROCESS = None
+        if result.returncode == 0:
+            return {"ok": True, "message": "Backend and reload worker terminated."}
+        log(f"Tracked backend termination returned {result.returncode}: {result.stderr.strip()}")
+
     processes = process_snapshot()["backend"]
 
     if not processes:
@@ -1393,6 +1449,22 @@ class Handler(BaseHTTPRequestHandler):
                 })
                 return
 
+            if parsed.path == "/api/shutdown":
+                api_response(
+                    self,
+                    {"ok": True, "message": "Control Center is shutting down; Nova services will stop."},
+                    202,
+                )
+                server = CONTROL_SERVER
+                if server is not None:
+                    threading.Thread(
+                        target=shutdown_control_center,
+                        args=(server,),
+                        name="nova-control-shutdown",
+                        daemon=True,
+                    ).start()
+                return
+
             if parsed.path == "/api/start":
                 api_response(
                     self,
@@ -1478,26 +1550,49 @@ class Handler(BaseHTTPRequestHandler):
             )
 
 
+def shutdown_control_center(server: ThreadingHTTPServer):
+    """Stop Nova services, then stop the Control Center HTTP server."""
+    SHUTDOWN_EVENT.set()
+    log("Control Center closing; stopping all Nova services...")
+    try:
+        terminate_all()
+    except Exception as exc:
+        log(f"Service shutdown encountered an error: {exc}")
+    finally:
+        log("Stopping Control Center HTTP server.")
+        server.shutdown()
+
+
 def main():
-    log(
-        "PrismOffline Control Center starting."
-    )
+    global CONTROL_SERVER
 
-    log(
-        f"Nova root: {NOVA_ROOT}"
-    )
+    log("PrismOffline Control Center starting.")
+    log(f"Nova root: {NOVA_ROOT}")
+    log(f"Control URL: http://{HOST}:{PORT}")
 
-    log(
-        f"Control URL: "
-        f"http://{HOST}:{PORT}"
-    )
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    server.daemon_threads = True
+    CONTROL_SERVER = server
+    SHUTDOWN_EVENT.clear()
 
-    server = ThreadingHTTPServer(
-        (HOST, PORT),
-        Handler,
-    )
+    try:
+        # Start the complete local stack whenever Control Center starts.
+        # The startup worker is asynchronous so the dashboard remains responsive
+        # while local model files load.
+        start_all_background(restart_existing_backend=True)
+        server.serve_forever(poll_interval=0.5)
+    except KeyboardInterrupt:
+        log("Control Center interrupted; stopping Nova services...")
+    finally:
+        SHUTDOWN_EVENT.set()
+        server.server_close()
+        try:
+            terminate_all()
+        except Exception as exc:
+            log(f"Final service cleanup failed: {exc}")
+        CONTROL_SERVER = None
+        log("Control Center stopped.")
 
-    server.serve_forever()
 
 
 if __name__ == "__main__":
