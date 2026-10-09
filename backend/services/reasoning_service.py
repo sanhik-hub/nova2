@@ -19,6 +19,10 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
+    # Native tool calls are compact JSON, unlike user-facing solutions. Keep
+    # their generation focused; this does not cap explanations or final answers.
+    STRUCTURED_TOOL_TOKENS = 768
+
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
     PLANNER_TOKENS = 96
@@ -730,6 +734,7 @@ Return no markdown, prose, or code fences outside the JSON object.
             formulation = self.router.generate(
                 prompt=formulation_prompt,
                 system_prompt=formulation_system,
+                max_tokens=self.STRUCTURED_TOOL_TOKENS,
                 temperature=0.0,
                 request_timeout=None,
                 **structured_kwargs,
@@ -841,6 +846,7 @@ effects. Never use underscores in Wolfram symbols.
                 repaired = self.router.generate(
                     prompt=repair_prompt,
                     system_prompt=repair_system,
+                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
                     request_timeout=None,
                     **structured_kwargs,
@@ -954,6 +960,7 @@ result for only one intermediate variable when more quantities were requested.
                 completion = self.router.generate(
                     prompt=completion_prompt,
                     system_prompt=completion_system,
+                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
                     request_timeout=None,
                     **structured_kwargs,
