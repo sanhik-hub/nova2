@@ -586,6 +586,12 @@ Scientific display contract:
         expression. Python owns validation and execution; Wolfram remains the
         source of truth for computed results.
         """
+        logger.warning(
+            "[reasoning-diagnostic] stage=structured_pipeline_enter "
+            "problem_chars=%d explanation=%s",
+            len(problem),
+            explanation,
+        )
         formulation_system = r"""
 You are Nova's STEM computational formulation engine.
 
@@ -716,7 +722,13 @@ Return no markdown, prose, or code fences outside the JSON object.
             },
         }
 
+        transport_started = time.perf_counter()
         use_native_tools = self.router.supports_tool_calls()
+        logger.warning(
+            "[reasoning-diagnostic] stage=transport_detection_done elapsed_ms=%.2f native_tools=%s",
+            (time.perf_counter() - transport_started) * 1000,
+            use_native_tools,
+        )
         structured_kwargs = (
             {
                 "tools": [wolfram_tool],
