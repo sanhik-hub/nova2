@@ -624,18 +624,73 @@ def health_status():
     }
 
 
-def start_process(args: list[str], cwd: Path):
-    """Start a Windows child process in the same way as the standalone runner.
+def service_log_path(filename: str) -> Path:
+    """Return a persistent log path beneath Nova's logs directory."""
+    log_dir = NOVA_ROOT / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir / filename
+
+
+LOG_TARGETS = {
+    "backend": ("logs/backend.log", "FastAPI Backend"),
+    "frontend": ("logs/frontend.log", "Frontend"),
+    "llm": ("logs/local-model.log", "Local Model"),
+    "planner": ("logs/planner-model.log", "Planner Model"),
+    # Wolfram runs in-process; its stage diagnostics live beside backend/main.py.
+    "wolfram": ("backend/reasoning_timing.log", "Wolfram Engine diagnostics"),
+}
+
+
+def start_process(args: list[str], cwd: Path, *, log_name: str | None = None):
+    """Start a child process, optionally redirecting stdout/stderr to a log.
 
     The Control Center does not need a new process group because termination
     uses taskkill /T. Avoiding CREATE_NEW_PROCESS_GROUP also removes a
     Windows-specific launch failure seen with some Python/console hosts.
     """
-    return subprocess.Popen(
-        args,
-        cwd=str(cwd),
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    options = {
+        "cwd": str(cwd),
+        "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    }
+    if log_name:
+        path = service_log_path(log_name)
+        with path.open("a", encoding="utf-8", buffering=1) as stream:
+            stream.write(
+                f"\n\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] "
+                f"Starting: {' '.join(str(part) for part in args)}\n"
+            )
+            stream.flush()
+            return subprocess.Popen(
+                args,
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                **options,
+            )
+    return subprocess.Popen(args, **options)
+
+
+def open_service_log(component: str):
+    """Open a live tail of a fixed, allow-listed service log in a new terminal."""
+    if component not in LOG_TARGETS:
+        raise ValueError(f"Unknown service log: {component}")
+
+    relative_path, label = LOG_TARGETS[component]
+    path = NOVA_ROOT / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch(exist_ok=True)
+
+    escaped_path = str(path).replace("'", "''")
+    escaped_label = label.replace("'", "''")
+    command = (
+        f"$Host.UI.RawUI.WindowTitle = 'Nova - {escaped_label} log'; "
+        f"Get-Content -LiteralPath '{escaped_path}' -Tail 100 -Wait"
     )
+    subprocess.Popen(
+        ["powershell.exe", "-NoExit", "-Command", command],
+        cwd=str(NOVA_ROOT),
+        creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+    )
+    return {"ok": True, "message": f"Opened live log for {label}.", "path": str(path)}
 
 
 def start_planner():
@@ -671,6 +726,7 @@ def start_planner():
             "--n-gpu-layers", str(config.get("n_gpu_layers", 0)),
         ],
         NOVA_ROOT,
+        log_name="planner-model.log",
     )
     return {"ok": True, "message": "Planner model server start requested."}
 
@@ -699,6 +755,7 @@ def start_backend():
             "--reload-dir", str(NOVA_ROOT / "backend"),
         ],
         NOVA_ROOT,
+        log_name="backend.log",
     )
 
     BACKEND_PROCESS = process
@@ -774,6 +831,7 @@ def start_frontend():
             "--port", str(FRONTEND_PORT),
         ],
         FRONTEND_ROOT,
+        log_name="frontend.log",
     )
     return {"ok": True, "message": "Frontend start requested."}
 
@@ -815,6 +873,7 @@ def start_llm():
             ),
         ],
         NOVA_ROOT,
+        log_name="local-model.log",
     )
     return {"ok": True, "message": "Local model server start requested."}
 
@@ -1403,6 +1462,11 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
 
         try:
+            if parsed.path.startswith("/api/open-log/"):
+                component = parsed.path.rsplit("/", 1)[-1]
+                api_response(self, open_service_log(component))
+                return
+
             if parsed.path == "/api/start/backend":
                 api_response(self, start_backend())
                 return
