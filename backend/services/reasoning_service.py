@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import time
 from collections import OrderedDict
@@ -11,6 +12,8 @@ from backend.services.expression_normalizer import (
     FUNCTION_MAP,
     normalize_expression,
 )
+
+logger = logging.getLogger(__name__)
 class ReasoningService:
 
     # =========================================================
@@ -729,6 +732,14 @@ Return no markdown, prose, or code fences outside the JSON object.
         )
 
         llm_started = time.perf_counter()
+        logger.warning(
+            "[reasoning-diagnostic] stage=formulation_start problem_chars=%d "
+            "native_tools=%s prompt_chars=%d schema_properties=%d",
+            len(problem),
+            use_native_tools,
+            len(formulation_system) + len(formulation_prompt),
+            len(formulation_schema.get("properties", {})),
+        )
         try:
             formulation = self.router.generate(
                 prompt=formulation_prompt,
@@ -739,11 +750,24 @@ Return no markdown, prose, or code fences outside the JSON object.
                 **structured_kwargs,
             )
         except Exception as exc:
+            logger.exception(
+                "[reasoning-diagnostic] stage=formulation_exception elapsed_ms=%.2f",
+                (time.perf_counter() - llm_started) * 1000,
+            )
             return self._error(f"Computational formulation failed: {exc}")
 
         formulation_ms = round(
             (time.perf_counter() - llm_started) * 1000,
             2,
+        )
+        logger.warning(
+            "[reasoning-diagnostic] stage=formulation_done elapsed_ms=%.2f "
+            "success=%s engine=%s result_chars=%d tool_calls=%d",
+            formulation_ms,
+            formulation.get("success"),
+            formulation.get("engine"),
+            len(str(formulation.get("result") or "")),
+            len(formulation.get("tool_calls") or []),
         )
 
         if not formulation.get("success"):
@@ -798,10 +822,23 @@ Return no markdown, prose, or code fences outside the JSON object.
         arguments = validated["arguments"]
 
         wolfram_started = time.perf_counter()
+        logger.warning(
+            "[reasoning-diagnostic] stage=wolfram_start operation=%s argument_keys=%s",
+            operation,
+            sorted(arguments.keys()),
+        )
         result = self._execute_tool(operation, arguments)
         wolfram_ms = round(
             (time.perf_counter() - wolfram_started) * 1000,
             2,
+        )
+        logger.warning(
+            "[reasoning-diagnostic] stage=wolfram_done elapsed_ms=%.2f "
+            "success=%s result_chars=%d error=%s",
+            wolfram_ms,
+            result.get("success"),
+            len(str(result.get("result") or "")),
+            str(result.get("error") or "")[:240],
         )
 
         if not result.get("success"):
@@ -841,6 +878,11 @@ effects. Never use underscores in Wolfram symbols.
                 ensure_ascii=False,
             )
             repair_started = time.perf_counter()
+            logger.warning(
+                "[reasoning-diagnostic] stage=repair_formulation_start operation=%s error_chars=%d",
+                operation,
+                len(str(result.get("error") or "")),
+            )
             try:
                 repaired = self.router.generate(
                     prompt=repair_prompt,
@@ -852,9 +894,17 @@ effects. Never use underscores in Wolfram symbols.
                 )
             except Exception as exc:
                 repaired = {"success": False, "error": str(exc)}
-            formulation_ms += round(
+            repair_elapsed_ms = round(
                 (time.perf_counter() - repair_started) * 1000,
                 2,
+            )
+            formulation_ms += repair_elapsed_ms
+            logger.warning(
+                "[reasoning-diagnostic] stage=repair_formulation_done elapsed_ms=%.2f "
+                "success=%s result_chars=%d",
+                repair_elapsed_ms,
+                repaired.get("success"),
+                len(str(repaired.get("result") or "")),
             )
 
             repaired_plan = (
@@ -908,13 +958,27 @@ effects. Never use underscores in Wolfram symbols.
             repaired_arguments = repair_validation["arguments"]
 
             wolfram_retry_started = time.perf_counter()
+            logger.warning(
+                "[reasoning-diagnostic] stage=wolfram_repair_start operation=%s argument_keys=%s",
+                repaired_operation,
+                sorted(repaired_arguments.keys()),
+            )
             result = self._execute_tool(
                 repaired_operation,
                 repaired_arguments,
             )
-            wolfram_ms += round(
+            wolfram_retry_elapsed_ms = round(
                 (time.perf_counter() - wolfram_retry_started) * 1000,
                 2,
+            )
+            wolfram_ms += wolfram_retry_elapsed_ms
+            logger.warning(
+                "[reasoning-diagnostic] stage=wolfram_repair_done elapsed_ms=%.2f "
+                "success=%s result_chars=%d error=%s",
+                wolfram_retry_elapsed_ms,
+                result.get("success"),
+                len(str(result.get("result") or "")),
+                str(result.get("error") or "")[:240],
             )
             if not result.get("success"):
                 return self._error(
@@ -931,6 +995,12 @@ effects. Never use underscores in Wolfram symbols.
         if requested_outputs and not self._requested_outputs_present(
             requested_outputs, result.get("result")
         ):
+            logger.warning(
+                "[reasoning-diagnostic] stage=completeness_repair_required "
+                "requested_outputs=%s result_chars=%d",
+                requested_outputs,
+                len(str(result.get("result") or "")),
+            )
             completion_system = formulation_system + r"""
 
 COMPLETENESS REPAIR:
@@ -955,6 +1025,11 @@ result for only one intermediate variable when more quantities were requested.
                 ensure_ascii=False,
             )
             repair_started = time.perf_counter()
+            logger.warning(
+                "[reasoning-diagnostic] stage=completeness_formulation_start "
+                "requested_outputs=%s",
+                requested_outputs,
+            )
             try:
                 completion = self.router.generate(
                     prompt=completion_prompt,
@@ -966,8 +1041,16 @@ result for only one intermediate variable when more quantities were requested.
                 )
             except Exception as exc:
                 completion = {"success": False, "error": str(exc)}
-            formulation_ms += round(
+            completion_elapsed_ms = round(
                 (time.perf_counter() - repair_started) * 1000, 2
+            )
+            formulation_ms += completion_elapsed_ms
+            logger.warning(
+                "[reasoning-diagnostic] stage=completeness_formulation_done "
+                "elapsed_ms=%.2f success=%s result_chars=%d",
+                completion_elapsed_ms,
+                completion.get("success"),
+                len(str(completion.get("result") or "")),
             )
             completion_plan = (
                 self._parse_json(completion.get("result"))
@@ -981,12 +1064,27 @@ result for only one intermediate variable when more quantities were requested.
                 ) if isinstance(completion_operation, str) and isinstance(completion_arguments, dict) else {"valid": False}
                 if completion_validation.get("valid"):
                     retry_started = time.perf_counter()
+                    logger.warning(
+                        "[reasoning-diagnostic] stage=completeness_wolfram_start "
+                        "operation=%s argument_keys=%s",
+                        completion_validation["tool"],
+                        sorted(completion_validation["arguments"].keys()),
+                    )
                     retry_result = self._execute_tool(
                         completion_validation["tool"],
                         completion_validation["arguments"],
                     )
-                    wolfram_ms += round(
+                    retry_elapsed_ms = round(
                         (time.perf_counter() - retry_started) * 1000, 2
+                    )
+                    wolfram_ms += retry_elapsed_ms
+                    logger.warning(
+                        "[reasoning-diagnostic] stage=completeness_wolfram_done "
+                        "elapsed_ms=%.2f success=%s result_chars=%d error=%s",
+                        retry_elapsed_ms,
+                        retry_result.get("success"),
+                        len(str(retry_result.get("result") or "")),
+                        str(retry_result.get("error") or "")[:240],
                     )
                     if (
                         retry_result.get("success")
@@ -1019,6 +1117,13 @@ result for only one intermediate variable when more quantities were requested.
             }
         ]
 
+        logger.warning(
+            "[reasoning-diagnostic] stage=structured_pipeline_complete "
+            "formulation_ms=%.2f wolfram_ms=%.2f explanation=%s",
+            formulation_ms,
+            wolfram_ms,
+            explanation,
+        )
         if explanation == "off":
             response = self._cas_result_only(tool_results)
             response["engine"] = "wolfram"
