@@ -663,8 +663,7 @@ Return no markdown, prose, or code fences outside the JSON object.
             "properties": {
                 "requested_outputs": {
                     "type": "array",
-                    "items": {"type": "string", "minLength": 1},
-                    "minItems": 1,
+                    "items": {"type": "string"},
                 },
                 "operation": {
                     "type": "string",
