@@ -50,6 +50,7 @@ PLANNER_PORT = 8081
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
 CONTROL_SERVER: ThreadingHTTPServer | None = None
+BACKEND_PROCESS: subprocess.Popen | None = None
 
 
 def log(message: str):
@@ -674,6 +675,8 @@ def start_planner():
 
 
 def start_backend():
+    global BACKEND_PROCESS
+
     if port_listener(BACKEND_PORT):
         return {"ok": True, "message": "Backend is already running."}
 
@@ -696,6 +699,8 @@ def start_backend():
         ],
         NOVA_ROOT,
     )
+
+    BACKEND_PROCESS = process
 
     # Uvicorn can spend time in FastAPI lifespan startup while the persistent
     # Wolfram session is being initialized. Do not report success merely
@@ -972,6 +977,24 @@ def terminate_process_list(
 
 
 def terminate_backend():
+    global BACKEND_PROCESS
+
+    # With Uvicorn --reload, the process owning port 8000 is a worker
+    # underneath the reloader. Kill the original launcher PID as a tree so
+    # the reloader cannot respawn the backend during shutdown.
+    if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
+        pid = BACKEND_PROCESS.pid
+        log(f"Terminating Nova backend/reloader process tree PID {pid}...")
+        result = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+        )
+        BACKEND_PROCESS = None
+        if result.returncode == 0:
+            return {"ok": True, "message": "Backend and reload worker terminated."}
+        log(f"Tracked backend termination returned {result.returncode}: {result.stderr.strip()}")
+
     processes = process_snapshot()["backend"]
 
     if not processes:
