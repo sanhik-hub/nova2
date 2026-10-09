@@ -49,15 +49,16 @@ def test_control_center_starts_services_and_cleans_up_on_exit(monkeypatch):
             calls.append(("close",))
 
     monkeypatch.setattr(control_server, "ThreadingHTTPServer", FakeServer)
-    monkeypatch.setattr(control_server, "start_all_background", lambda: calls.append(("start_all",)))
+    monkeypatch.setattr(control_server, "start_all_background", lambda **kwargs: calls.append(("start_all", kwargs)))
     monkeypatch.setattr(control_server, "terminate_all", lambda: calls.append(("terminate_all",)))
 
     control_server.main()
 
-    assert ("start_all",) in calls
+    assert any(call[0] == "start_all" and call[1].get("restart_existing_backend") is True for call in calls)
     assert ("close",) in calls
     assert ("terminate_all",) in calls
-    assert calls.index(("start_all",)) < calls.index(("serve", 0.5))
+    start_call_index = next(i for i, call in enumerate(calls) if call[0] == "start_all")
+    assert start_call_index < calls.index(("serve", 0.5))
     assert calls.index(("close",)) < calls.index(("terminate_all",))
 
 
