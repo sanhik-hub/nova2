@@ -877,7 +877,7 @@ STEP records."""
                 for value in distractors
             ]
 
-            if len(set([normalized_correct, *normalized_distractors])) != 3:
+            if len(set([normalized_correct, *normalized_distractors])) != 4:
                 continue
 
             record: dict[str, Any] = {
