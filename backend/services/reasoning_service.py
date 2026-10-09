@@ -146,9 +146,15 @@ class ReasoningService:
         # these out of the planner entirely.
         # -----------------------------------------------------
 
-        if self._is_simple_expression(problem):
+        direct_expression = (
+            problem
+            if self._is_simple_expression(problem)
+            else self._extract_numeric_calculation(problem)
+        )
+
+        if direct_expression is not None:
             calculation = self.router.calculate(
-                expression=normalize_expression(problem),
+                expression=normalize_expression(direct_expression),
                 provider="wolfram",
             )
 
@@ -1212,6 +1218,20 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             if expression and re.search(r"[A-Za-z]", expression):
                 return operation, {"expression": expression, "variable": variable}
         return None
+    def _extract_numeric_calculation(self, problem: str) -> str | None:
+        """Extract only a complete arithmetic expression wrapped in a generic request."""
+        match = re.match(
+            r"(?is)^\s*(?:(?:please\s+)?(?:calculate|compute|evaluate|work\s+out)\s+|(?:what\s+is|what's)\s+|find\s+(?:the\s+)?value\s+of\s+)(.+?)\s*[?.!]*\s*$",
+            problem,
+        )
+        if not match:
+            return None
+
+        expression = match.group(1).strip()
+        if self._is_safe_numeric_expression(expression):
+            return expression
+        return None
+
     @staticmethod
     def _is_safe_numeric_expression(expression: str) -> bool:
         """Validate an extracted numeric expression without subject-specific rules."""
