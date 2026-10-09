@@ -298,6 +298,7 @@ class ReasoningService:
             self._cache_set(problem, response, explanation)
 
         return response
+
     def solve_follow_up(
         self,
         original_question: str,
@@ -600,6 +601,7 @@ Return ONLY one JSON object in exactly this form:
 {"operation":"...","arguments":{...},"requested_outputs":["outputLabel1","outputLabel2"]}
 
 requested_outputs is required. Include one short lowerCamelCase label for EVERY distinct output the user asks for, in the same order as the request. Do not include intermediate values unless the user requests them. For a single-output request, include exactly one label.
+
 Supported operations and argument shapes:
 - {"operation":"calculate","arguments":{"expression":"..."}}
 - {"operation":"simplify","arguments":{"expression":"..."}}
@@ -910,7 +912,8 @@ effects. Never use underscores in Wolfram symbols.
                 2,
             )
             if not result.get("success"):
-                return self._error(                    "Wolfram verification failed: "
+                return self._error(
+                    "Wolfram verification failed: "
                     + str(result.get("error") or "unknown error")
                 )
             operation = repaired_operation
@@ -1295,7 +1298,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             r"(?is)^\s*(?:∫|\\int)\s*_?\{?([^,{}]+)\}?\s*\^\s*\{?([^}\s]+)\}?\s*(.*?)\s+d\s*([A-Za-z])\s*[.!?]?\s*$",
             text,
         )
-        if definite:            lower, upper, expression, variable = definite.groups()
+        if definite:
+            lower, upper, expression, variable = definite.groups()
             expression = normalize_expression(expression.strip())
             if expression:
                 return "integrate_definite", {"expression": expression, "variable": variable, "lower": normalize_expression(lower.strip()), "upper": normalize_expression(upper.strip())}
@@ -1594,7 +1598,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 r"\bcontinuous\b",
                 r"\bfunction\s+f\b",
                 r"\bprove\b",
-                r"\bfind\s+the\b",            ]
+                r"\bfind\s+the\b",
+            ]
 
             if any(
                 re.search(pattern, lowered)
@@ -1893,7 +1898,8 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
             if raw.success:
 
-                return {                    "success": True,
+                return {
+                    "success": True,
                     "result": raw.result,
                     "error": None,
                 }
@@ -2192,6 +2198,7 @@ established. Stop when the solution is complete.
 
 Never stop at an intermediate setup or partial argument. Never invent missing
 information or assumptions.
+
 Before emitting the solution, perform a private adversarial verification pass.
 Recompute the requested result independently from the original problem,
 challenge the most likely assumption or tempting but incorrect interpretation,
@@ -2506,6 +2513,7 @@ Scientific display contract:
             return
         if result.get("engine") != "wolfram":
             return
+
         with self._cache_lock:
 
             self._cache[key] = json.loads(
