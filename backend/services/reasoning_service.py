@@ -19,6 +19,10 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
+    # Native tool calls are compact JSON, unlike user-facing solutions. Keep
+    # their generation focused; this does not cap explanations or final answers.
+    STRUCTURED_TOOL_TOKENS = 512
+
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
     PLANNER_TOKENS = 96
@@ -293,7 +297,6 @@ class ReasoningService:
             (time.perf_counter() - started) * 1000,
             2,
         )
-
         if response.get("success"):
             self._cache_set(problem, response, explanation)
 
@@ -730,6 +733,7 @@ Return no markdown, prose, or code fences outside the JSON object.
             formulation = self.router.generate(
                 prompt=formulation_prompt,
                 system_prompt=formulation_system,
+                max_tokens=self.STRUCTURED_TOOL_TOKENS,
                 temperature=0.0,
                 request_timeout=None,
                 **structured_kwargs,
@@ -841,6 +845,7 @@ effects. Never use underscores in Wolfram symbols.
                 repaired = self.router.generate(
                     prompt=repair_prompt,
                     system_prompt=repair_system,
+                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
                     request_timeout=None,
                     **structured_kwargs,
@@ -954,6 +959,7 @@ result for only one intermediate variable when more quantities were requested.
                 completion = self.router.generate(
                     prompt=completion_prompt,
                     system_prompt=completion_system,
+                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
                     request_timeout=None,
                     **structured_kwargs,
@@ -2090,7 +2096,6 @@ You are Nova's concise STEM solution writer.
 Produce a compact, genuinely worked solution to the actual user problem.
 This is the short version of a full solution: show the necessary
 intermediate transformations, but remove teaching filler and background.
-
 This is domain-general. Handle mathematics, physics, chemistry, and general
 science according to the actual problem. Never use a subject-specific
 template, hardcoded formula sequence, or fixed number of steps.
