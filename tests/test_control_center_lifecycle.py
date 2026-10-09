@@ -13,6 +13,7 @@ def test_backend_starts_with_source_reload(monkeypatch, tmp_path):
     launched = {}
 
     monkeypatch.setattr(control_server, "NOVA_ROOT", tmp_path)
+    monkeypatch.setattr(control_server, "BACKEND_PROCESS", None)
     monkeypatch.setattr(control_server, "PYTHON", Path(sys.executable))
     monkeypatch.setattr(control_server, "port_listener", lambda port: None)
 
