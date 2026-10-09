@@ -831,7 +831,7 @@ def wait_for_http(url: str, timeout: int, name: str):
     return False
 
 
-def start_all():
+def start_all(restart_existing_backend: bool = False):
     """Start Nova services in sequence.
 
     This function may take several minutes because model servers can need
@@ -872,6 +872,15 @@ def start_all():
             raise RuntimeError(
                 "The local model server did not become ready."
             )
+
+        if restart_existing_backend and port_listener(BACKEND_PORT):
+            log("Replacing the existing backend so current source is loaded with automatic reload enabled...")
+            terminate_backend()
+            release_deadline = time.time() + 10
+            while port_listener(BACKEND_PORT) and time.time() < release_deadline:
+                time.sleep(0.25)
+            if port_listener(BACKEND_PORT):
+                raise RuntimeError("The existing backend did not stop; refusing to launch a second backend.")
 
         start_backend()
 
@@ -916,7 +925,7 @@ START_ALL_RUNNING = False
 START_ALL_LOCK = threading.Lock()
 
 
-def start_all_background():
+def start_all_background(restart_existing_backend: bool = False):
     """Queue Start All and return immediately to the browser."""
     global START_ALL_RUNNING
 
@@ -932,6 +941,7 @@ def start_all_background():
 
     thread = threading.Thread(
         target=start_all,
+        args=(restart_existing_backend,),
         name="nova-start-all",
         daemon=True,
     )
@@ -1552,7 +1562,7 @@ def main():
         # Start the complete local stack whenever Control Center starts.
         # The startup worker is asynchronous so the dashboard remains responsive
         # while local model files load.
-        start_all_background()
+        start_all_background(restart_existing_backend=True)
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
         log("Control Center interrupted; stopping Nova services...")
