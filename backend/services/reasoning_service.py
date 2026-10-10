@@ -937,7 +937,7 @@ effects. Never use underscores in Wolfram symbols.
                 requested_outputs, result_text
             )
             unresolved_values = bool(
-                re.search(r"\\d", problem)
+                re.search(r"\d", problem)
                 and self._requested_outputs_are_unresolved_symbols(
                     requested_outputs, result_text
                 )
