@@ -811,6 +811,7 @@ effects. Never use underscores in Wolfram symbols.
                     system_prompt=repair_system,
                     max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
+                    enable_thinking=False,
                     request_timeout=None,
                     **structured_kwargs,
                 )
