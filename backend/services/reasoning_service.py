@@ -497,8 +497,7 @@ Scientific display contract:
 
         This is intentionally structural. It does not inspect subject/domain
         vocabulary and does not normalize punctuation or connective phrases.
-        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.        """
-        text = problem.strip()
+        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.        """        text = problem.strip()
         if not text or len(text) > 1200:
             return False
         return bool(
@@ -997,8 +996,7 @@ expression, not a derivation or explanation.
                     )
                     if (
                         retry_result.get("success")                        and self._requested_outputs_present(
-                            requested_outputs, retry_result.get("result")
-                        )
+                            requested_outputs, retry_result.get("result")                        )
                     ):
                         operation = completion_validation["tool"]
                         arguments = completion_validation["arguments"]
@@ -1497,8 +1495,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         if match:
             expression = match.group(1).strip()            limit_match = re.match(
                 r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
-                expression,
-            )
+                expression,            )
             if limit_match:
                 return ("limit", {
                     "expression": limit_match.group(1).strip(),
@@ -1836,7 +1833,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             if in_string:
                 if escaped:
                     escaped = False
-                elif char == "\\\\":
+                elif char == "\\":
                     escaped = True
                 elif char == '"':
                     in_string = False
@@ -1860,7 +1857,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         assignments = []
         assignment_pattern = re.compile(
-            r"^([A-Za-z][A-Za-z0-9]*)\\s*=(?!=)\\s*(.+)$",
+            r"^([A-Za-z][A-Za-z0-9]*)\s*=(?!=)\s*(.+)$",
             re.DOTALL,
         )
         for statement in statements:
@@ -1997,8 +1994,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
                 return {
                     "success": True,
-                    "result": raw.result,
-                    "error": None,
+                    "result": raw.result,                    "error": None,
                 }
 
             return {
