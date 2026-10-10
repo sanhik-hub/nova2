@@ -52,7 +52,8 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert schema["required"] == ["operation", "arguments", "requested_outputs"]
     expression_description = schema["properties"]["arguments"]["properties"]["expression"]["description"]
     assert "Executable Wolfram Language syntax only" in expression_description
-    assert "not derivation prose" in expression_description
+    assert "not an explanation" in expression_description
+    assert "assignment list" in expression_description
     assert "tool_choice" not in router.kwargs
     assert router.kwargs["enable_thinking"] is False
     assert "do not write a solution or explain" in router.kwargs["system_prompt"]
