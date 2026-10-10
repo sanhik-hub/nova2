@@ -57,6 +57,22 @@ def test_assignment_sequence_is_converted_to_labelled_rules():
     assert ";" not in converted
 
 
+def test_assignment_sequence_converts_snake_case_labels_to_wolfram_symbols():
+    expression = (
+        "time_of_flight = (2*20*Sin[30 Degree])/9.8; "
+        "maximum_height = (20*Sin[30 Degree])^2/(2*9.8)"
+    )
+    converted = ReasoningService._assignment_sequence_to_labelled_expression(
+        expression
+    )
+    assert converted is not None
+    assert converted.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maximumHeight," in converted
+    assert "_" not in converted
+    assert "==" not in converted
+    assert ";" not in converted
+
+
 def test_assignment_conversion_does_not_rewrite_a_single_equation():
     assert (
         ReasoningService._assignment_sequence_to_labelled_expression("x = 2")
