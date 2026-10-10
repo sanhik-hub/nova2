@@ -623,15 +623,18 @@ with no markdown or surrounding prose.
             ensure_ascii=False,
         )
 
-        # Prefer llama.cpp native tool calls when the running server exposes
-        # a tool-aware Jinja template. Otherwise use llama.cpp's constrained
-        # JSON output path. Both transports feed the same Python validator.
+        # Use llama.cpp's constrained JSON grammar for the formulation contract.
+        # Native tool-call templates can produce syntactically valid tool calls
+        # whose expression field contains derivation prose; constrained JSON
+        # keeps the outer contract stable while the existing Wolfram validator
+        # remains responsible for rejecting unsafe or non-executable expressions.
         formulation_schema = {
             "type": "object",
             "properties": {
                 "requested_outputs": {
                     "type": "array",
                     "items": {"type": "string"},
+                    "description": "Every output explicitly requested, in request order.",
                 },
                 "operation": {
                     "type": "string",
@@ -650,11 +653,21 @@ with no markdown or surrounding prose.
                 "arguments": {
                     "type": "object",
                     "properties": {
-                        "expression": {"type": "string"},
+                        "expression": {
+                            "type": "string",
+                            "description": (
+                                "Executable Wolfram Language syntax only. "
+                                "For calculate, this must be a single expression, "
+                                "not an explanation, derivation, assignment list, "
+                                "or text describing given values. For multiple "
+                                "outputs, use one Wolfram list of labelled rules."
+                            ),
+                        },
                         "equation": {"type": "string"},
                         "variable": {"type": "string"},
                         "lower": {"type": "string"},
                         "upper": {"type": "string"},
+                        "value": {"type": "string"},
                     },
                     "additionalProperties": False,
                 },
@@ -663,33 +676,12 @@ with no markdown or surrounding prose.
             "additionalProperties": False,
         }
 
-        wolfram_tool = {
-            "type": "function",
-            "function": {
-                "name": "wolfram",
-                "description": (
-                    "Translate the user's computational STEM request into one "
-                    "validated Wolfram operation. Preserve every explicitly "
-                    "requested result."
-                ),
-                "parameters": formulation_schema,
+        structured_kwargs = {
+            "response_format": {
+                "type": "json_object",
+                "schema": formulation_schema,
             },
         }
-
-        use_native_tools = self.router.supports_tool_calls()
-        structured_kwargs = (
-            {
-                "tools": [wolfram_tool],
-                "tool_choice": "required",
-            }
-            if use_native_tools
-            else {
-                "response_format": {
-                    "type": "json_object",
-                    "schema": formulation_schema,
-                },
-            }
-        )
 
         llm_started = time.perf_counter()
         try:
