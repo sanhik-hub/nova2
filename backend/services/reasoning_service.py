@@ -572,6 +572,124 @@ Scientific display contract:
             return False
         return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)) >= 3
 
+    @staticmethod
+    def _normalize_generated_calculate_expression(
+        operation: str,
+        arguments: dict[str, Any],
+        requested_outputs: list[str],
+    ) -> dict[str, Any]:
+        """Normalize a simple assignment-plus-list draft into labelled rules."""
+        if operation != "calculate" or not isinstance(arguments, dict):
+            return arguments
+        expression = arguments.get("expression")
+        if not isinstance(expression, str) or ";" not in expression:
+            return arguments
+
+        parts: list[str] = []
+        start = 0
+        stack: list[str] = []
+        pairs = {")": "(", "]": "[", "}": "{"}
+        in_string = False
+        escaped = False
+        for index, char in enumerate(expression):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char in "([{":
+                stack.append(char)
+            elif char in ")]}":
+                if stack and stack[-1] == pairs[char]:
+                    stack.pop()
+            elif char == ";" and not stack:
+                parts.append(expression[start:index].strip())
+                start = index + 1
+        parts.append(expression[start:].strip())
+        if len(parts) < 2 or any(not part for part in parts):
+            return arguments
+
+        assignments: dict[str, str] = {}
+        for part in parts[:-1]:
+            match = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)\s*=\s*(.+)", part, re.DOTALL)
+            if not match:
+                return arguments
+            symbol, value = match.groups()
+            if symbol in assignments:
+                return arguments
+            assignments[symbol] = value.strip()
+
+        list_match = re.fullmatch(
+            r"(?:\{\s*(.*?)\s*\}|List\s*\[\s*(.*?)\s*\])",
+            parts[-1],
+            re.DOTALL,
+        )
+        if not list_match:
+            return arguments
+        symbols_text = list_match.group(1) if list_match.group(1) is not None else list_match.group(2)
+        symbols = [item.strip() for item in symbols_text.split(",")]
+        if (
+            not symbols
+            or any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", item) for item in symbols)
+            or len(symbols) != len(assignments)
+            or set(symbols) != set(assignments)
+        ):
+            return arguments
+        if requested_outputs:
+            normalized_requested = {
+                re.sub(r"[^a-z0-9]", "", item.lower()) for item in requested_outputs
+            }
+            normalized_symbols = {
+                re.sub(r"[^a-z0-9]", "", item.lower()) for item in symbols
+            }
+            if normalized_requested != normalized_symbols:
+                return arguments
+
+        normalized = dict(arguments)
+        normalized["expression"] = "List[" + ", ".join(
+            f"Rule[{symbol}, {assignments[symbol]}]" for symbol in symbols
+        ) + "]"
+        return normalized
+
+    @staticmethod
+    def _answer_template_meets_mode(
+        template: str | None,
+        problem: str,
+        requested_outputs: list[str],
+        explanation: str,
+    ) -> bool:
+        """Reject value-only templates when the user requested working."""
+        if explanation == "off":
+            return True
+        if not isinstance(template, str) or not template.strip() or not requested_outputs:
+            return False
+        if not re.search(r"\d", problem):
+            return True
+
+        without_placeholders = re.sub(
+            r"\{\{[A-Za-z][A-Za-z0-9_]*\}\}", "", template
+        )
+        relation_count = len(re.findall(
+            r"=|\\(?:approx|to|rightarrow|Rightarrow|propto)|≈|→|∝",
+            without_placeholders,
+        ))
+        if relation_count < len(requested_outputs):
+            return False
+        if explanation == "detailed":
+            if relation_count < 2 * len(requested_outputs):
+                return False
+            meaningful_words = re.findall(
+                r"[A-Za-zÀ-ÖØ-öø-ÿ]{3,}", without_placeholders
+            )
+            if len(meaningful_words) < max(4, len(requested_outputs) * 2):
+                return False
+        return True
+
     # =========================================================
     # LLM + EXACT CAS COMPUTATIONAL PIPELINE
     # =========================================================
@@ -595,15 +713,22 @@ them in the same expression.
 Return this JSON shape:
 {"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"],"answer_template":"...optional for off mode..."}
 
-For concise or detailed explanation modes, also return answer_template in this same response.
-It is a complete user-facing solution template, not a numerical answer guessed in place
-of Wolfram. Use {{outputLabel}} placeholders for every requested output; spell each
-placeholder exactly like its requested_outputs label. Include the necessary equations,
-substitution structure, units, and explanation appropriate to the selected mode. Every
-requested output must have a placeholder. Do not include a numeric value for a computed
-output anywhere in the template; Python inserts the value returned by Wolfram.
-Use no placeholders for unrequested quantities. Placeholder syntax is double braces
-around a label. For explanation off, omit answer_template.
+The selected explanation mode is supplied in the input as explanation_mode.
+For concise or detailed modes, return answer_template in this same response. It is a
+complete user-facing solution template, not a computed answer. Use {{outputLabel}}
+placeholders for every requested output, exactly matching requested_outputs. Include
+equations, substitution structure, units, and explanation appropriate to explanation_mode.
+Do not include computed numerical results for requested outputs; Python inserts only
+values returned by Wolfram. Do not use placeholders for unrequested quantities.
+
+For concise mode, include the essential governing relation and substitution/calculation,
+with a clear label and units for every output. Avoid introductions and filler.
+For detailed mode, provide a self-contained derivation: identify the governing relation,
+substitute the supplied data, show important intermediate equation(s), briefly explain
+why the relation applies, and then give each requested result using its placeholder and
+units. Do not reduce the template to labels followed by placeholders. Derive the
+structure from the actual request, without fixed subject-specific formulas or examples.
+For explanation off, omit answer_template. Placeholder syntax is double braces.
 
 Use one of these operations as appropriate: calculate, simplify, factor, expand,
 differentiate, integrate, integrate_definite, solve, limit. For natural-language
@@ -636,6 +761,7 @@ with no markdown or surrounding prose.
         formulation_prompt = json.dumps(
             {
                 "user_request": problem,
+                "explanation_mode": explanation,
             },
             ensure_ascii=False,
         )
@@ -776,6 +902,9 @@ with no markdown or surrounding prose.
                 "The reasoning model did not produce a valid structured computational request."
             )
 
+        arguments = self._normalize_generated_calculate_expression(
+            operation, arguments, requested_outputs
+        )
         validated = self._validate_tool_call(
             {
                 "tool": operation,
@@ -1122,10 +1251,14 @@ Never return a labelled rule whose value is merely an unresolved symbol.
         # The initial LLM generation also authored this template. Fill its
         # requested-output placeholders exclusively from verified Wolfram
         # values. Invalid/missing templates retain the established LLM fallback.
-        rendered_answer = self._render_verified_answer_template(
-            answer_template,
-            requested_outputs,
-            result.get("result"),
+        template_is_appropriate = self._answer_template_meets_mode(
+            answer_template, problem, requested_outputs, explanation
+        )
+        rendered_answer = (
+            self._render_verified_answer_template(
+                answer_template, requested_outputs, result.get("result")
+            )
+            if template_is_appropriate else None
         )
         if rendered_answer is not None:
             logger.info("Using one-pass deterministic answer rendering.")
