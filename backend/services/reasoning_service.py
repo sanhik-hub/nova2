@@ -1591,9 +1591,16 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 }
 
             if not self._is_planner_calculate_expression(expression):
+                # Include the rejected expression in the local API diagnostic so
+                # formulation failures can be distinguished from Wolfram errors.
+                # Rejected text is never executed; the conservative validator
+                # remains the gatekeeper.
                 return {
                     "valid": False,
-                    "error": "calculate requires a valid computational expression.",
+                    "error": (
+                        "calculate requires a valid computational expression; "
+                        f"rejected expression={expression!r}"
+                    ),
                 }
 
         # Direct structured operations carry Wolfram fragments rather than
