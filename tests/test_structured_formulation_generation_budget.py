@@ -6,11 +6,13 @@ from backend.services.reasoning_service import ReasoningService
 class CapturingRouter:
     def __init__(self):
         self.kwargs = None
+        self.calls = 0
 
     def supports_tool_calls(self):
         return True
 
     def generate(self, **kwargs):
+        self.calls += 1
         self.kwargs = kwargs
         return {
             "success": True,
@@ -60,6 +62,31 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert "do not assume a particular subject" in router.kwargs["system_prompt"]
     assert "projectile" not in router.kwargs["system_prompt"].lower()
     assert result["timings_ms"]["final_llm"] == 0.0
+    assert router.calls == 1
+
+
+def test_result_only_mode_does_not_regenerate_for_missing_requested_output():
+    router = CapturingRouter()
+    service = ReasoningService(router=router)
+    service._validate_tool_call = lambda call: {
+        "valid": True,
+        "tool": call["tool"],
+        "arguments": call["arguments"],
+    }
+    service._execute_tool = lambda operation, arguments: {
+        "success": True,
+        "result": "{timeOfFlight -> 2.04}",
+    }
+
+    result = service._solve_llm_wolfram(
+        "Find time of flight and maximum height for a projectile.",
+        explanation="off",
+    )
+
+    assert result["success"] is False
+    assert "no second model generation was attempted" in result["error"]
+    assert router.calls == 1
+
 
 class RepairingRouter:
     def __init__(self):
