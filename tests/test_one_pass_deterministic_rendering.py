@@ -93,3 +93,35 @@ def test_one_pass_computation_uses_template_without_final_generation():
     assert result["answer_rendering"] == "deterministic_template"
     assert result["timings_ms"]["final_llm"] == 0.0
     assert router.calls == 1
+
+
+def test_assignment_list_expression_is_normalized_without_repair():
+    normalized = ReasoningService._normalize_generated_calculate_expression(
+        "calculate",
+        {"expression": "timeOfFlight = 2; maximumHeight = 5; {timeOfFlight, maximumHeight}"},
+        ["timeOfFlight", "maximumHeight"],
+    )
+    assert normalized["expression"] == "List[Rule[timeOfFlight, 2], Rule[maximumHeight, 5]]"
+
+
+def test_assignment_normalizer_does_not_relabel_unrequested_symbols():
+    arguments = {"expression": "timeOfFlight = 2; maximumHeight = 5; {timeOfFlight, maximumHeight}"}
+    normalized = ReasoningService._normalize_generated_calculate_expression(
+        "calculate", arguments, ["time of flight", "range"]
+    )
+    assert normalized is arguments
+
+
+def test_detailed_value_only_template_is_rejected_for_fallback():
+    assert not ReasoningService._answer_template_meets_mode(
+        "Time: {{timeOfFlight}} s. Height: {{maximumHeight}} m.",
+        "Find time of flight and maximum height for a projectile at 20 m/s.",
+        ["timeOfFlight", "maximumHeight"],
+        "detailed",
+    )
+    assert ReasoningService._answer_template_meets_mode(
+        "Using the governing relation, calculate each quantity: T = 2u/g = {{timeOfFlight}} s; H = u^2/(2g) = {{maximumHeight}} m.",
+        "Find time of flight and maximum height for a projectile at 20 m/s.",
+        ["timeOfFlight", "maximumHeight"],
+        "detailed",
+    )
