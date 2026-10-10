@@ -626,7 +626,6 @@ with no markdown or surrounding prose.
         formulation_prompt = json.dumps(
             {
                 "user_request": problem,
-                "explanation_preference": explanation,
             },
             ensure_ascii=False,
         )
