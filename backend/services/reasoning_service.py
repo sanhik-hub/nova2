@@ -598,7 +598,11 @@ quantitative problems, use calculate with one self-contained Wolfram expression.
 For multiple outputs, return a list of rules with one lowerCamelCase label for
 each requested result, in request order. Do not return intermediate values unless
 asked. Use explicit multiplication (*), valid Wolfram function syntax, and Degree
-for angles stated in degrees. Never put natural-language instructions inside an
+for angles stated in degrees. Use ASCII variable names only. For numerical word
+problems, substitute the supplied numerical values directly into the expression;
+do not use With, local assignments, or a separate list of variable definitions.
+Return one balanced Wolfram expression with no trailing braces, markup, or
+assistant-control tokens. Never put natural-language instructions inside an
 expression, invent assumptions or data, use underscores in Wolfram symbols, or
 use strings, external functions, files, URLs, or side effects.
 
@@ -606,8 +610,9 @@ Generalize from the actual request; do not assume a particular subject,
 formula, variable name, unit system, or problem type. Select the governing
 relationships from the information supplied by the user, and preserve the
 stated conditions. If multiple outputs are requested, derive each from the
-same problem and return every one in request order. Do not copy a formula from
-an example when it does not apply.
+same problem and return every one in request order. Check the governing
+relationship and numerical factors for each requested output before returning
+the expression. Do not copy a formula from an example when it does not apply.
 
 For direct symbolic requests, preserve the user's expression and variable. For
 example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
@@ -657,10 +662,12 @@ with no markdown or surrounding prose.
                             "type": "string",
                             "description": (
                                 "Executable Wolfram Language syntax only. "
-                                "For calculate, this must be a single expression, "
-                                "not an explanation, derivation, assignment list, "
-                                "or text describing given values. For multiple "
-                                "outputs, use one Wolfram list of labelled rules."
+                                "For calculate, return one balanced executable "
+                                "expression only, not explanation or derivation prose. "
+                                "Use ASCII variable names, no With/local assignments, "
+                                "and directly substitute supplied numeric values in "
+                                "numerical word problems. For multiple outputs, use "
+                                "one Wolfram list of labelled rules. No trailing markup."
                             ),
                         },
                         "equation": {"type": "string"},
@@ -745,20 +752,25 @@ with no markdown or surrounding prose.
             }
         )
         if not validated.get("valid"):
-            return self._error(
-                validated.get("error")
-                or "The structured computational request was rejected."
+            # Treat invalid generated syntax as a formulation failure and let
+            # the existing repair pass produce a new candidate. The invalid
+            # expression is never sent to Wolfram.
+            result = {
+                "success": False,
+                "error": validated.get("error")
+                or "The structured computational request was rejected.",
+            }
+            wolfram_ms = 0.0
+        else:
+            operation = validated["tool"]
+            arguments = validated["arguments"]
+
+            wolfram_started = time.perf_counter()
+            result = self._execute_tool(operation, arguments)
+            wolfram_ms = round(
+                (time.perf_counter() - wolfram_started) * 1000,
+                2,
             )
-
-        operation = validated["tool"]
-        arguments = validated["arguments"]
-
-        wolfram_started = time.perf_counter()
-        result = self._execute_tool(operation, arguments)
-        wolfram_ms = round(
-            (time.perf_counter() - wolfram_started) * 1000,
-            2,
-        )
 
         if not result.get("success"):
             # Repair the structured tool call using the actual Wolfram error.
