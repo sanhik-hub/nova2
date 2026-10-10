@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import time
 from collections import OrderedDict
@@ -6,6 +7,8 @@ from threading import Lock
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
+
+logger = logging.getLogger(__name__)
 from backend.services.expression_normalizer import (
     CONSTANT_MAP,
     FUNCTION_MAP,
@@ -969,6 +972,14 @@ result for only one intermediate variable when more quantities were requested.
                         arguments = completion_validation["arguments"]
                         result = retry_result
                     else:
+                        logger.warning(
+                            "requested_outputs verification failed: required=%r "
+                            "initial_result=%r retry_expression=%r retry_result=%r",
+                            requested_outputs,
+                            result.get("result"),
+                            completion_validation["arguments"].get("expression"),
+                            retry_result.get("result"),
+                        )
                         return self._error(
                             "The computation executed, but the solver could not verify that every requested result was produced. Try asking for each requested quantity explicitly."
                         )
