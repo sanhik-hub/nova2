@@ -914,7 +914,7 @@ calculate expression that computes every item in that list in one evaluation.
 For two or more requested outputs, the expression MUST be one Wolfram list
 of rules whose left-hand-side labels exactly match every required_outputs
 entry, in the same order, for example:
-{timeOfFlight -> (2*v*Sin[angle])/g, maxHeight -> (v^2*Sin[angle]^2)/(2*g)}
+{outputOne -> expressionOne, outputTwo -> expressionTwo}
 The example illustrates output structure only; derive the actual formulas and
 values from the original request.
 
