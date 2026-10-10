@@ -784,6 +784,15 @@ with no markdown or surrounding prose.
                 str(result.get("result"))[:1000],
             )
 
+        # Result-only mode is deliberately single-pass: never invoke the model
+        # again to repair a rejected expression or a failed Wolfram evaluation.
+        # Deterministic normalization/validation and CAS verification still run.
+        if explanation == "off" and not result.get("success"):
+            return self._error(
+                "Single-pass computation failed; no second model generation was "
+                "attempted. " + str(result.get("error") or "Wolfram verification failed.")
+            )
+
         if not result.get("success"):
             # Repair the structured tool call using the actual Wolfram error.
             # This remains a main-LLM formulation pass; it never asks the model
@@ -919,6 +928,25 @@ effects. Never use underscores in Wolfram symbols.
                 )
             operation = repaired_operation
             arguments = repaired_arguments
+
+        # In result-only mode, never make a second model call to repair missing
+        # labels or incomplete results. Reject the unverified result explicitly.
+        if explanation == "off" and requested_outputs:
+            result_text = result.get("result")
+            outputs_present = self._requested_outputs_present(
+                requested_outputs, result_text
+            )
+            unresolved_values = bool(
+                re.search(r"\\d", problem)
+                and self._requested_outputs_are_unresolved_symbols(
+                    requested_outputs, result_text
+                )
+            )
+            if not outputs_present or unresolved_values:
+                return self._error(
+                    "Single-pass computation did not verify every requested output; "
+                    "no second model generation was attempted."
+                )
 
         # A successful CAS evaluation can still be incomplete: e.g. it can
         # calculate time of flight while omitting the requested maximum height.
