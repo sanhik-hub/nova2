@@ -48,7 +48,11 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert router.kwargs["max_tokens"] == ReasoningService.STRUCTURED_TOOL_TOKENS
     assert router.kwargs["max_tokens"] == 256
     assert router.kwargs["response_format"]["type"] == "json_object"
-    assert "schema" in router.kwargs["response_format"]
+    schema = router.kwargs["response_format"]["schema"]
+    assert schema["required"] == ["operation", "arguments", "requested_outputs"]
+    expression_description = schema["properties"]["arguments"]["properties"]["expression"]["description"]
+    assert "Executable Wolfram Language syntax only" in expression_description
+    assert "not derivation prose" in expression_description
     assert "tool_choice" not in router.kwargs
     assert router.kwargs["enable_thinking"] is False
     assert "do not write a solution or explain" in router.kwargs["system_prompt"]
