@@ -592,8 +592,18 @@ tool call. Return the structured call only; do not write a solution or explain
 your reasoning. Identify every explicitly requested output and compute all of
 them in the same expression.
 
-Return exactly this JSON shape:
-{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"]}
+Return this JSON shape:
+{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"],"answer_template":"...optional for off mode..."}
+
+For concise or detailed explanation modes, also return answer_template in this same response.
+It is a complete user-facing solution template, not a numerical answer guessed in place
+of Wolfram. Use {{outputLabel}} placeholders for every requested output; spell each
+placeholder exactly like its requested_outputs label. Include the necessary equations,
+substitution structure, units, and explanation appropriate to the selected mode. Every
+requested output must have a placeholder. Do not include a numeric value for a computed
+output anywhere in the template; Python inserts the value returned by Wolfram.
+Use no placeholders for unrequested quantities. Placeholder syntax is double braces
+around a label. For explanation off, omit answer_template.
 
 Use one of these operations as appropriate: calculate, simplify, factor, expand,
 differentiate, integrate, integrate_definite, solve, limit. For natural-language
@@ -642,6 +652,14 @@ with no markdown or surrounding prose.
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Every output explicitly requested, in request order.",
+                },
+                "answer_template": {
+                    "type": "string",
+                    "description": (
+                        "For concise/detailed modes, a complete solution template. "
+                        "Use {{label}} placeholders for all requested outputs; do not "
+                        "guess or include computed numerical values. Omit in result-only mode."
+                    ),
                 },
                 "operation": {
                     "type": "string",
@@ -697,7 +715,15 @@ with no markdown or surrounding prose.
             formulation = self.router.generate(
                 prompt=formulation_prompt,
                 system_prompt=formulation_system,
-                max_tokens=self.STRUCTURED_TOOL_TOKENS,
+                # Explanation modes include a user-facing template in this
+                # generation, so do not apply the compact tool-JSON budget to
+                # that content. None delegates to the provider's configured
+                # transport fallback.
+                max_tokens=(
+                    self.STRUCTURED_TOOL_TOKENS
+                    if explanation == "off"
+                    else None
+                ),
                 temperature=0.0,
                 enable_thinking=False,
                 request_timeout=None,
@@ -727,6 +753,9 @@ with no markdown or surrounding prose.
         operation = plan.get("operation")
         arguments = plan.get("arguments")
         requested_outputs = plan.get("requested_outputs")
+        answer_template = plan.get("answer_template")
+        if not isinstance(answer_template, str) or not answer_template.strip():
+            answer_template = None
 
         if (
             not isinstance(requested_outputs, list)
@@ -1090,6 +1119,32 @@ Never return a labelled rule whose value is merely an unresolved symbol.
             response["llm_passes"] = 1
             return response
 
+        # The initial LLM generation also authored this template. Fill its
+        # requested-output placeholders exclusively from verified Wolfram
+        # values. Invalid/missing templates retain the established LLM fallback.
+        rendered_answer = self._render_verified_answer_template(
+            answer_template,
+            requested_outputs,
+            result.get("result"),
+        )
+        if rendered_answer is not None:
+            logger.info("Using one-pass deterministic answer rendering.")
+            return {
+                "success": True,
+                "answer": rendered_answer,
+                "engine": "local_llm+wolfram",
+                "tool_calls": tool_results,
+                "cached": False,
+                "result_only": False,
+                "timings_ms": {
+                    "planner": formulation_ms,
+                    "wolfram": wolfram_ms,
+                    "final_llm": 0.0,
+                },
+                "llm_passes": 1,
+                "answer_rendering": "deterministic_template",
+            }
+
         response = self._final_explanation(
             problem=problem,
             idea="",
@@ -1104,6 +1159,7 @@ Never return a labelled rule whose value is merely an unresolved symbol.
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
         response["llm_passes"] = 2
+        response["answer_rendering"] = "llm_fallback"
         return response
 
     # =========================================================
@@ -2130,6 +2186,85 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
     # =========================================================    # RESULT-ONLY CAS RESPONSE
     # =========================================================
+
+    @staticmethod
+    def _extract_labelled_wolfram_values(result: Any) -> dict[str, str]:
+        """Extract top-level labelled values without evaluating Wolfram syntax."""
+        if not isinstance(result, str) or not result.strip():
+            return {}
+
+        values: dict[str, str] = {}
+        rule_pattern = re.compile(
+            r"\bRule\s*\[\s*([A-Za-z][A-Za-z0-9_]*)\s*,"
+            r"|([A-Za-z][A-Za-z0-9_]*)\s*->\s*"
+        )
+        for match in rule_pattern.finditer(result):
+            label = match.group(1) or match.group(2)
+            start = match.end()
+            depth = 0
+            end = start
+            while end < len(result):
+                char = result[end]
+                if char in "([{":
+                    depth += 1
+                elif char in ")]}":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                elif char == "," and depth == 0:
+                    break
+                end += 1
+
+            value = result[start:end].strip()
+            if value:
+                key = re.sub(r"[^a-z0-9]", "", label.lower())
+                values[key] = value
+        return values
+
+    @classmethod
+    def _render_verified_answer_template(
+        cls,
+        template: str | None,
+        requested_outputs: list[str],
+        result: Any,
+    ) -> str | None:
+        """Fill a model-authored template only with values present in CAS output."""
+        if not isinstance(template, str) or not template.strip():
+            return None
+        if not isinstance(result, str) or not result.strip():
+            return None
+
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
+        if "{{" in template and not placeholders:
+            return None
+
+        if requested_outputs:
+            expected = {
+                re.sub(r"[^a-z0-9]", "", label.lower())
+                for label in requested_outputs
+            }
+            supplied = {
+                re.sub(r"[^a-z0-9]", "", label.lower())
+                for label in placeholders
+            }
+            if not expected or not expected.issubset(supplied):
+                return None
+            values = cls._extract_labelled_wolfram_values(result)
+            if not expected.issubset(values.keys()):
+                return None
+            for placeholder in placeholders:
+                key = re.sub(r"[^a-z0-9]", "", placeholder.lower())
+                if key not in values:
+                    return None
+                template = template.replace("{{" + placeholder + "}}", values[key])
+        else:
+            if placeholders != ["result"]:
+                return None
+            template = template.replace("{{result}}", result.strip())
+
+        if "{{" in template or "}}" in template:
+            return None
+        return template.strip() or None
 
     def _cas_result_only(
         self,
