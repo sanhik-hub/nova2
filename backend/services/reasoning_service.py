@@ -19,9 +19,9 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Native tool calls are compact JSON, unlike user-facing solutions. Keep
-    # their generation focused; this does not cap explanations or final answers.
-    STRUCTURED_TOOL_TOKENS = 512
+    # Structured tool calls should be compact. This budget applies only to
+    # the machine-readable Wolfram request, never to user-facing solutions.
+    STRUCTURED_TOOL_TOKENS = 256
 
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
@@ -584,73 +584,36 @@ Scientific display contract:
         source of truth for computed results.
         """
         formulation_system = r"""
-You are Nova's STEM computational formulation engine.
+You convert a computational STEM request into one executable Wolfram Language
+tool call. Return the structured call only; do not write a solution or explain
+your reasoning. Identify every explicitly requested output and compute all of
+them in the same expression.
 
-The user supplied a computational STEM request. Your ONLY job is to translate
-the request into one structured tool call for Wolfram. Do not solve it in
-prose and do not return numerical answers yourself.
+Return exactly this JSON shape:
+{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"]}
 
-First reason internally about:
-- every quantity explicitly given;
-- every quantity explicitly requested;
-- a concise, distinct machine-readable label for each requested output;
-- the governing mathematical/scientific relationships;
-- units and necessary conversions;
-- initial conditions, geometry, constraints, and signs;
-- whether the request is a direct symbolic operation or a natural-language
-  quantitative problem.
+Use one of these operations as appropriate: calculate, simplify, factor, expand,
+differentiate, integrate, integrate_definite, solve, limit. For natural-language
+quantitative problems, use calculate with one self-contained Wolfram expression.
+For multiple outputs, return a list of rules with one lowerCamelCase label for
+each requested result, in request order. Do not return intermediate values unless
+asked. Use explicit multiplication (*), valid Wolfram function syntax, and Degree
+for angles stated in degrees. Never put natural-language instructions inside an
+expression, invent assumptions or data, use underscores in Wolfram symbols, or
+use strings, external functions, files, URLs, or side effects.
 
-Return ONLY one JSON object in exactly this form:
-{"operation":"...","arguments":{...},"requested_outputs":["outputLabel1","outputLabel2"]}
+Example request: a projectile starts at 20 m/s at 30 degrees; find time of flight
+and maximum height for g = 9.8 m/s^2. The expression should compute both results,
+for example:
+With[{v0 = 20, theta = 30 Degree, g = 9.8},
+ {timeOfFlight -> N[2 v0 Sin[theta]/g],
+  maximumHeight -> N[v0^2 Sin[theta]^2/(2 g)]}]
 
-requested_outputs is required. Include one short lowerCamelCase label for EVERY distinct output the user asks for, in the same order as the request. Do not include intermediate values unless the user requests them. For a single-output request, include exactly one label.
-
-Supported operations and argument shapes:
-- {"operation":"calculate","arguments":{"expression":"..."}}
-- {"operation":"simplify","arguments":{"expression":"..."}}
-- {"operation":"factor","arguments":{"expression":"..."}}
-- {"operation":"expand","arguments":{"expression":"..."}}
-- {"operation":"differentiate","arguments":{"expression":"...","variable":"x"}}
-- {"operation":"integrate","arguments":{"expression":"...","variable":"x"}}
-- {"operation":"integrate_definite","arguments":{"expression":"...","variable":"x","lower":"...","upper":"..."}}
-- {"operation":"solve","arguments":{"equation":"...","variable":"x"}}
-- {"operation":"limit","arguments":{"expression":"...","variable":"x","value":"..."}}
-
-Choose the operation that actually matches the user's request. For a
-natural-language quantitative STEM problem, use calculate and construct ONE
-self-contained Wolfram Language expression that computes EVERY explicitly
-requested result.
-
-For multiple requested results, a calculate expression may return a list of
-immediate rules, for example:
-{timeOfFlight -> N[...], maximumHeight -> N[...], horizontalRange -> N[...], impactSpeed -> N[...]}
-
-Use simple lowerCamelCase result labels. NEVER use snake_case or underscores
-in Wolfram symbols: underscore is Wolfram's pattern syntax.
-
-Completeness invariant: before emitting the JSON, make a private checklist of
-EVERY quantity, value, equation, product, condition, or other output explicitly
-requested by the user. A calculate call is invalid if it computes only one part
-of a multi-part request. For multiple requested outputs, return one expression
-that constructs a result for every requested output. Do not stop at an
-intermediate Solve, equation, derivative, or other sub-result merely because
-it answers one part. Reuse intermediate values with With, replacement rules,
-or local symbols when needed.
-
-For direct operations, translate the user's actual expression/equation into
-valid Wolfram syntax. For example, a request such as
-"solve : x^2-5x+4 = 0" should become:
-{"operation":"solve","arguments":{"equation":"x^2 - 5*x + 4 == 0","variable":"x"}}
-
-Do not invent data, formulas, assumptions, or unstated conditions. Preserve
-the user's variables, quantities, units, constraints, initial conditions, and
-requested outputs.
-
-The arguments must contain only executable Wolfram content, never natural-
-language instructions. Do not use strings inside Wolfram expressions,
-external functions, files, URLs, or programming side effects.
-
-Return no markdown, prose, or code fences outside the JSON object.
+For direct symbolic requests, preserve the user's expression and variable. For
+example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
+"x^2 - 5*x + 4 == 0" and variable "x". Preserve units, signs, constraints,
+initial conditions, and all requested outputs. Output only the JSON object,
+with no markdown or surrounding prose.
 """
         formulation_prompt = json.dumps(
             {
@@ -735,6 +698,7 @@ Return no markdown, prose, or code fences outside the JSON object.
                 system_prompt=formulation_system,
                 max_tokens=self.STRUCTURED_TOOL_TOKENS,
                 temperature=0.0,
+                enable_thinking=False,
                 request_timeout=None,
                 **structured_kwargs,
             )
