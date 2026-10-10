@@ -47,7 +47,9 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert result["success"] is True
     assert router.kwargs["max_tokens"] == ReasoningService.STRUCTURED_TOOL_TOKENS
     assert router.kwargs["max_tokens"] == 256
-    assert router.kwargs["tool_choice"] == "required"
+    assert router.kwargs["response_format"]["type"] == "json_object"
+    assert "schema" in router.kwargs["response_format"]
+    assert "tool_choice" not in router.kwargs
     assert router.kwargs["enable_thinking"] is False
     assert "do not write a solution or explain" in router.kwargs["system_prompt"]
     assert "do not assume a particular subject" in router.kwargs["system_prompt"]
