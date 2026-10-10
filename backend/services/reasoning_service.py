@@ -2583,12 +2583,16 @@ Scientific display contract:
         """Reject numerical word-problem results whose labelled values are bare symbols."""
         if not isinstance(result, str) or not result.strip():
             return True
-        rules = re.findall(
-            r"(?:Rule|->)\s*\[?\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\]?",
-            result,
-        )
-        if not rules:
-            # Also support the ordinary InputForm output: {label -> value}.
+        # Support both ordinary InputForm rules (label -> value) and
+        # explicit Wolfram constructors (Rule[label, value]). Keep the two
+        # syntaxes separate: mixing their delimiters can misread the value
+        # of one rule as the label of the next.
+        if "Rule[" in result:
+            rules = re.findall(
+                r"\bRule\s*\[\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\]",
+                result,
+            )
+        else:
             rules = re.findall(
                 r"\b([A-Za-z][A-Za-z0-9]*)\s*->\s*([A-Za-z][A-Za-z0-9]*)\b",
                 result,
