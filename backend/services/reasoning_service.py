@@ -497,8 +497,7 @@ Scientific display contract:
 
         This is intentionally structural. It does not inspect subject/domain
         vocabulary and does not normalize punctuation or connective phrases.
-        Clean forms are handled by the deterministic fast path; malformed or
-        natural-language forms go to the main local reasoning model.
+        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.
         """
         text = problem.strip()
         if not text or len(text) > 1200:
@@ -754,6 +753,10 @@ with no markdown or surrounding prose.
                 "arguments": arguments,
             }
         )
+        logger.warning(
+            "structured_tool_initial operation=%r arguments=%r valid=%s validation_error=%r",
+            operation, arguments, validated.get("valid"), validated.get("error"),
+        )
         if not validated.get("valid"):
             # Treat invalid generated syntax as a formulation failure and let
             # the existing repair pass produce a new candidate. The invalid
@@ -773,6 +776,11 @@ with no markdown or surrounding prose.
             wolfram_ms = round(
                 (time.perf_counter() - wolfram_started) * 1000,
                 2,
+            )
+            logger.warning(
+                "structured_tool_initial_wolfram operation=%r arguments=%r success=%s error=%r result=%r",
+                operation, arguments, result.get("success"), result.get("error"),
+                str(result.get("result"))[:1000],
             )
 
         if not result.get("success"):
@@ -830,6 +838,10 @@ effects. Never use underscores in Wolfram symbols.
                 2,
             )
 
+            logger.warning(
+                "structured_tool_repair_generation success=%s raw_result=%r generation_error=%r",
+                repaired.get("success"), str(repaired.get("result"))[:1500], repaired.get("error"),
+            )
             repaired_plan = (
                 self._parse_json(repaired.get("result"))
                 if repaired.get("success")
@@ -871,6 +883,11 @@ effects. Never use underscores in Wolfram symbols.
                     "arguments": repaired_arguments,
                 }
             )
+            logger.warning(
+                "structured_tool_repair_validation operation=%r arguments=%r valid=%s validation_error=%r",
+                repaired_operation, repaired_arguments, repair_validation.get("valid"),
+                repair_validation.get("error"),
+            )
             if not repair_validation.get("valid"):
                 return self._error(
                     repair_validation.get("error")
@@ -888,6 +905,11 @@ effects. Never use underscores in Wolfram symbols.
             wolfram_ms += round(
                 (time.perf_counter() - wolfram_retry_started) * 1000,
                 2,
+            )
+            logger.warning(
+                "structured_tool_repair_wolfram operation=%r arguments=%r success=%s error=%r result=%r",
+                repaired_operation, repaired_arguments, result.get("success"), result.get("error"),
+                str(result.get("result"))[:1000],
             )
             if not result.get("success"):
                 return self._error(
@@ -997,8 +1019,7 @@ expression, not a derivation or explanation.
                         )
                 else:
                     return self._error(
-                        completion_validation.get("error")
-                        or "The completeness repair produced an invalid computation."
+                        completion_validation.get("error")                        or "The completeness repair produced an invalid computation."
                     )
             else:
                 return self._error(
@@ -1498,7 +1519,6 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         text = expression.strip()
         if not text or len(text) > 2000:
             return False
-
         # Reject strings and general programming/network/file syntax.
         if re.search(r"""["'\\#&?|:$]""", text):
             return False
@@ -1997,8 +2017,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 "No computational result was produced."
             )
 
-        results = [
-            item.get("result")
+        results = [            item.get("result")
             for item in tool_results
             if isinstance(item, dict)
             and item.get("result") is not None
