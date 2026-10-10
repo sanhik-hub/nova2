@@ -906,13 +906,25 @@ effects. Never use underscores in Wolfram symbols.
         ):
             completion_system = formulation_system + r"""
 
-COMPLETENESS REPAIR:
-The previous expression executed, but its result did not contain every
-requested output. Return a corrected single Wolfram operation that computes
-all requested outputs in one result. Treat the supplied checklist as mandatory.
-For a multi-output calculate expression, label every value with the requested
-output symbols or equivalent lowerCamelCase labels. Do not return a Solve
-result for only one intermediate variable when more quantities were requested.
+COMPLETENESS REPAIR — STRICT OUTPUT CONTRACT:
+The previous Wolfram result was incomplete. The JSON field required_outputs
+in the user payload is the authoritative list of labels. Return a new
+calculate expression that computes every item in that list in one evaluation.
+
+For two or more requested outputs, the expression MUST be one Wolfram list
+of rules whose left-hand-side labels exactly match every required_outputs
+entry, in the same order, for example:
+{timeOfFlight -> (2*v*Sin[angle])/g, maxHeight -> (v^2*Sin[angle]^2)/(2*g)}
+The example illustrates output structure only; derive the actual formulas and
+values from the original request.
+
+Do NOT use assignments (=), semicolon-separated expressions, equality tests
+(==), local variables, intermediate-only results, or a result containing just
+one requested quantity. Do not return a rule for an unrequested label. Use
+direct expressions on the right-hand side and the exact requested labels on
+the left-hand side. Preserve the original problem's physical relationships,
+numbers, signs, and units. The output must be a single executable Wolfram
+expression, not a derivation or explanation.
 """
             completion_prompt = json.dumps(
                 {
