@@ -768,9 +768,10 @@ with no markdown or surrounding prose.
 You are repairing a structured Wolfram tool call generated from a STEM
 problem.
 
-Return ONLY one JSON object:
-{"operation":"...","arguments":{...}}
+Return ONLY one JSON object matching this structure:
+{"operation":"...","arguments":{...},"requested_outputs":["..."]}
 
+Include every output requested by the original problem in requested_outputs.
 Use only these operations:
 calculate, simplify, factor, expand, differentiate, integrate,
 integrate_definite, solve, limit.
@@ -918,6 +919,7 @@ result for only one intermediate variable when more quantities were requested.
                     system_prompt=completion_system,
                     max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
+                    enable_thinking=False,
                     request_timeout=None,
                     **structured_kwargs,
                 )
