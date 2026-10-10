@@ -1496,9 +1496,11 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             text,
         )
         if match:
-            expression = match.group(1).strip()            limit_match = re.match(
+            expression = match.group(1).strip()
+            limit_match = re.match(
                 r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
-                expression,            )
+                expression,
+            )
             if limit_match:
                 return ("limit", {
                     "expression": limit_match.group(1).strip(),
