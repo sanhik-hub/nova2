@@ -678,11 +678,11 @@ Scientific display contract:
             r"=|\\(?:approx|to|rightarrow|Rightarrow|propto)|≈|→|∝",
             without_placeholders,
         ))
-        if relation_count < len(requested_outputs):
+        # A label followed by a value is not working: each numerical
+        # output should show a governing relation/substitution and its result.
+        if relation_count < 2 * len(requested_outputs):
             return False
         if explanation == "detailed":
-            if relation_count < 2 * len(requested_outputs):
-                return False
             meaningful_words = re.findall(
                 r"[A-Za-zÀ-ÖØ-öø-ÿ]{3,}", without_placeholders
             )
