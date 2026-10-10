@@ -17,9 +17,10 @@ def test_backend_starts_with_source_reload(monkeypatch, tmp_path):
     monkeypatch.setattr(control_server, "PYTHON", Path(sys.executable))
     monkeypatch.setattr(control_server, "port_listener", lambda port: None)
 
-    def fake_start_process(args, cwd):
+    def fake_start_process(args, cwd, **kwargs):
         launched["args"] = args
         launched["cwd"] = cwd
+        launched["kwargs"] = kwargs
         return SimpleNamespace(pid=12345, poll=lambda: None)
 
     monkeypatch.setattr(control_server, "start_process", fake_start_process)
@@ -32,6 +33,65 @@ def test_backend_starts_with_source_reload(monkeypatch, tmp_path):
     reload_dir_index = launched["args"].index("--reload-dir")
     assert Path(launched["args"][reload_dir_index + 1]) == backend_dir
     assert launched["cwd"] == tmp_path
+    assert launched["kwargs"]["log_name"] == "backend.log"
+
+
+def test_service_process_output_is_redirected_to_persistent_log(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_popen(args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(pid=4321)
+
+    monkeypatch.setattr(control_server, "NOVA_ROOT", tmp_path)
+    monkeypatch.setattr(control_server.subprocess, "Popen", fake_popen)
+
+    control_server.start_process(["python", "-m", "uvicorn"], tmp_path, log_name="backend.log")
+
+    log_path = tmp_path / "logs" / "backend.log"
+    assert log_path.exists()
+    assert "Starting: python -m uvicorn" in log_path.read_text(encoding="utf-8")
+    assert captured["kwargs"]["stdout"].name == str(log_path)
+    assert captured["kwargs"]["stderr"] == control_server.subprocess.STDOUT
+
+
+def test_open_service_log_uses_allowlisted_component_and_new_console(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_popen(args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(pid=9876)
+
+    monkeypatch.setattr(control_server, "NOVA_ROOT", tmp_path)
+    monkeypatch.setattr(control_server.subprocess, "Popen", fake_popen)
+
+    result = control_server.open_service_log("wolfram")
+
+    assert result["ok"] is True
+    assert (tmp_path / "backend" / "reasoning_timing.log").exists()
+    assert captured["args"][0] == "powershell.exe"
+    assert "-Wait" in captured["args"][-1]
+    assert captured["kwargs"]["creationflags"] == getattr(
+        control_server.subprocess, "CREATE_NEW_CONSOLE", 0
+    )
+
+    try:
+        control_server.open_service_log("../unexpected")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Unlisted log components must be rejected")
+
+
+def test_all_five_dashboard_cards_have_log_buttons():
+    dashboard_path = Path(__file__).resolve().parents[1] / "control" / "index.html"
+    dashboard = dashboard_path.read_text(encoding="utf-8-sig")
+    for component in ("backend", "frontend", "llm", "planner", "wolfram"):
+        assert f"openServiceLog('{component}')" in dashboard
+    server_source = Path(control_server.__file__).read_text(encoding="utf-8")
+    assert 'parsed.path.startswith("/api/open-log/")' in server_source
 
 
 def test_control_center_starts_services_and_cleans_up_on_exit(monkeypatch):

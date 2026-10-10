@@ -294,6 +294,7 @@ pre {
                 <button onclick="startComponent('backend')">Start</button>
                 <button class="danger" onclick="terminateBackend()">Terminate</button>
                 <button onclick="restartComponent('backend')">Restart</button>
+                <button onclick="openServiceLog('backend')">Open Log</button>
             </div>
         </section>
 
@@ -327,6 +328,7 @@ pre {
                 <button onclick="startComponent('frontend')">Start</button>
                 <button class="danger" onclick="terminateFrontend()">Terminate</button>
                 <button onclick="restartComponent('frontend')">Restart</button>
+                <button onclick="openServiceLog('frontend')">Open Log</button>
             </div>
         </section>
 
@@ -360,6 +362,7 @@ pre {
                 <button onclick="startComponent('llm')">Start</button>
                 <button class="danger" onclick="terminateLLM()">Terminate</button>
                 <button onclick="restartComponent('llm')">Restart</button>
+                <button onclick="openServiceLog('llm')">Open Log</button>
             </div>
         </section>
 
@@ -393,6 +396,7 @@ pre {
                 <button onclick="startComponent('planner')">Start</button>
                 <button class="danger" onclick="terminatePlanner()">Terminate</button>
                 <button onclick="restartComponent('planner')">Restart</button>
+                <button onclick="openServiceLog('planner')">Open Log</button>
             </div>
         </section>
 
@@ -426,6 +430,7 @@ pre {
                 <button onclick="testWolfram()">Test 2 + 2</button>
                 <button onclick="restartComponent('wolfram')">Restart Session</button>
                 <button class="danger" onclick="terminateWolfram()">Terminate</button>
+                <button onclick="openServiceLog('wolfram')">Open Log</button>
             </div>
         </section>
 
@@ -570,6 +575,14 @@ async function action(url) {
 
 async function startComponent(component) {
     await action("/api/start/" + component);
+}
+
+async function openServiceLog(component) {
+    try {
+        await request("/api/open-log/" + encodeURIComponent(component), "POST");
+    } catch (error) {
+        alert("Could not open service log: " + error.message);
+    }
 }
 
 async function restartComponent(component) {
