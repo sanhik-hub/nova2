@@ -497,8 +497,7 @@ Scientific display contract:
 
         This is intentionally structural. It does not inspect subject/domain
         vocabulary and does not normalize punctuation or connective phrases.
-        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.
-        """
+        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.        """
         text = problem.strip()
         if not text or len(text) > 1200:
             return False
@@ -997,8 +996,7 @@ expression, not a derivation or explanation.
                         (time.perf_counter() - retry_started) * 1000, 2
                     )
                     if (
-                        retry_result.get("success")
-                        and self._requested_outputs_present(
+                        retry_result.get("success")                        and self._requested_outputs_present(
                             requested_outputs, retry_result.get("result")
                         )
                     ):
@@ -1497,8 +1495,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             text,
         )
         if match:
-            expression = match.group(1).strip()
-            limit_match = re.match(
+            expression = match.group(1).strip()            limit_match = re.match(
                 r"(?is)^(.+?)\s+(?:as\s+)?([a-zA-Z])\s*(?:approaches|->|→)\s*([^\s,.!?]+)\s*$",
                 expression,
             )
@@ -1816,6 +1813,69 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
     # TOOL EXECUTION
     # =========================================================
 
+    @staticmethod
+    def _assignment_sequence_to_labelled_expression(expression: str) -> str | None:
+        """Convert a pure multi-output assignment sequence into labelled rules.
+
+        Generated Wolfram calls must not depend on assignment side effects or
+        return only the final assignment's value. When every top-level
+        semicolon-separated statement is a simple symbol assignment, convert
+        it to a List of Rules so each computed value remains labelled.
+        """
+        if not isinstance(expression, str) or ";" not in expression:
+            return None
+
+        statements = []
+        start = 0
+        stack = []
+        in_string = False
+        escaped = False
+        pairs = {")": "(", "]": "[", "}": "{"}
+
+        for index, char in enumerate(expression):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char in "([{":
+                stack.append(char)
+            elif char in ")]}":
+                if not stack or stack[-1] != pairs[char]:
+                    return None
+                stack.pop()
+            elif char == ";" and not stack:
+                statements.append(expression[start:index].strip())
+                start = index + 1
+
+        if in_string or stack:
+            return None
+        statements.append(expression[start:].strip())
+
+        assignments = []
+        assignment_pattern = re.compile(
+            r"^([A-Za-z][A-Za-z0-9]*)\\s*=(?!=)\\s*(.+)$",
+            re.DOTALL,
+        )
+        for statement in statements:
+            match = assignment_pattern.fullmatch(statement)
+            if not match:
+                return None
+            name, value = match.groups()
+            assignments.append(
+                f"Rule[{name}, {normalize_expression(value)}]"
+            )
+
+        if len(assignments) < 2:
+            return None
+        return "List[" + ", ".join(assignments) + "]"
+
     def _execute_tool(
         self,
         tool: str,
@@ -1828,11 +1888,21 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
             if tool == "calculate":
 
-                raw = provider.calculate(
-                    normalize_expression(
-                        arguments["expression"]
-                    )
+                expression = arguments["expression"]
+                labelled_expression = self._assignment_sequence_to_labelled_expression(
+                    expression
                 )
+                # Assignment sequences otherwise risk being normalized into
+                # equality tests and returning only the final requested value.
+                # Convert simple multi-output assignments to a pure List[Rule]
+                # expression before evaluation; all other expressions retain
+                # the existing normalization and safety path.
+                normalized = (
+                    labelled_expression
+                    if labelled_expression is not None
+                    else normalize_expression(expression)
+                )
+                raw = provider.calculate(normalized)
 
                 if raw.get("success"):
                     return {
@@ -1997,8 +2067,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             "cached": False,
         }
 
-    # =========================================================
-    # RESULT-ONLY CAS RESPONSE
+    # =========================================================    # RESULT-ONLY CAS RESPONSE
     # =========================================================
 
     def _cas_result_only(
