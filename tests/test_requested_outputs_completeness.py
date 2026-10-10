@@ -1,4 +1,5 @@
 from backend.services.reasoning_service import ReasoningService
+from backend.services.expression_normalizer import normalize_expression
 
 
 def test_requested_outputs_present_for_labelled_multi_result():
@@ -44,3 +45,16 @@ def test_assignment_conversion_does_not_rewrite_a_single_equation():
         ReasoningService._assignment_sequence_to_labelled_expression("x == 2")
         is None
     )
+
+
+
+def test_wolfram_list_rule_constructor_survives_expression_normalization():
+    expression = (
+        "List[Rule[timeOfFlight, (2*20*Sin[30 Degree])/9.8], "
+        "Rule[maxHeight, (20^2*Sin[30 Degree]^2)/(2*9.8)]]"
+    )
+    normalized = normalize_expression(expression)
+    assert normalized.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maxHeight," in normalized
+    assert "==" not in normalized
+    assert ";" not in normalized
