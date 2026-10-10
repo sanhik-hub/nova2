@@ -88,7 +88,7 @@ class RepairingRouter:
         }
 
 
-def test_invalid_generated_expression_is_repaired_before_wolfram_execution():
+def test_result_only_mode_does_not_regenerate_after_invalid_expression():
     router = RepairingRouter()
     service = ReasoningService(router=router)
     executed = []
@@ -108,10 +108,8 @@ def test_invalid_generated_expression_is_repaired_before_wolfram_execution():
         explanation="off",
     )
 
-    assert result["success"] is True
-    assert len(router.calls) == 2
-    assert len(executed) == 1
-    assert "With[" not in executed[0]
-    assert "Sin[30 Degree]" in executed[0]
-    assert "(2*9.8)" in executed[0]
+    assert result["success"] is False
+    assert "no second model generation was attempted" in result["error"]
+    assert len(router.calls) == 1
+    assert executed == []
 
