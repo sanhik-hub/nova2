@@ -934,10 +934,12 @@ The previous Wolfram result was incomplete. The JSON field required_outputs
 in the user payload is the authoritative list of labels. Return a new
 calculate expression that computes every item in that list in one evaluation.
 
-For two or more requested outputs, the expression MUST be one Wolfram list
-of rules whose left-hand-side labels exactly match every required_outputs
-entry, in the same order, for example:
-{outputOne -> expressionOne, outputTwo -> expressionTwo}
+For two or more requested outputs, the expression MUST use the Wolfram
+List and Rule constructors, with left-hand-side labels exactly matching every
+required_outputs entry in the same order, for example:
+List[Rule[outputOne, expressionOne], Rule[outputTwo, expressionTwo]]
+Use this constructor form rather than curly-brace list syntax because the
+application normalizes curly braces in ordinary mathematical input.
 The example illustrates output structure only; derive the actual formulas and
 values from the original request.
 
