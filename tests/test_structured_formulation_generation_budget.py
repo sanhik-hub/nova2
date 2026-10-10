@@ -50,4 +50,6 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert router.kwargs["tool_choice"] == "required"
     assert router.kwargs["enable_thinking"] is False
     assert "do not write a solution or explain" in router.kwargs["system_prompt"]
+    assert "do not assume a particular subject" in router.kwargs["system_prompt"]
+    assert "projectile" not in router.kwargs["system_prompt"].lower()
     assert result["timings_ms"]["final_llm"] == 0.0
