@@ -1907,7 +1907,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         assignments = []
         assignment_pattern = re.compile(
-            r"^([A-Za-z][A-Za-z0-9]*)\s*=(?!=)\s*(.+)$",
+            r"^([A-Za-z][A-Za-z0-9_]*)\\s*=(?!=)\\s*(.+)$",
             re.DOTALL,
         )
         for statement in statements:
@@ -1915,6 +1915,22 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             if not match:
                 return None
             name, value = match.groups()
+
+            # Model output labels sometimes use snake_case. Wolfram symbols
+            # must not contain underscores, so convert labels deterministically
+            # to lowerCamelCase before constructing the rule. The output
+            # verifier compares labels without punctuation/case, preserving
+            # compatibility with the requested_outputs contract.
+            if "_" in name:
+                parts = [part for part in name.split("_") if part]
+                if not parts:
+                    return None
+                name = parts[0].lower() + "".join(
+                    part[:1].upper() + part[1:] for part in parts[1:]
+                )
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
+                return None
+
             assignments.append(
                 f"Rule[{name}, {normalize_expression(value)}]"
             )
