@@ -1907,7 +1907,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         assignments = []
         assignment_pattern = re.compile(
-            r"^([A-Za-z][A-Za-z0-9_]*)\\s*=(?!=)\\s*(.+)$",
+            r"^([A-Za-z][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$",
             re.DOTALL,
         )
         for statement in statements:
