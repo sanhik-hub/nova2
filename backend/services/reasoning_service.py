@@ -497,7 +497,10 @@ Scientific display contract:
 
         This is intentionally structural. It does not inspect subject/domain
         vocabulary and does not normalize punctuation or connective phrases.
-        Clean forms are handled by the deterministic fast path; malformed or        natural-language forms go to the main local reasoning model.        """        text = problem.strip()
+        Clean forms are handled by the deterministic fast path; malformed or
+        natural-language forms go to the main local reasoning model.
+        """
+        text = problem.strip()
         if not text or len(text) > 1200:
             return False
         return bool(
