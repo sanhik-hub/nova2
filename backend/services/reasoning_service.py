@@ -602,12 +602,12 @@ for angles stated in degrees. Never put natural-language instructions inside an
 expression, invent assumptions or data, use underscores in Wolfram symbols, or
 use strings, external functions, files, URLs, or side effects.
 
-Example request: a projectile starts at 20 m/s at 30 degrees; find time of flight
-and maximum height for g = 9.8 m/s^2. The expression should compute both results,
-for example:
-With[{v0 = 20, theta = 30 Degree, g = 9.8},
- {timeOfFlight -> N[2 v0 Sin[theta]/g],
-  maximumHeight -> N[v0^2 Sin[theta]^2/(2 g)]}]
+Generalize from the actual request; do not assume a particular subject,
+formula, variable name, unit system, or problem type. Select the governing
+relationships from the information supplied by the user, and preserve the
+stated conditions. If multiple outputs are requested, derive each from the
+same problem and return every one in request order. Do not copy a formula from
+an example when it does not apply.
 
 For direct symbolic requests, preserve the user's expression and variable. For
 example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
