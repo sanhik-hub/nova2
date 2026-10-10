@@ -950,6 +950,13 @@ direct expressions on the right-hand side and the exact requested labels on
 the left-hand side. Preserve the original problem's physical relationships,
 numbers, signs, and units. The output must be a single executable Wolfram
 expression, not a derivation or explanation.
+
+Every right-hand side must be a complete expression that Wolfram can evaluate
+from the data in the original request. Do not refer to placeholder symbols,
+abbreviations, or intermediate variable names such as t or h from the previous
+tool call. If the original request provides numerical data for a numerical
+word problem, substitute those values directly into every requested result.
+Never return a labelled rule whose value is merely an unresolved symbol.
 """
             completion_prompt = json.dumps(
                 {
@@ -1000,8 +1007,16 @@ expression, not a derivation or explanation.
                         (time.perf_counter() - retry_started) * 1000, 2
                     )
                     if (
-                        retry_result.get("success")                        and self._requested_outputs_present(
-                            requested_outputs, retry_result.get("result")                        )
+                        retry_result.get("success")
+                        and self._requested_outputs_present(
+                            requested_outputs, retry_result.get("result")
+                        )
+                        and not (
+                            re.search(r"\d", problem)
+                            and self._requested_outputs_are_unresolved_symbols(
+                                requested_outputs, retry_result.get("result")
+                            )
+                        )
                     ):
                         operation = completion_validation["tool"]
                         arguments = completion_validation["arguments"]
@@ -2560,6 +2575,36 @@ Scientific display contract:
             if not label or label not in normalized_result:
                 return False
         return True
+
+    @staticmethod
+    def _requested_outputs_are_unresolved_symbols(
+        requested_outputs: list[str], result: Any
+    ) -> bool:
+        """Reject numerical word-problem results whose labelled values are bare symbols."""
+        if not isinstance(result, str) or not result.strip():
+            return True
+        rules = re.findall(
+            r"(?:Rule|->)\s*\[?\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\]?",
+            result,
+        )
+        if not rules:
+            # Also support the ordinary InputForm output: {label -> value}.
+            rules = re.findall(
+                r"\b([A-Za-z][A-Za-z0-9]*)\s*->\s*([A-Za-z][A-Za-z0-9]*)\b",
+                result,
+            )
+        if not rules:
+            return False
+        values_by_label = {
+            re.sub(r"[^a-z0-9]", "", label.lower()): value
+            for label, value in rules
+        }
+        for output in requested_outputs:
+            label = re.sub(r"[^a-z0-9]", "", output.lower())
+            value = values_by_label.get(label)
+            if value is not None and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", value):
+                return True
+        return False
 
     # =========================================================
     # CACHE
