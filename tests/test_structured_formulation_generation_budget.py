@@ -140,3 +140,24 @@ def test_result_only_mode_does_not_regenerate_after_invalid_expression():
     assert len(router.calls) == 1
     assert executed == []
 
+def test_assignment_sequence_with_final_output_list_is_normalized_without_side_effects():
+    service = ReasoningService(router=CapturingRouter())
+    expression = (
+        "v0 = 20; angle = 30 Degree; g = 9.8; "
+        "time_of_flight = (2 * v0 * Sin[angle]) / g; "
+        "maximum_height = (v0 * Sin[angle])^2 / (2 * g); "
+        "{time_of_flight, maximum_height}"
+    )
+
+    normalized = service._assignment_sequence_to_labelled_expression(expression)
+
+    assert normalized is not None
+    assert normalized.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maximumHeight," in normalized
+    assert "time_of_flight" not in normalized
+    assert "maximum_height" not in normalized
+    assert "v0" not in normalized
+    assert "angle" not in normalized
+    assert "g" not in normalized
+    assert ";" not in normalized
+
