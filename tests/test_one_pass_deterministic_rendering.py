@@ -281,6 +281,10 @@ def test_failed_multi_output_calculation_stops_after_one_repair():
     assert "incompatible operation" in result["error"].lower()
     assert len(router.calls) == 2  # initial formulation + exactly one repair
     repair_payload = router.calls[1]["prompt"]
+    assert (
+        router.calls[1]["response_format"]["schema"]["properties"]["operation"]["enum"]
+        == ["calculate"]
+    )
     assert "timeOfFlight" in repair_payload
     assert "maximumHeight" in repair_payload
     # A symbolic solve result must never be executed as a substitute for both
