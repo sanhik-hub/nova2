@@ -877,25 +877,41 @@ Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
                 },
                 "arguments": {
                     "type": "object",
-                    "properties": {
-                        "expression": {
-                            "type": "string",
-                            "description": (
-                                "Executable Wolfram Language syntax only. "
-                                "For calculate, return one balanced executable "
-                                "expression only, not explanation or derivation prose. "
-                                "Use ASCII variable names, no With/local assignments, "
-                                "and directly substitute supplied numeric values in "
-                                "numerical word problems. For multiple outputs, use "
-                                "one Wolfram list of labelled rules. No trailing markup."
-                            ),
-                        },
-                        "equation": {"type": "string"},
-                        "variable": {"type": "string"},
-                        "lower": {"type": "string"},
-                        "upper": {"type": "string"},
-                        "value": {"type": "string"},
-                    },
+                    "properties": (
+                        {
+                            "expression": {
+                                "type": "string",
+                                "description": (
+                                    "Executable Wolfram Language syntax only. "
+                                    "Return one balanced expression with every requested "
+                                    "quantity computed and labelled in one List of Rule "
+                                    "expressions. Directly substitute supplied numerical "
+                                    "values. Do not use assignments, extra arguments, "
+                                    "or derivation prose."
+                                ),
+                            },
+                        }
+                        if self._is_direct_quantitative_request(problem)
+                        else {
+                            "expression": {
+                                "type": "string",
+                                "description": (
+                                    "Executable Wolfram Language syntax only. "
+                                    "For calculate, return one balanced executable "
+                                    "expression only, not explanation or derivation prose. "
+                                    "Use ASCII variable names, no With/local assignments, "
+                                    "and directly substitute supplied numeric values in "
+                                    "numerical word problems. For multiple outputs, use "
+                                    "one Wolfram list of labelled rules. No trailing markup."
+                                ),
+                            },
+                            "equation": {"type": "string"},
+                            "variable": {"type": "string"},
+                            "lower": {"type": "string"},
+                            "upper": {"type": "string"},
+                            "value": {"type": "string"},
+                        }
+                    ),
                     "additionalProperties": False,
                     # Direct quantitative requests are constrained to calculate
                     # by the operation enum above, so require the one field that
