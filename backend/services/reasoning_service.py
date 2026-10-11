@@ -691,7 +691,7 @@ Scientific display contract:
                 prefix = template[:position]
                 # Limit the check to this output's clause so a relation for an
                 # earlier result cannot make a later value-only label look valid.
-                boundaries = list(re.finditer(r";|\n|(?<=[.!?])\s+", prefix))
+                boundaries = list(re.finditer(r";|\n|(?<=[.!?])\s+|\}\}", prefix))
                 clause_start = boundaries[-1].end() if boundaries else 0
                 preceding = template[clause_start:position]
                 if not re.search(relation_pattern, preceding):
