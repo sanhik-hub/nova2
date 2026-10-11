@@ -1285,7 +1285,11 @@ Never return a labelled rule whose value is merely an unresolved symbol.
                 "cached": False,
                 "result_only": False,
                 "timings_ms": {
+                    # Keep the legacy key for existing consumers. This path's
+                    # first generation is the main-model formulation call, not
+                    # the lightweight semantic planner used by _solve_complex.
                     "planner": formulation_ms,
+                    "formulation": formulation_ms,
                     "wolfram": wolfram_ms,
                     "final_llm": 0.0,
                 },
@@ -1293,6 +1297,20 @@ Never return a labelled rule whose value is merely an unresolved symbol.
                 "answer_rendering": "deterministic_template",
             }
 
+        placeholder_names = re.findall(
+            r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}",
+            answer_template or "",
+        )
+        logger.warning(
+            "One-pass answer template unavailable; using LLM fallback "
+            "(mode=%s, structurally_valid=%s, requested_outputs=%r, placeholders=%r, "
+            "wolfram_result_labels=%r).",
+            explanation,
+            template_is_appropriate,
+            requested_outputs,
+            placeholder_names,
+            sorted(self._extract_labelled_wolfram_values(result.get("result")).keys()),
+        )
         response = self._final_explanation(
             problem=problem,
             idea="",
@@ -1302,7 +1320,9 @@ Never return a labelled rule whose value is merely an unresolved symbol.
             estimated_answer_tokens=None,
         )
         response["timings_ms"] = {
+            # Keep the legacy key for existing consumers.
             "planner": formulation_ms,
+            "formulation": formulation_ms,
             "wolfram": wolfram_ms,
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
