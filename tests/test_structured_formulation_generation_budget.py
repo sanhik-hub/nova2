@@ -1,4 +1,5 @@
 import json
+import re
 
 from backend.services.reasoning_service import ReasoningService
 
@@ -156,7 +157,7 @@ def test_assignment_sequence_with_final_output_list_is_normalized_without_side_e
     assert "Rule[maximumHeight," in normalized
     assert "time_of_flight" not in normalized
     assert "maximum_height" not in normalized
-    assert not __import__("re").search(r"(?<![A-Za-z0-9_])v0(?![A-Za-z0-9_])", normalized)
+    assert not re.search(r"(?<![A-Za-z0-9_])v0(?![A-Za-z0-9_])", normalized)
     assert not __import__("re").search(r"(?<![A-Za-z0-9_])angle(?![A-Za-z0-9_])", normalized)
     assert not __import__("re").search(r"(?<![A-Za-z0-9_])g(?![A-Za-z0-9_])", normalized)
     assert ";" not in normalized
