@@ -800,58 +800,29 @@ Scientific display contract:
         source of truth for computed results.
         """
         formulation_system = r"""
-You convert a computational STEM request into one executable Wolfram Language
-tool call. Return the structured call only; do not write a solution or explain
-your reasoning. Identify every explicitly requested output and compute all of
-them in the same expression.
+Convert the user's computational STEM request into one executable Wolfram Language
+tool call. Return only the JSON object required by the schema. Do not solve the
+problem in prose or put explanations inside an expression.
 
-Return this JSON shape:
-{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"],"answer_template":"...optional for off mode..."}
+For natural-language quantitative problems, use operation "calculate". For multiple
+requested outputs, return one List of Rule expressions, with one exact lowerCamelCase
+label per requested output in the original order. Substitute all supplied numerical
+values directly; do not use assignments, intermediate symbols, or unrelated equations.
+Use explicit multiplication (*), valid Wolfram function syntax, and Degree for angles
+stated in degrees. Preserve signs, units, conditions, and the actual requested outputs.
+Never invent data or assumptions.
 
-The selected explanation mode is supplied in the input as explanation_mode.
-For concise or detailed modes, return answer_template in this same response. It is a
-complete user-facing solution template, not a computed answer. Use {{outputLabel}}
-placeholders for every requested output, exactly matching requested_outputs. Include
-equations, substitution structure, units, and explanation appropriate to explanation_mode.
-Do not include computed numerical results for requested outputs; Python inserts only
-values returned by Wolfram. Do not use placeholders for unrequested quantities.
+For concise/detailed modes, include a complete answer_template in this same JSON
+response. Use {{label}} placeholders for every requested output, matching the labels
+exactly. Include the governing relation, necessary substitution, and units appropriate
+to the selected explanation_mode. Do not guess computed values. For explanation off,
+omit answer_template.
 
-For concise mode, include the essential governing relation and substitution/calculation,
-with a clear label and units for every output. Avoid introductions and filler.
-For detailed mode, provide a self-contained derivation: identify the governing relation,
-substitute the supplied data, show important intermediate equation(s), briefly explain
-why the relation applies, and then give each requested result using its placeholder and
-units. Do not reduce the template to labels followed by placeholders. Derive the
-structure from the actual request, without fixed subject-specific formulas or examples.
-For explanation off, omit answer_template. Placeholder syntax is double braces.
-
-Use one of these operations as appropriate: calculate, simplify, factor, expand,
-differentiate, integrate, integrate_definite, solve, limit. For natural-language
-quantitative problems, use calculate with one self-contained Wolfram expression.
-For multiple outputs, return a list of rules with one lowerCamelCase label for
-each requested result, in request order. Do not return intermediate values unless
-asked. Use explicit multiplication (*), valid Wolfram function syntax, and Degree
-for angles stated in degrees. Use ASCII variable names only. For numerical word
-problems, substitute the supplied numerical values directly into the expression;
-do not use With, local assignments, or a separate list of variable definitions.
-Return one balanced Wolfram expression with no trailing braces, markup, or
-assistant-control tokens. Never put natural-language instructions inside an
-expression, invent assumptions or data, use underscores in Wolfram symbols, or
-use strings, external functions, files, URLs, or side effects.
-
-Generalize from the actual request; do not assume a particular subject,
-formula, variable name, unit system, or problem type. Select the governing
-relationships from the information supplied by the user, and preserve the
-stated conditions. If multiple outputs are requested, derive each from the
-same problem and return every one in request order. Check the governing
-relationship and numerical factors for each requested output before returning
-the expression. Do not copy a formula from an example when it does not apply.
-
-For direct symbolic requests, preserve the user's expression and variable. For
-example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
-"x^2 - 5*x + 4 == 0" and variable "x". Preserve units, signs, constraints,
-initial conditions, and all requested outputs. Output only the JSON object,
-with no markdown or surrounding prose.
+Use the appropriate supported operation for symbolic requests. Preserve the user's
+expression and variable for differentiation, integration, limits, and equation solving.
+Return one balanced executable Wolfram expression with no trailing markup, assignments,
+natural-language instructions, external functions, files, URLs, or side effects.
+Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
 """
         formulation_prompt = json.dumps(
             {
@@ -884,17 +855,26 @@ with no markdown or surrounding prose.
                 },
                 "operation": {
                     "type": "string",
-                    "enum": [
-                        "calculate",
-                        "simplify",
-                        "factor",
-                        "expand",
-                        "differentiate",
-                        "integrate",
-                        "integrate_definite",
-                        "solve",
-                        "limit",
-                    ],
+                    "enum": (
+                        ["calculate"]
+                        if self._is_direct_quantitative_request(problem)
+                        else [
+                            "calculate",
+                            "simplify",
+                            "factor",
+                            "expand",
+                            "differentiate",
+                            "integrate",
+                            "integrate_definite",
+                            "solve",
+                            "limit",
+                        ]
+                    ),
+                    "description": (
+                        "Use calculate for natural-language numerical word problems. "
+                        "A multi-output numerical request must compute every requested "
+                        "quantity in one labelled List of Rule expressions."
+                    ),
                 },
                 "arguments": {
                     "type": "object",
@@ -997,15 +977,28 @@ with no markdown or surrounding prose.
                 "The reasoning model did not produce a valid structured computational request."
             )
 
+        multi_output_numeric_problem = (
+            len(requested_outputs) >= 2
+            and self._is_direct_quantitative_request(problem)
+        )
         arguments = self._normalize_generated_calculate_expression(
             operation, arguments, requested_outputs
         )
-        validated = self._validate_tool_call(
-            {
-                "tool": operation,
-                "arguments": arguments,
+        if multi_output_numeric_problem and operation != "calculate":
+            validated = {
+                "valid": False,
+                "error": (
+                    "A numerical word problem with multiple requested outputs "
+                    "must use one calculate expression containing all labelled results."
+                ),
             }
-        )
+        else:
+            validated = self._validate_tool_call(
+                {
+                    "tool": operation,
+                    "arguments": arguments,
+                }
+            )
         logger.warning(
             "structured_tool_initial operation=%r arguments=%r valid=%s validation_error=%r",
             operation, arguments, validated.get("valid"), validated.get("error"),
@@ -1149,6 +1142,18 @@ URLs, or programming side effects. Never use underscores in Wolfram symbols.
                         "Wolfram verification failed: "
                         + str(result.get("error") or "unknown error")
                     )
+
+            if multi_output_numeric_problem and repaired_operation != "calculate":
+                logger.warning(
+                    "structured_tool_repair_rejected_wrong_operation operation=%r required='calculate'",
+                    repaired_operation,
+                )
+                return self._error(
+                    "The repair selected an incompatible operation for a numerical "
+                    "problem with multiple requested outputs. No partial symbolic "
+                    "result was accepted; the repair must calculate all requested "
+                    "quantities in one labelled expression."
+                )
 
             repair_validation = self._validate_tool_call(
                 {
