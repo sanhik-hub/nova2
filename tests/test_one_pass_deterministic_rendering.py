@@ -125,3 +125,81 @@ def test_detailed_value_only_template_is_rejected_for_fallback():
         ["timeOfFlight", "maximumHeight"],
         "detailed",
     )
+
+
+def test_concise_compact_equations_pass_without_fixed_equation_count():
+    template = (
+        "Time of flight: $T = 2v_0\\sin(\\theta)/g = {{timeOfFlight}}\\,\\text{s}$. "
+        "Maximum height: $H = (v_0\\sin(\\theta))^2/(2g) = {{maximumHeight}}\\,\\text{m}$."
+    )
+    assert ReasoningService._answer_template_meets_mode(
+        template,
+        "Find time of flight and maximum height for a projectile launched at 20 m/s.",
+        ["timeOfFlight", "maximumHeight"],
+        "concise",
+    )
+
+
+def test_concise_value_only_template_is_rejected_for_numeric_problem():
+    assert not ReasoningService._answer_template_meets_mode(
+        "Time: {{timeOfFlight}} s. Height: {{maximumHeight}} m.",
+        "Find time of flight and maximum height for a projectile launched at 20 m/s.",
+        ["timeOfFlight", "maximumHeight"],
+        "concise",
+    )
+
+
+def test_template_with_missing_or_extra_output_placeholder_is_rejected():
+    problem = "Calculate two requested values from the supplied numerical data: 4 and 8."
+    assert not ReasoningService._answer_template_meets_mode(
+        "Result: $x = {{firstValue}}$.",
+        problem,
+        ["firstValue", "secondValue"],
+        "concise",
+    )
+    assert not ReasoningService._answer_template_meets_mode(
+        "Results: $x = {{firstValue}}$ and $y = {{secondValue}}$; note {{extraValue}}.",
+        problem,
+        ["firstValue", "secondValue"],
+        "concise",
+    )
+
+
+def test_rejected_template_reports_fallback_metadata():
+    class Router:
+        def generate(self, **kwargs):
+            return {
+                "success": True,
+                "result": (
+                    '{"operation":"calculate",'
+                    '"arguments":{"expression":"List[Rule[timeOfFlight, 2.04],'
+                    'Rule[maximumHeight, 5.10]]"},'
+                    '"requested_outputs":["timeOfFlight","maximumHeight"],'
+                    '"answer_template":"Time: {{timeOfFlight}} s. Height: {{maximumHeight}} m."}'
+                ),
+            }
+
+    service = ReasoningService(router=Router())
+    service._validate_tool_call = lambda call: {
+        "valid": True,
+        "tool": call["tool"],
+        "arguments": call["arguments"],
+    }
+    service._execute_tool = lambda operation, arguments: {
+        "success": True,
+        "result": "List[Rule[timeOfFlight, 2.04], Rule[maximumHeight, 5.10]]",
+    }
+    service._final_explanation = lambda **kwargs: {
+        "success": True,
+        "answer": "fallback answer",
+        "_final_llm_ms": 12.0,
+    }
+
+    result = service._solve_llm_wolfram(
+        "Find time of flight and maximum height for a projectile launched at 20 m/s.",
+        explanation="concise",
+    )
+
+    assert result["answer_rendering"] == "llm_fallback"
+    assert result["llm_passes"] == 2
+    assert result["timings_ms"]["final_llm"] == 12.0
