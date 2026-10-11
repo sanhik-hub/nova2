@@ -801,8 +801,7 @@ Scientific display contract:
         """
         formulation_system = r"""
 Convert the user's computational STEM request into one executable Wolfram Language
-tool call. Return only the JSON object required by the schema. Do not write a
-solution or explain in prose; do not put explanations inside an expression.
+tool call. Return only the JSON object required by the schema. Do not write a solution or explain in prose; do not put explanations inside an expression.
 
 For natural-language quantitative problems, use operation "calculate". For multiple
 requested outputs, return one List of Rule expressions, with one exact lowerCamelCase
