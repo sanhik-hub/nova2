@@ -92,6 +92,7 @@ def test_one_pass_computation_uses_template_without_final_generation():
     assert result["llm_passes"] == 1
     assert result["answer_rendering"] == "deterministic_template"
     assert result["timings_ms"]["final_llm"] == 0.0
+    assert result["timings_ms"]["formulation"] == result["timings_ms"]["planner"]
     assert router.calls == 1
 
 
@@ -203,3 +204,4 @@ def test_rejected_template_reports_fallback_metadata():
     assert result["answer_rendering"] == "llm_fallback"
     assert result["llm_passes"] == 2
     assert result["timings_ms"]["final_llm"] == 12.0
+    assert result["timings_ms"]["formulation"] == result["timings_ms"]["planner"]
