@@ -277,9 +277,56 @@ def test_failed_multi_output_calculation_stops_after_one_repair():
     )
 
     assert result["success"] is False
-    assert "incomplete result" in result["error"].lower()
+    assert "incompatible operation" in result["error"].lower()
     assert len(router.calls) == 2  # initial formulation + exactly one repair
     repair_payload = router.calls[1]["prompt"]
     assert "timeOfFlight" in repair_payload
     assert "maximumHeight" in repair_payload
-    assert len(executions) == 2
+    # A symbolic solve result must never be executed as a substitute for both
+    # requested numerical quantities.
+    assert len(executions) == 1
+
+
+def test_numerical_word_problem_schema_requires_calculate_and_returns_all_outputs():
+    class Router:
+        calls = []
+
+        def generate(self, **kwargs):
+            self.calls.append(kwargs)
+            return {
+                "success": True,
+                "result": (
+                    '{"operation":"calculate",'
+                    '"arguments":{"expression":"List[Rule[timeOfFlight, 2.0408163265],'
+                    'Rule[maximumHeight, 5.1020408163]]"},'
+                    '"requested_outputs":["timeOfFlight","maximumHeight"]}'
+                ),
+            }
+
+    router = Router()
+    service = ReasoningService(router=router)
+    service._validate_tool_call = lambda call: {
+        "valid": True,
+        "tool": call["tool"],
+        "arguments": call["arguments"],
+    }
+    service._execute_tool = lambda operation, arguments: {
+        "success": True,
+        "result": (
+            "List[Rule[timeOfFlight, 2.0408163265], "
+            "Rule[maximumHeight, 5.1020408163]]"
+        ),
+    }
+
+    result = service._solve_llm_wolfram(
+        "A projectile is launched at 20 m/s at 30 degrees. Take g = 9.8 m/s^2. "
+        "Find the time of flight and maximum height.",
+        explanation="off",
+    )
+
+    schema = router.calls[0]["response_format"]["schema"]
+    assert schema["properties"]["operation"]["enum"] == ["calculate"]
+    assert result["success"] is True
+    assert "2.0408163265" in result["answer"]
+    assert "5.1020408163" in result["answer"]
+    assert len(router.calls) == 1
