@@ -2274,7 +2274,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 return None
             rules = []
             for name, value in assignments.items():
-                label = self._wolfram_label(name)
+                label = ReasoningService._wolfram_label(name)
                 if not label:
                     return None
                 rules.append(f"Rule[{label}, {normalize_expression(value)}]")
@@ -2320,7 +2320,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
         rules = []
         for name in output_names:
-            label = self._wolfram_label(name)
+            label = ReasoningService._wolfram_label(name)
             value = resolve(name)
             if not label or value is None:
                 return None
