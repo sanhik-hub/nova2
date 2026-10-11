@@ -226,3 +226,60 @@ def test_assignment_sequence_with_trailing_semicolon_is_normalized():
     assert result is not None
     assert "Rule[timeOfFlight, 2]" in result
     assert "Rule[maximumHeight, 5]" in result
+
+
+
+def test_failed_multi_output_calculation_stops_after_one_repair():
+    class Router:
+        calls = []
+
+        def generate(self, **kwargs):
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                return {
+                    "success": True,
+                    "result": (
+                        '{"operation":"calculate",'
+                        '"arguments":{"expression":"bad_expression("},'
+                        '"requested_outputs":["timeOfFlight","maximumHeight"],'
+                        '"answer_template":"Time: {{timeOfFlight}} s; '
+                        'height: {{maximumHeight}} m"}'
+                    ),
+                }
+            return {
+                "success": True,
+                "result": (
+                    '{"operation":"solve","arguments":{"equation":"x==2",'
+                    '"variable":"x"},'
+                    '"requested_outputs":["timeOfFlight","maximumHeight"]}'
+                ),
+            }
+
+    router = Router()
+    service = ReasoningService(router=router)
+    service._validate_tool_call = lambda call: {
+        "valid": True,
+        "tool": call["tool"],
+        "arguments": call["arguments"],
+    }
+    executions = []
+
+    def execute(operation, arguments):
+        executions.append((operation, arguments))
+        if len(executions) == 1:
+            return {"success": False, "error": "synthetic invalid expression"}
+        return {"success": True, "result": "{timeOfFlight -> 2.04}"}
+
+    service._execute_tool = execute
+    result = service._solve_llm_wolfram(
+        "Find the time of flight and maximum height for a projectile.",
+        explanation="concise",
+    )
+
+    assert result["success"] is False
+    assert "incomplete result" in result["error"].lower()
+    assert len(router.calls) == 2  # initial formulation + exactly one repair
+    repair_payload = router.calls[1]["prompt"]
+    assert "timeOfFlight" in repair_payload
+    assert "maximumHeight" in repair_payload
+    assert len(executions) == 2
