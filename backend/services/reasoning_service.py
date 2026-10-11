@@ -728,7 +728,7 @@ Scientific display contract:
         """
         if (
             explanation not in {"concise", "detailed"}
-            or not re.search(r"\\d", problem)
+            or not re.search(r"\d", problem)
             or not isinstance(template, str)
             or not template.strip()
             or not isinstance(expression, str)
@@ -745,7 +745,7 @@ Scientific display contract:
             normalize_label(label): value.strip()
             for label, value in formulas.items()
         }
-        placeholders = re.findall(r"\\{\\{([A-Za-z][A-Za-z0-9_]*)\\}\\}", template)
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
         expected = {normalize_label(label) for label in requested_outputs}
         supplied = {normalize_label(label) for label in placeholders}
         if not placeholders or supplied != expected:
@@ -754,7 +754,7 @@ Scientific display contract:
         # Prepare all additions first. Refuse partial augmentation if even one
         # output lacks a genuine expression (rather than a bare numeric value).
         additions: dict[str, str] = {}
-        relation_pattern = r"=|≈|\\\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
+        relation_pattern = r"=|≈|\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
         for placeholder in placeholders:
             label = normalize_label(placeholder)
             formula = formula_by_label.get(label)
@@ -771,16 +771,17 @@ Scientific display contract:
             position = augmented.find(marker)
             if position < 0:
                 return template
-            prefix = augmented[:position]
-            boundaries = list(re.finditer(r";|\\n|(?<=[.!?])\\s+", prefix))
+            # Evaluate each output against the original template, so adding a
+            # relation for an earlier output cannot mask a missing relation
+            # for a later output joined with "and".
+            original_position = template.find(marker)
+            prefix = template[:original_position]
+            boundaries = list(re.finditer(r";|\n|(?<=[.!?])\s+|\}\}", prefix))
             clause_start = boundaries[-1].end() if boundaries else 0
-            preceding = augmented[clause_start:position]
+            preceding = template[clause_start:original_position]
             if not re.search(relation_pattern, preceding):
-                augmented = (
-                    augmented[:position]
-                    + additions[placeholder]
-                    + " = "
-                    + augmented[position:]
+                augmented = augmented.replace(
+                    marker, additions[placeholder] + " = " + marker, 1
                 )
         return augmented
 
