@@ -205,3 +205,16 @@ def test_rejected_template_reports_fallback_metadata():
     assert result["llm_passes"] == 2
     assert result["timings_ms"]["final_llm"] == 12.0
     assert result["timings_ms"]["formulation"] == result["timings_ms"]["planner"]
+
+
+def test_relation_for_one_output_cannot_validate_another_value_only_output():
+    template = (
+        "Time: $T = 2v_0/g = {{timeOfFlight}}$; "
+        "Maximum height: {{maximumHeight}} m."
+    )
+    assert not ReasoningService._answer_template_meets_mode(
+        template,
+        "Find time of flight and maximum height for a projectile launched at 20 m/s.",
+        ["timeOfFlight", "maximumHeight"],
+        "concise",
+    )
