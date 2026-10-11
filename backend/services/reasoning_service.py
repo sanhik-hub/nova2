@@ -2257,39 +2257,89 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return None
         statements.append(expression[start:].strip())
 
-        assignments = []
         assignment_pattern = re.compile(
-            r"^([A-Za-z][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$",
+            r"^([A-Za-z][A-Za-z0-9_]*)\\s*=(?!=)\\s*(.+)$",
             re.DOTALL,
         )
+        assignments: dict[str, str] = {}
         for statement in statements:
             match = assignment_pattern.fullmatch(statement)
             if not match:
-                return None
+                break
             name, value = match.groups()
-
-            # Model output labels sometimes use snake_case. Wolfram symbols
-            # must not contain underscores, so convert labels deterministically
-            # to lowerCamelCase before constructing the rule. The output
-            # verifier compares labels without punctuation/case, preserving
-            # compatibility with the requested_outputs contract.
-            if "_" in name:
-                parts = [part for part in name.split("_") if part]
-                if not parts:
-                    return None
-                name = parts[0].lower() + "".join(
-                    part[:1].upper() + part[1:] for part in parts[1:]
-                )
-            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
+            assignments[name] = value.strip()
+        else:
+            # Backwards-compatible handling for assignment-only sequences.
+            if len(assignments) < 2:
                 return None
+            rules = []
+            for name, value in assignments.items():
+                label = self._wolfram_label(name)
+                if not label:
+                    return None
+                rules.append(f"Rule[{label}, {normalize_expression(value)}]")
+            return "List[" + ", ".join(rules) + "]"
 
-            assignments.append(
-                f"Rule[{name}, {normalize_expression(value)}]"
-            )
-
-        if len(assignments) < 2:
+        # Handle model output that initializes givens, assigns requested
+        # quantities, and ends with a list of those quantity symbols.
+        final_list = statements[-1].strip()
+        if not (final_list.startswith("{") and final_list.endswith("}")):
             return None
-        return "List[" + ", ".join(assignments) + "]"
+        output_names = [item.strip() for item in final_list[1:-1].split(",")]
+        if len(output_names) < 2 or any(
+            not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name)
+            or name not in assignments
+            for name in output_names
+        ):
+            return None
+
+        def resolve(name: str, trail: set[str] | None = None) -> str | None:
+            trail = set() if trail is None else set(trail)
+            if name in trail:
+                return None
+            trail.add(name)
+            value = assignments.get(name)
+            if value is None:
+                return None
+            for dependency in sorted(assignments, key=len, reverse=True):
+                if dependency == name:
+                    continue
+                if re.search(
+                    rf"(?<![A-Za-z0-9_$]){re.escape(dependency)}(?![A-Za-z0-9_$])",
+                    value,
+                ):
+                    resolved = resolve(dependency, trail)
+                    if resolved is None:
+                        return None
+                    value = re.sub(
+                        rf"(?<![A-Za-z0-9_$]){re.escape(dependency)}(?![A-Za-z0-9_$])",
+                        f"({resolved})",
+                        value,
+                    )
+            return value
+
+        rules = []
+        for name in output_names:
+            label = self._wolfram_label(name)
+            value = resolve(name)
+            if not label or value is None:
+                return None
+            rules.append(f"Rule[{label}, {normalize_expression(value)}]")
+        return "List[" + ", ".join(rules) + "]"
+
+    @staticmethod
+    def _wolfram_label(name: str) -> str | None:
+        """Convert a generated label to a simple valid Wolfram symbol."""
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
+            return None
+        if "_" in name:
+            parts = [part for part in name.split("_") if part]
+            if not parts:
+                return None
+            name = parts[0].lower() + "".join(
+                part[:1].upper() + part[1:] for part in parts[1:]
+            )
+        return name if re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name) else None
 
     def _execute_tool(
         self,
