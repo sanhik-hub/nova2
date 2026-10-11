@@ -663,30 +663,45 @@ Scientific display contract:
         requested_outputs: list[str],
         explanation: str,
     ) -> bool:
-        """Reject value-only templates when the user requested working."""
+        """Validate template structure without requiring a fixed equation count."""
         if explanation == "off":
             return True
         if not isinstance(template, str) or not template.strip() or not requested_outputs:
             return False
-        if not re.search(r"\d", problem):
-            return True
+
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
+        if "{{" in template and not placeholders:
+            return False
+
+        normalize_label = lambda value: re.sub(r"[^a-z0-9]", "", value.lower())
+        expected = {normalize_label(label) for label in requested_outputs}
+        supplied = {normalize_label(label) for label in placeholders}
+        if not expected or supplied != expected:
+            return False
+
+        # For numerical word problems, every requested value must be attached
+        # to a mathematical relation. One relation may contain several equal
+        # signs or intermediate steps; counting a fixed number per output
+        # incorrectly rejects valid templates that combine steps compactly.
+        if re.search(r"\d", problem):
+            relation_pattern = r"=|≈|\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
+            for placeholder in placeholders:
+                marker = "{{" + placeholder + "}}"
+                position = template.find(marker)
+                preceding = template[max(0, position - 240):position]
+                if not re.search(relation_pattern, preceding):
+                    return False
 
         without_placeholders = re.sub(
             r"\{\{[A-Za-z][A-Za-z0-9_]*\}\}", "", template
         )
-        relation_count = len(re.findall(
-            r"=|\\(?:approx|to|rightarrow|Rightarrow|propto)|≈|→|∝",
-            without_placeholders,
-        ))
-        # A label followed by a value is not working: each numerical
-        # output should show a governing relation/substitution and its result.
-        if relation_count < 2 * len(requested_outputs):
-            return False
         if explanation == "detailed":
             meaningful_words = re.findall(
                 r"[A-Za-zÀ-ÖØ-öø-ÿ]{3,}", without_placeholders
             )
-            if len(meaningful_words) < max(4, len(requested_outputs) * 2):
+            # Detailed answers need some explanatory derivation, but the
+            # threshold is intentionally modest and independent of output count.
+            if len(meaningful_words) < 4:
                 return False
         return True
 
