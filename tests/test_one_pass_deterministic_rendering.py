@@ -272,7 +272,8 @@ def test_failed_multi_output_calculation_stops_after_one_repair():
 
     service._execute_tool = execute
     result = service._solve_llm_wolfram(
-        "Find the time of flight and maximum height for a projectile.",
+        "Find the time of flight and maximum height for a projectile launched at "
+        "20 m/s with g = 9.8 m/s^2.",
         explanation="concise",
     )
 
