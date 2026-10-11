@@ -2258,7 +2258,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         statements.append(expression[start:].strip())
 
         assignment_pattern = re.compile(
-            r"^([A-Za-z][A-Za-z0-9_]*)\\s*=(?!=)\\s*(.+)$",
+            r"^([A-Za-z][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$",
             re.DOTALL,
         )
         assignments: dict[str, str] = {}
