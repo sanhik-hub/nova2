@@ -1045,10 +1045,12 @@ with no markdown or surrounding prose.
                 "attempted. " + str(result.get("error") or "Wolfram verification failed.")
             )
 
+        repair_attempted = False
         if not result.get("success"):
             # Repair the structured tool call using the actual Wolfram error.
             # This remains a main-LLM formulation pass; it never asks the model
             # to provide an unverified numerical answer.
+            repair_attempted = True
             repair_system = r"""
 You are repairing a structured Wolfram tool call generated from a STEM
 problem.
@@ -1061,19 +1063,28 @@ Use only these operations:
 calculate, simplify, factor, expand, differentiate, integrate,
 integrate_definite, solve, limit.
 
-Preserve the original problem and all requested quantities. Correct the
-operation/arguments so Wolfram can execute the request. Do not answer the
-problem yourself.
+Preserve the original problem and every requested quantity. The
+requested_outputs field in the repair payload is authoritative.
 
-For calculate, the expression must be one executable Wolfram Language
-expression. For solve, return an executable equation and variable. For limit,
-return expression, variable, and value. Do not use natural-language
-instructions, strings, external functions, files, URLs, or programming side
-effects. Never use underscores in Wolfram symbols.
+For a numerical word problem with two or more requested outputs, you MUST use
+operation "calculate" and return exactly one executable Wolfram List of Rule
+expressions, one Rule per requested output in the original order. Do not switch
+such a request to "solve", because solving one equation usually omits other
+requested quantities. Substitute the given numerical values directly into each
+right-hand side; do not use assignments, intermediate symbols, or a bare list
+of unrelated equations. Keep the exact requested labels.
+
+For other request types, preserve the appropriate operation unless it is
+actually invalid for the user's request. For calculate, the expression must be
+one executable Wolfram Language expression. For solve, return an executable
+equation and variable. For limit, return expression, variable, and value.
+Do not use natural-language instructions, strings, external functions, files,
+URLs, or programming side effects. Never use underscores in Wolfram symbols.
 """
             repair_prompt = json.dumps(
                 {
                     "user_request": problem,
+                    "requested_outputs": requested_outputs,
                     "previous_tool_call": {
                         "operation": operation,
                         "arguments": arguments,
@@ -1200,10 +1211,30 @@ effects. Never use underscores in Wolfram symbols.
                     "no second model generation was attempted."
                 )
 
-        # A successful CAS evaluation can still be incomplete: e.g. it can
-        # calculate time of flight while omitting the requested maximum height.
-        # Check the labelled payload, and spend another model pass only when
-        # one or more explicitly requested outputs are missing.
+        # A successful CAS evaluation can still be incomplete. If the one
+        # allowed repair pass did not recover every requested output, fail here
+        # with a diagnostic instead of launching another very slow generation.
+        # This bounds recovery to one repair pass without imposing a global
+        # timeout or token limit on the local model.
+        if (
+            repair_attempted
+            and requested_outputs
+            and not self._requested_outputs_present(
+                requested_outputs, result.get("result")
+            )
+        ):
+            logger.warning(
+                "structured_repair_incomplete requested_outputs=%r operation=%r arguments=%r result=%r",
+                requested_outputs, operation, arguments, str(result.get("result"))[:1000],
+            )
+            return self._error(
+                "Wolfram repair returned an incomplete result for the requested quantities. "
+                "The solver stopped after one repair attempt rather than starting another slow generation."
+            )
+
+        # A successful CAS evaluation can still be incomplete. For an initially
+        # successful but incomplete computation, retain the existing completeness
+        # recovery path; the failed-computation repair path above is bounded.
         if requested_outputs and not self._requested_outputs_present(
             requested_outputs, result.get("result")
         ):
