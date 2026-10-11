@@ -218,3 +218,11 @@ def test_relation_for_one_output_cannot_validate_another_value_only_output():
         ["timeOfFlight", "maximumHeight"],
         "concise",
     )
+
+
+def test_assignment_sequence_with_trailing_semicolon_is_normalized():
+    expression = "time_of_flight = 2; maximum_height = 5;"
+    result = ReasoningService._assignment_sequence_to_labelled_expression(expression)
+    assert result is not None
+    assert "Rule[timeOfFlight, 2]" in result
+    assert "Rule[maximumHeight, 5]" in result
