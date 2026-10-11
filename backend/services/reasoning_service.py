@@ -897,6 +897,17 @@ Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
                         "value": {"type": "string"},
                     },
                     "additionalProperties": False,
+                    # Direct quantitative requests are constrained to calculate
+                    # by the operation enum above, so require the one field that
+                    # makes that call executable. Without this conditional schema
+                    # requirement, constrained JSON can still emit e.g.
+                    # {"variable":"v0","value":"20"}; result-only mode correctly
+                    # refuses a repair pass and fails immediately.
+                    "required": (
+                        ["expression"]
+                        if self._is_direct_quantitative_request(problem)
+                        else []
+                    ),
                 },
             },
             "required": ["operation", "arguments", "requested_outputs"],
