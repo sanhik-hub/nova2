@@ -710,6 +710,80 @@ Scientific display contract:
                 return False
         return True
 
+    @classmethod
+    def _augment_answer_template_with_calculation(
+        cls,
+        template: str | None,
+        requested_outputs: list[str],
+        expression: str | None,
+        problem: str,
+        explanation: str,
+    ) -> str | None:
+        """Add verified computation expressions when a numeric template omits them.
+
+        This keeps a model-authored template in one pass when its prose is useful
+        but it forgot to show the calculation. Only expressions present in the
+        already validated Wolfram call are inserted; computed values are still
+        supplied exclusively by the Wolfram result during rendering.
+        """
+        if (
+            explanation not in {"concise", "detailed"}
+            or not re.search(r"\\d", problem)
+            or not isinstance(template, str)
+            or not template.strip()
+            or not isinstance(expression, str)
+            or not requested_outputs
+        ):
+            return template
+
+        formulas = cls._extract_labelled_wolfram_values(expression)
+        if not formulas:
+            return template
+
+        normalize_label = lambda value: re.sub(r"[^a-z0-9]", "", value.lower())
+        formula_by_label = {
+            normalize_label(label): value.strip()
+            for label, value in formulas.items()
+        }
+        placeholders = re.findall(r"\\{\\{([A-Za-z][A-Za-z0-9_]*)\\}\\}", template)
+        expected = {normalize_label(label) for label in requested_outputs}
+        supplied = {normalize_label(label) for label in placeholders}
+        if not placeholders or supplied != expected:
+            return template
+
+        # Prepare all additions first. Refuse partial augmentation if even one
+        # output lacks a genuine expression (rather than a bare numeric value).
+        additions: dict[str, str] = {}
+        relation_pattern = r"=|≈|\\\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
+        for placeholder in placeholders:
+            label = normalize_label(placeholder)
+            formula = formula_by_label.get(label)
+            if not formula or not re.search(r"[+*/^()]|-(?!>)", formula):
+                continue
+            additions[placeholder] = formula
+
+        if set(map(normalize_label, additions)) != expected:
+            return template
+
+        augmented = template
+        for placeholder in placeholders:
+            marker = "{{" + placeholder + "}}"
+            position = augmented.find(marker)
+            if position < 0:
+                return template
+            prefix = augmented[:position]
+            boundaries = list(re.finditer(r";|\\n|(?<=[.!?])\\s+", prefix))
+            clause_start = boundaries[-1].end() if boundaries else 0
+            preceding = augmented[clause_start:position]
+            if not re.search(relation_pattern, preceding):
+                augmented = (
+                    augmented[:position]
+                    + additions[placeholder]
+                    + " = "
+                    + augmented[position:]
+                )
+        return augmented
+
     # =========================================================
     # LLM + EXACT CAS COMPUTATIONAL PIPELINE
     # =========================================================
@@ -1271,6 +1345,13 @@ Never return a labelled rule whose value is merely an unresolved symbol.
         # The initial LLM generation also authored this template. Fill its
         # requested-output placeholders exclusively from verified Wolfram
         # values. Invalid/missing templates retain the established LLM fallback.
+        answer_template = self._augment_answer_template_with_calculation(
+            answer_template,
+            requested_outputs,
+            arguments.get("expression"),
+            problem,
+            explanation,
+        )
         template_is_appropriate = self._answer_template_meets_mode(
             answer_template, problem, requested_outputs, explanation
         )
@@ -2097,7 +2178,14 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         semicolon-separated statement is a simple symbol assignment, convert
         it to a List of Rules so each computed value remains labelled.
         """
-        if not isinstance(expression, str) or ";" not in expression:
+        if not isinstance(expression, str):
+            return None
+        # A trailing semicolon is valid Wolfram syntax. Do not let it create
+        # an empty statement that prevents labelled-result normalization.
+        expression = expression.strip()
+        if expression.endswith(";"):
+            expression = expression[:-1].rstrip()
+        if ";" not in expression:
             return None
 
         statements = []
