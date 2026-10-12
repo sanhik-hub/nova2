@@ -970,6 +970,17 @@ Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
             )
 
         formulation_text = formulation.get("result")
+        # Capture the exact provider-returned formulation before JSON parsing.
+        # This is diagnostic only: it does not alter the prompt, generation
+        # settings, parsing, validation, or execution path. The cap prevents
+        # accidental unbounded log entries while retaining the compact
+        # structured output used by this one-pass call.
+        logger.warning(
+            "structured_formulation_raw elapsed_ms=%s result_type=%s result=%r",
+            formulation_ms,
+            type(formulation_text).__name__,
+            str(formulation_text)[:4000],
+        )
         plan = self._parse_json(formulation_text)
 
         if not isinstance(plan, dict):
