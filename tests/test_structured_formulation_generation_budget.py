@@ -141,6 +141,49 @@ def test_result_only_mode_does_not_regenerate_after_invalid_expression():
     assert len(router.calls) == 1
     assert executed == []
 
+
+def test_malformed_assignment_sequence_with_literal_binding_fragment_is_recovered_safely():
+    service = ReasoningService(router=CapturingRouter())
+    arguments = {
+        "expression": (
+            "t = 2*v0*Sin[theta]/g; "
+            "h = (v0*Sin[theta])^2/(2*g); "
+            'v0": 20, "theta": 30 Degree, "g": 9.8}'
+        )
+    }
+
+    normalized = service._normalize_generated_calculate_expression(
+        "calculate",
+        arguments,
+        ["time_of_flight", "maximum_height"],
+    )
+
+    expression = normalized["expression"]
+    assert expression.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maximumHeight," in expression
+    assert "Sin[(30 Degree)]" in expression or "Sin[30 Degree]" in expression
+    assert "v0" not in expression
+    assert "theta" not in expression
+    assert "g" not in expression
+    assert ";" not in expression
+
+
+def test_malformed_assignment_recovery_rejects_nonliteral_binding_payloads():
+    service = ReasoningService(router=CapturingRouter())
+    arguments = {
+        "expression": (
+            "first = x + 1; second = x + 2; "
+            'x": WolframKernel[], "y": 2}'
+        )
+    }
+
+    normalized = service._normalize_generated_calculate_expression(
+        "calculate", arguments, ["first_result", "second_result"]
+    )
+
+    assert normalized == arguments
+
+
 def test_assignment_sequence_with_final_output_list_is_normalized_without_side_effects():
     service = ReasoningService(router=CapturingRouter())
     expression = (
