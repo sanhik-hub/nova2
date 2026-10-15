@@ -162,9 +162,9 @@ def test_malformed_assignment_sequence_with_literal_binding_fragment_is_recovere
     assert expression.startswith("List[Rule[timeOfFlight,")
     assert "Rule[maximumHeight," in expression
     assert "Sin[(30 Degree)]" in expression or "Sin[30 Degree]" in expression
-    assert "v0" not in expression
-    assert "theta" not in expression
-    assert "g" not in expression
+    assert not re.search(r"(?<![A-Za-z0-9_$])v0(?![A-Za-z0-9_$])", expression)
+    assert not re.search(r"(?<![A-Za-z0-9_$])theta(?![A-Za-z0-9_$])", expression)
+    assert not re.search(r"(?<![A-Za-z0-9_$])g(?![A-Za-z0-9_$])", expression)
     assert ";" not in expression
 
 
