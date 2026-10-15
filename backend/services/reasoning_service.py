@@ -725,11 +725,29 @@ Scientific display contract:
                 )
             return expression
 
+        safe_functions = {
+            str(name).casefold() for name in FUNCTION_MAP
+        } | {
+            str(name).casefold() for name in CONSTANT_MAP
+        } | {
+            "sin", "cos", "tan", "cot", "sec", "csc",
+            "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
+            "sqrt", "abs", "exp", "log", "ln", "min", "max",
+            "floor", "ceiling", "round", "sign", "pi", "e", "degree",
+        }
+
         rules: list[str] = []
         assignment_names = [name for name, _ in assignments]
         for (symbol, expression), requested in zip(assignments, requested_outputs):
             label = ReasoningService._wolfram_label(requested)
             if label is None or symbol in bindings:
+                return None
+            identifiers = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression)
+            if any(
+                identifier not in bindings
+                and identifier.casefold() not in safe_functions
+                for identifier in identifiers
+            ):
                 return None
             # Use requested labels rather than model-chosen output aliases.
             expression = replace_identifiers(expression)
