@@ -630,7 +630,14 @@ Scientific display contract:
             re.DOTALL,
         )
         if not list_match:
-            return arguments
+            recovered = ReasoningService._recover_assignment_sequence_with_literal_bindings(
+                parts, requested_outputs
+            )
+            if recovered is None:
+                return arguments
+            normalized = dict(arguments)
+            normalized["expression"] = recovered
+            return normalized
         symbols_text = list_match.group(1) if list_match.group(1) is not None else list_match.group(2)
         symbols = [item.strip() for item in symbols_text.split(",")]
         if (
@@ -655,6 +662,87 @@ Scientific display contract:
             f"Rule[{symbol}, {assignments[symbol]}]" for symbol in symbols
         ) + "]"
         return normalized
+
+    @staticmethod
+    def _recover_assignment_sequence_with_literal_bindings(
+        parts: list[str],
+        requested_outputs: list[str],
+    ) -> str | None:
+        """Recover a narrowly recognized assignment-plus-JSON-fragment draft.
+
+        Some constrained generations mix Wolfram assignments with a trailing
+        JSON-like fragment containing literal input values. Recover only when
+        every assignment, literal binding, and output label is unambiguous.
+        The result still passes the ordinary Wolfram validator before execution.
+        """
+        if len(parts) < 3 or not requested_outputs:
+            return None
+
+        assignment_pattern = re.compile(
+            r"([A-Za-z][A-Za-z0-9_]*)\s*=\s*(.+)", re.DOTALL
+        )
+        assignments: list[tuple[str, str]] = []
+        for part in parts[:-1]:
+            match = assignment_pattern.fullmatch(part.strip())
+            if not match:
+                return None
+            symbol, value = match.groups()
+            if any(existing == symbol for existing, _ in assignments):
+                return None
+            assignments.append((symbol, value.strip()))
+
+        if len(assignments) != len(requested_outputs):
+            return None
+
+        # Accept only scalar numeric literals, optionally followed by Degree.
+        number = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+        literal_pattern = re.compile(
+            rf'\s*"?([A-Za-z][A-Za-z0-9_]*)"?\s*:\s*'
+            rf'({number}(?:\s*Degree)?)\s*'
+        )
+        tail = parts[-1].strip()
+        if not tail.endswith("}"):
+            return None
+        tail = tail[:-1].strip()
+        bindings: dict[str, str] = {}
+        for item in tail.split(","):
+            match = literal_pattern.fullmatch(item)
+            if not match:
+                return None
+            name, value = match.groups()
+            if name in bindings:
+                return None
+            bindings[name] = value.strip()
+        if not bindings:
+            return None
+
+        def replace_identifiers(expression: str) -> str:
+            for name in sorted(bindings, key=len, reverse=True):
+                expression = re.sub(
+                    rf"(?<![A-Za-z0-9_$]){re.escape(name)}(?![A-Za-z0-9_$])",
+                    f"({bindings[name]})",
+                    expression,
+                )
+            return expression
+
+        rules: list[str] = []
+        assignment_names = [name for name, _ in assignments]
+        for (symbol, expression), requested in zip(assignments, requested_outputs):
+            label = ReasoningService._wolfram_label(requested)
+            if label is None or symbol in bindings:
+                return None
+            # Use requested labels rather than model-chosen output aliases.
+            expression = replace_identifiers(expression)
+            # Reject unresolved references to any discarded output assignment.
+            if re.search(
+                r"(?<![A-Za-z0-9_$])(?:"
+                + "|".join(re.escape(name) for name in assignment_names)
+                + r")(?![A-Za-z0-9_$])",
+                expression,
+            ):
+                return None
+            rules.append(f"Rule[{label}, {normalize_expression(expression)}]")
+        return "List[" + ", ".join(rules) + "]"
 
     @staticmethod
     def _answer_template_meets_mode(
