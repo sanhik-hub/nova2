@@ -1073,14 +1073,14 @@ def terminate_wolfram():
             f"http://{HOST}:{BACKEND_PORT}/api/wolfram/stop"
         )
     except Exception as exc:
-        return {"ok": False, "message": f"Could not reset owned Wolfram session: {exc}"}
+        return {"ok": False, "message": f"Could not stop owned Wolfram session: {exc}"}
     if not result.get("success"):
         return {
             "ok": False,
-            "message": result.get("message", "Owned Wolfram session reset failed."),
+            "message": result.get("message", "Owned Wolfram session stop failed."),
         }
-    log("Owned Wolfram session reset through its backend API.")
-    return {"ok": True, "message": "Owned Wolfram session reset successfully."}
+    log("Owned Wolfram session stopped through its backend API.")
+    return {"ok": True, "message": "Owned Wolfram session stopped successfully."}
 
 
 def terminate_all():
