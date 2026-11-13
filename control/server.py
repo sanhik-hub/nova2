@@ -1070,7 +1070,7 @@ def terminate_wolfram():
         }
     try:
         result = http_json_post(
-            f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
+            f"http://{HOST}:{BACKEND_PORT}/api/wolfram/stop"
         )
     except Exception as exc:
         return {"ok": False, "message": f"Could not reset owned Wolfram session: {exc}"}
@@ -1362,8 +1362,19 @@ class Handler(BaseHTTPRequestHandler):
                 api_response(self, start_planner())
                 return
             if parsed.path == "/api/restart/wolfram":
-                result = terminate_wolfram()
-                api_response(self, result, 200 if result.get("ok") else 409)
+                if BACKEND_PROCESS is None or BACKEND_PROCESS.poll() is not None:
+                    api_response(self, {
+                        "ok": False,
+                        "message": "Backend is not owned by this Control Center; leaving its Wolfram session untouched.",
+                    }, 409)
+                    return
+                result = http_json_post(
+                    f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
+                )
+                api_response(self, {
+                    "ok": bool(result.get("success")),
+                    "message": result.get("message", "Wolfram session restart requested."),
+                }, 200 if result.get("success") else 409)
                 return
 
             if parsed.path == "/api/shutdown":
