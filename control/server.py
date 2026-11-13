@@ -33,6 +33,7 @@ BACKEND_PORT = int(os.environ.get("NOVA_BACKEND_PORT", "8000"))
 FRONTEND_PORT = int(os.environ.get("NOVA_FRONTEND_PORT", "5173"))
 LLM_PORT = int(os.environ.get("NOVA_LLM_PORT", "8080"))
 PLANNER_PORT = int(os.environ.get("NOVA_PLANNER_PORT", "8081"))
+MANAGE_SHARED_MODELS = os.environ.get("NOVA_MANAGE_SHARED_MODELS", "1").lower() not in {"0", "false", "no"}
 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
@@ -414,10 +415,12 @@ def health_status():
     session_started = bool(session.get("session_started"))
     # The backend API is authoritative for this instance's Wolfram session.
     # Never use a machine-wide WolframKernel.exe count as an ownership signal.
-    kernel_count = 0
     wolfram_active = bool(wolfram_health.get("wolfram")) or (
         session_exists and session_started
     )
+    # This is an instance-owned backend session count, not a machine-wide
+    # count of native WolframKernel.exe processes.
+    kernel_count = int(wolfram_active)
 
     # A service is considered running when its actual
     # endpoint is reachable. Process information is
@@ -621,6 +624,11 @@ def start_planner():
     port = parsed.port or PLANNER_PORT
     if port_listener(port):
         return {"ok": True, "message": "Planner model server is already running."}
+    if not MANAGE_SHARED_MODELS:
+        raise RuntimeError(
+            "Shared planner server is not running. Start the main Nova Control Center first; "
+            "the isolated test instance will not load a second planner model."
+        )
     if not LLAMA_SERVER.exists():
         raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
@@ -770,6 +778,11 @@ def start_llm():
     port = parsed.port or LLM_PORT
     if port_listener(port):
         return {"ok": True, "message": "Local model server is already running."}
+    if not MANAGE_SHARED_MODELS:
+        raise RuntimeError(
+            "Shared local model server is not running. Start the main Nova Control Center first; "
+            "the isolated test instance will not load a second model."
+        )
     if not LLAMA_SERVER.exists():
         raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
