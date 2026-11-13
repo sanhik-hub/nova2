@@ -117,3 +117,21 @@ def test_isolated_instance_refuses_to_load_duplicate_planner(monkeypatch, tmp_pa
         assert "will not load a second planner model" in str(exc)
     else:
         raise AssertionError("Isolated instance must not start a duplicate planner")
+
+
+
+def test_start_planner_reuses_shared_server_without_local_model_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
+    monkeypatch.setattr(control_server, "PLANNER_PROCESS", None)
+    monkeypatch.setattr(control_server, "load_planner_config", lambda: {
+        "model_path": str(tmp_path / "missing-planner.gguf"),
+        "server_url": "http://127.0.0.1:8081",
+    })
+    monkeypatch.setattr(
+        control_server,
+        "port_listener",
+        lambda port: {"OwningProcess": 123} if port == 8081 else None,
+    )
+    result = control_server.start_planner()
+    assert result["ok"] is True
+    assert "already running" in result["message"]
