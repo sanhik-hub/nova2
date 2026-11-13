@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import time
 from collections import OrderedDict
@@ -6,6 +7,8 @@ from threading import Lock
 from typing import Any
 
 from backend.services.provider_router import ProviderRouter
+
+logger = logging.getLogger(__name__)
 from backend.services.expression_normalizer import (
     CONSTANT_MAP,
     FUNCTION_MAP,
@@ -19,9 +22,9 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Native tool calls are compact JSON, unlike user-facing solutions. Keep
-    # their generation focused; this does not cap explanations or final answers.
-    STRUCTURED_TOOL_TOKENS = 512
+    # Structured tool calls should be compact. This budget applies only to
+    # the machine-readable Wolfram request, never to user-facing solutions.
+    STRUCTURED_TOOL_TOKENS = 256
 
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
@@ -584,91 +587,61 @@ Scientific display contract:
         source of truth for computed results.
         """
         formulation_system = r"""
-You are Nova's STEM computational formulation engine.
+You convert a computational STEM request into one executable Wolfram Language
+tool call. Return the structured call only; do not write a solution or explain
+your reasoning. Identify every explicitly requested output and compute all of
+them in the same expression.
 
-The user supplied a computational STEM request. Your ONLY job is to translate
-the request into one structured tool call for Wolfram. Do not solve it in
-prose and do not return numerical answers yourself.
+Return exactly this JSON shape:
+{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"]}
 
-First reason internally about:
-- every quantity explicitly given;
-- every quantity explicitly requested;
-- a concise, distinct machine-readable label for each requested output;
-- the governing mathematical/scientific relationships;
-- units and necessary conversions;
-- initial conditions, geometry, constraints, and signs;
-- whether the request is a direct symbolic operation or a natural-language
-  quantitative problem.
+Use one of these operations as appropriate: calculate, simplify, factor, expand,
+differentiate, integrate, integrate_definite, solve, limit. For natural-language
+quantitative problems, use calculate with one self-contained Wolfram expression.
+For multiple outputs, return a list of rules with one lowerCamelCase label for
+each requested result, in request order. Do not return intermediate values unless
+asked. Use explicit multiplication (*), valid Wolfram function syntax, and Degree
+for angles stated in degrees. Use ASCII variable names only. For numerical word
+problems, substitute the supplied numerical values directly into the expression;
+do not use With, local assignments, or a separate list of variable definitions.
+Return one balanced Wolfram expression with no trailing braces, markup, or
+assistant-control tokens. Never put natural-language instructions inside an
+expression, invent assumptions or data, use underscores in Wolfram symbols, or
+use strings, external functions, files, URLs, or side effects.
 
-Return ONLY one JSON object in exactly this form:
-{"operation":"...","arguments":{...},"requested_outputs":["outputLabel1","outputLabel2"]}
+Generalize from the actual request; do not assume a particular subject,
+formula, variable name, unit system, or problem type. Select the governing
+relationships from the information supplied by the user, and preserve the
+stated conditions. If multiple outputs are requested, derive each from the
+same problem and return every one in request order. Check the governing
+relationship and numerical factors for each requested output before returning
+the expression. Do not copy a formula from an example when it does not apply.
 
-requested_outputs is required. Include one short lowerCamelCase label for EVERY distinct output the user asks for, in the same order as the request. Do not include intermediate values unless the user requests them. For a single-output request, include exactly one label.
-
-Supported operations and argument shapes:
-- {"operation":"calculate","arguments":{"expression":"..."}}
-- {"operation":"simplify","arguments":{"expression":"..."}}
-- {"operation":"factor","arguments":{"expression":"..."}}
-- {"operation":"expand","arguments":{"expression":"..."}}
-- {"operation":"differentiate","arguments":{"expression":"...","variable":"x"}}
-- {"operation":"integrate","arguments":{"expression":"...","variable":"x"}}
-- {"operation":"integrate_definite","arguments":{"expression":"...","variable":"x","lower":"...","upper":"..."}}
-- {"operation":"solve","arguments":{"equation":"...","variable":"x"}}
-- {"operation":"limit","arguments":{"expression":"...","variable":"x","value":"..."}}
-
-Choose the operation that actually matches the user's request. For a
-natural-language quantitative STEM problem, use calculate and construct ONE
-self-contained Wolfram Language expression that computes EVERY explicitly
-requested result.
-
-For multiple requested results, a calculate expression may return a list of
-immediate rules, for example:
-{timeOfFlight -> N[...], maximumHeight -> N[...], horizontalRange -> N[...], impactSpeed -> N[...]}
-
-Use simple lowerCamelCase result labels. NEVER use snake_case or underscores
-in Wolfram symbols: underscore is Wolfram's pattern syntax.
-
-Completeness invariant: before emitting the JSON, make a private checklist of
-EVERY quantity, value, equation, product, condition, or other output explicitly
-requested by the user. A calculate call is invalid if it computes only one part
-of a multi-part request. For multiple requested outputs, return one expression
-that constructs a result for every requested output. Do not stop at an
-intermediate Solve, equation, derivative, or other sub-result merely because
-it answers one part. Reuse intermediate values with With, replacement rules,
-or local symbols when needed.
-
-For direct operations, translate the user's actual expression/equation into
-valid Wolfram syntax. For example, a request such as
-"solve : x^2-5x+4 = 0" should become:
-{"operation":"solve","arguments":{"equation":"x^2 - 5*x + 4 == 0","variable":"x"}}
-
-Do not invent data, formulas, assumptions, or unstated conditions. Preserve
-the user's variables, quantities, units, constraints, initial conditions, and
-requested outputs.
-
-The arguments must contain only executable Wolfram content, never natural-
-language instructions. Do not use strings inside Wolfram expressions,
-external functions, files, URLs, or programming side effects.
-
-Return no markdown, prose, or code fences outside the JSON object.
+For direct symbolic requests, preserve the user's expression and variable. For
+example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
+"x^2 - 5*x + 4 == 0" and variable "x". Preserve units, signs, constraints,
+initial conditions, and all requested outputs. Output only the JSON object,
+with no markdown or surrounding prose.
 """
         formulation_prompt = json.dumps(
             {
                 "user_request": problem,
-                "explanation_preference": explanation,
             },
             ensure_ascii=False,
         )
 
-        # Prefer llama.cpp native tool calls when the running server exposes
-        # a tool-aware Jinja template. Otherwise use llama.cpp's constrained
-        # JSON output path. Both transports feed the same Python validator.
+        # Use llama.cpp's constrained JSON grammar for the formulation contract.
+        # Native tool-call templates can produce syntactically valid tool calls
+        # whose expression field contains derivation prose; constrained JSON
+        # keeps the outer contract stable while the existing Wolfram validator
+        # remains responsible for rejecting unsafe or non-executable expressions.
         formulation_schema = {
             "type": "object",
             "properties": {
                 "requested_outputs": {
                     "type": "array",
                     "items": {"type": "string"},
+                    "description": "Every output explicitly requested, in request order.",
                 },
                 "operation": {
                     "type": "string",
@@ -687,11 +660,23 @@ Return no markdown, prose, or code fences outside the JSON object.
                 "arguments": {
                     "type": "object",
                     "properties": {
-                        "expression": {"type": "string"},
+                        "expression": {
+                            "type": "string",
+                            "description": (
+                                "Executable Wolfram Language syntax only. "
+                                "For calculate, return one balanced executable "
+                                "expression only, not explanation or derivation prose. "
+                                "Use ASCII variable names, no With/local assignments, "
+                                "and directly substitute supplied numeric values in "
+                                "numerical word problems. For multiple outputs, use "
+                                "one Wolfram list of labelled rules. No trailing markup."
+                            ),
+                        },
                         "equation": {"type": "string"},
                         "variable": {"type": "string"},
                         "lower": {"type": "string"},
                         "upper": {"type": "string"},
+                        "value": {"type": "string"},
                     },
                     "additionalProperties": False,
                 },
@@ -700,33 +685,12 @@ Return no markdown, prose, or code fences outside the JSON object.
             "additionalProperties": False,
         }
 
-        wolfram_tool = {
-            "type": "function",
-            "function": {
-                "name": "wolfram",
-                "description": (
-                    "Translate the user's computational STEM request into one "
-                    "validated Wolfram operation. Preserve every explicitly "
-                    "requested result."
-                ),
-                "parameters": formulation_schema,
+        structured_kwargs = {
+            "response_format": {
+                "type": "json_object",
+                "schema": formulation_schema,
             },
         }
-
-        use_native_tools = self.router.supports_tool_calls()
-        structured_kwargs = (
-            {
-                "tools": [wolfram_tool],
-                "tool_choice": "required",
-            }
-            if use_native_tools
-            else {
-                "response_format": {
-                    "type": "json_object",
-                    "schema": formulation_schema,
-                },
-            }
-        )
 
         llm_started = time.perf_counter()
         try:
@@ -735,6 +699,7 @@ Return no markdown, prose, or code fences outside the JSON object.
                 system_prompt=formulation_system,
                 max_tokens=self.STRUCTURED_TOOL_TOKENS,
                 temperature=0.0,
+                enable_thinking=False,
                 request_timeout=None,
                 **structured_kwargs,
             )
@@ -788,21 +753,44 @@ Return no markdown, prose, or code fences outside the JSON object.
                 "arguments": arguments,
             }
         )
+        logger.warning(
+            "structured_tool_initial operation=%r arguments=%r valid=%s validation_error=%r",
+            operation, arguments, validated.get("valid"), validated.get("error"),
+        )
         if not validated.get("valid"):
-            return self._error(
-                validated.get("error")
-                or "The structured computational request was rejected."
+            # Treat invalid generated syntax as a formulation failure and let
+            # the existing repair pass produce a new candidate. The invalid
+            # expression is never sent to Wolfram.
+            result = {
+                "success": False,
+                "error": validated.get("error")
+                or "The structured computational request was rejected.",
+            }
+            wolfram_ms = 0.0
+        else:
+            operation = validated["tool"]
+            arguments = validated["arguments"]
+
+            wolfram_started = time.perf_counter()
+            result = self._execute_tool(operation, arguments)
+            wolfram_ms = round(
+                (time.perf_counter() - wolfram_started) * 1000,
+                2,
+            )
+            logger.warning(
+                "structured_tool_initial_wolfram operation=%r arguments=%r success=%s error=%r result=%r",
+                operation, arguments, result.get("success"), result.get("error"),
+                str(result.get("result"))[:1000],
             )
 
-        operation = validated["tool"]
-        arguments = validated["arguments"]
-
-        wolfram_started = time.perf_counter()
-        result = self._execute_tool(operation, arguments)
-        wolfram_ms = round(
-            (time.perf_counter() - wolfram_started) * 1000,
-            2,
-        )
+        # Result-only mode is deliberately single-pass: never invoke the model
+        # again to repair a rejected expression or a failed Wolfram evaluation.
+        # Deterministic normalization/validation and CAS verification still run.
+        if explanation == "off" and not result.get("success"):
+            return self._error(
+                "Single-pass computation failed; no second model generation was "
+                "attempted. " + str(result.get("error") or "Wolfram verification failed.")
+            )
 
         if not result.get("success"):
             # Repair the structured tool call using the actual Wolfram error.
@@ -812,9 +800,10 @@ Return no markdown, prose, or code fences outside the JSON object.
 You are repairing a structured Wolfram tool call generated from a STEM
 problem.
 
-Return ONLY one JSON object:
-{"operation":"...","arguments":{...}}
+Return ONLY one JSON object matching this structure:
+{"operation":"...","arguments":{...},"requested_outputs":["..."]}
 
+Include every output requested by the original problem in requested_outputs.
 Use only these operations:
 calculate, simplify, factor, expand, differentiate, integrate,
 integrate_definite, solve, limit.
@@ -847,6 +836,7 @@ effects. Never use underscores in Wolfram symbols.
                     system_prompt=repair_system,
                     max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
+                    enable_thinking=False,
                     request_timeout=None,
                     **structured_kwargs,
                 )
@@ -857,6 +847,10 @@ effects. Never use underscores in Wolfram symbols.
                 2,
             )
 
+            logger.warning(
+                "structured_tool_repair_generation success=%s raw_result=%r generation_error=%r",
+                repaired.get("success"), str(repaired.get("result"))[:1500], repaired.get("error"),
+            )
             repaired_plan = (
                 self._parse_json(repaired.get("result"))
                 if repaired.get("success")
@@ -898,6 +892,11 @@ effects. Never use underscores in Wolfram symbols.
                     "arguments": repaired_arguments,
                 }
             )
+            logger.warning(
+                "structured_tool_repair_validation operation=%r arguments=%r valid=%s validation_error=%r",
+                repaired_operation, repaired_arguments, repair_validation.get("valid"),
+                repair_validation.get("error"),
+            )
             if not repair_validation.get("valid"):
                 return self._error(
                     repair_validation.get("error")
@@ -916,6 +915,11 @@ effects. Never use underscores in Wolfram symbols.
                 (time.perf_counter() - wolfram_retry_started) * 1000,
                 2,
             )
+            logger.warning(
+                "structured_tool_repair_wolfram operation=%r arguments=%r success=%s error=%r result=%r",
+                repaired_operation, repaired_arguments, result.get("success"), result.get("error"),
+                str(result.get("result"))[:1000],
+            )
             if not result.get("success"):
                 return self._error(
                     "Wolfram verification failed: "
@@ -923,6 +927,25 @@ effects. Never use underscores in Wolfram symbols.
                 )
             operation = repaired_operation
             arguments = repaired_arguments
+
+        # In result-only mode, never make a second model call to repair missing
+        # labels or incomplete results. Reject the unverified result explicitly.
+        if explanation == "off" and requested_outputs:
+            result_text = result.get("result")
+            outputs_present = self._requested_outputs_present(
+                requested_outputs, result_text
+            )
+            unresolved_values = bool(
+                re.search(r"\d", problem)
+                and self._requested_outputs_are_unresolved_symbols(
+                    requested_outputs, result_text
+                )
+            )
+            if not outputs_present or unresolved_values:
+                return self._error(
+                    "Single-pass computation did not verify every requested output; "
+                    "no second model generation was attempted."
+                )
 
         # A successful CAS evaluation can still be incomplete: e.g. it can
         # calculate time of flight while omitting the requested maximum height.
@@ -933,13 +956,34 @@ effects. Never use underscores in Wolfram symbols.
         ):
             completion_system = formulation_system + r"""
 
-COMPLETENESS REPAIR:
-The previous expression executed, but its result did not contain every
-requested output. Return a corrected single Wolfram operation that computes
-all requested outputs in one result. Treat the supplied checklist as mandatory.
-For a multi-output calculate expression, label every value with the requested
-output symbols or equivalent lowerCamelCase labels. Do not return a Solve
-result for only one intermediate variable when more quantities were requested.
+COMPLETENESS REPAIR — STRICT OUTPUT CONTRACT:
+The previous Wolfram result was incomplete. The JSON field required_outputs
+in the user payload is the authoritative list of labels. Return a new
+calculate expression that computes every item in that list in one evaluation.
+
+For two or more requested outputs, the expression MUST use the Wolfram
+List and Rule constructors, with left-hand-side labels exactly matching every
+required_outputs entry in the same order, for example:
+List[Rule[outputOne, expressionOne], Rule[outputTwo, expressionTwo]]
+Use this constructor form rather than curly-brace list syntax because the
+application normalizes curly braces in ordinary mathematical input.
+The example illustrates output structure only; derive the actual formulas and
+values from the original request.
+
+Do NOT use assignments (=), semicolon-separated expressions, equality tests
+(==), local variables, intermediate-only results, or a result containing just
+one requested quantity. Do not return a rule for an unrequested label. Use
+direct expressions on the right-hand side and the exact requested labels on
+the left-hand side. Preserve the original problem's physical relationships,
+numbers, signs, and units. The output must be a single executable Wolfram
+expression, not a derivation or explanation.
+
+Every right-hand side must be a complete expression that Wolfram can evaluate
+from the data in the original request. Do not refer to placeholder symbols,
+abbreviations, or intermediate variable names such as t or h from the previous
+tool call. If the original request provides numerical data for a numerical
+word problem, substitute those values directly into every requested result.
+Never return a labelled rule whose value is merely an unresolved symbol.
 """
             completion_prompt = json.dumps(
                 {
@@ -961,6 +1005,7 @@ result for only one intermediate variable when more quantities were requested.
                     system_prompt=completion_system,
                     max_tokens=self.STRUCTURED_TOOL_TOKENS,
                     temperature=0.0,
+                    enable_thinking=False,
                     request_timeout=None,
                     **structured_kwargs,
                 )
@@ -993,18 +1038,31 @@ result for only one intermediate variable when more quantities were requested.
                         and self._requested_outputs_present(
                             requested_outputs, retry_result.get("result")
                         )
+                        and not (
+                            re.search(r"\d", problem)
+                            and self._requested_outputs_are_unresolved_symbols(
+                                requested_outputs, retry_result.get("result")
+                            )
+                        )
                     ):
                         operation = completion_validation["tool"]
                         arguments = completion_validation["arguments"]
                         result = retry_result
                     else:
+                        logger.warning(
+                            "requested_outputs verification failed: required=%r "
+                            "initial_result=%r retry_expression=%r retry_result=%r",
+                            requested_outputs,
+                            result.get("result"),
+                            completion_validation["arguments"].get("expression"),
+                            retry_result.get("result"),
+                        )
                         return self._error(
                             "The computation executed, but the solver could not verify that every requested result was produced. Try asking for each requested quantity explicitly."
                         )
                 else:
                     return self._error(
-                        completion_validation.get("error")
-                        or "The completeness repair produced an invalid computation."
+                        completion_validation.get("error")                        or "The completeness repair produced an invalid computation."
                     )
             else:
                 return self._error(
@@ -1504,7 +1562,6 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         text = expression.strip()
         if not text or len(text) > 2000:
             return False
-
         # Reject strings and general programming/network/file syntax.
         if re.search(r"""["'\\#&?|:$]""", text):
             return False
@@ -1632,9 +1689,16 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 }
 
             if not self._is_planner_calculate_expression(expression):
+                # Include the rejected expression in the local API diagnostic so
+                # formulation failures can be distinguished from Wolfram errors.
+                # Rejected text is never executed; the conservative validator
+                # remains the gatekeeper.
                 return {
                     "valid": False,
-                    "error": "calculate requires a valid computational expression.",
+                    "error": (
+                        "calculate requires a valid computational expression; "
+                        f"rejected expression={expression!r}"
+                    ),
                 }
 
         # Direct structured operations carry Wolfram fragments rather than
@@ -1795,6 +1859,85 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
     # TOOL EXECUTION
     # =========================================================
 
+    @staticmethod
+    def _assignment_sequence_to_labelled_expression(expression: str) -> str | None:
+        """Convert a pure multi-output assignment sequence into labelled rules.
+
+        Generated Wolfram calls must not depend on assignment side effects or
+        return only the final assignment's value. When every top-level
+        semicolon-separated statement is a simple symbol assignment, convert
+        it to a List of Rules so each computed value remains labelled.
+        """
+        if not isinstance(expression, str) or ";" not in expression:
+            return None
+
+        statements = []
+        start = 0
+        stack = []
+        in_string = False
+        escaped = False
+        pairs = {")": "(", "]": "[", "}": "{"}
+
+        for index, char in enumerate(expression):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char in "([{":
+                stack.append(char)
+            elif char in ")]}":
+                if not stack or stack[-1] != pairs[char]:
+                    return None
+                stack.pop()
+            elif char == ";" and not stack:
+                statements.append(expression[start:index].strip())
+                start = index + 1
+
+        if in_string or stack:
+            return None
+        statements.append(expression[start:].strip())
+
+        assignments = []
+        assignment_pattern = re.compile(
+            r"^([A-Za-z][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$",
+            re.DOTALL,
+        )
+        for statement in statements:
+            match = assignment_pattern.fullmatch(statement)
+            if not match:
+                return None
+            name, value = match.groups()
+
+            # Model output labels sometimes use snake_case. Wolfram symbols
+            # must not contain underscores, so convert labels deterministically
+            # to lowerCamelCase before constructing the rule. The output
+            # verifier compares labels without punctuation/case, preserving
+            # compatibility with the requested_outputs contract.
+            if "_" in name:
+                parts = [part for part in name.split("_") if part]
+                if not parts:
+                    return None
+                name = parts[0].lower() + "".join(
+                    part[:1].upper() + part[1:] for part in parts[1:]
+                )
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
+                return None
+
+            assignments.append(
+                f"Rule[{name}, {normalize_expression(value)}]"
+            )
+
+        if len(assignments) < 2:
+            return None
+        return "List[" + ", ".join(assignments) + "]"
+
     def _execute_tool(
         self,
         tool: str,
@@ -1807,11 +1950,21 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
             if tool == "calculate":
 
-                raw = provider.calculate(
-                    normalize_expression(
-                        arguments["expression"]
-                    )
+                expression = arguments["expression"]
+                labelled_expression = self._assignment_sequence_to_labelled_expression(
+                    expression
                 )
+                # Assignment sequences otherwise risk being normalized into
+                # equality tests and returning only the final requested value.
+                # Convert simple multi-output assignments to a pure List[Rule]
+                # expression before evaluation; all other expressions retain
+                # the existing normalization and safety path.
+                normalized = (
+                    labelled_expression
+                    if labelled_expression is not None
+                    else normalize_expression(expression)
+                )
+                raw = provider.calculate(normalized)
 
                 if raw.get("success"):
                     return {
@@ -1906,8 +2059,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
                 return {
                     "success": True,
-                    "result": raw.result,
-                    "error": None,
+                    "result": raw.result,                    "error": None,
                 }
 
             return {
@@ -1976,8 +2128,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             "cached": False,
         }
 
-    # =========================================================
-    # RESULT-ONLY CAS RESPONSE
+    # =========================================================    # RESULT-ONLY CAS RESPONSE
     # =========================================================
 
     def _cas_result_only(
@@ -1996,8 +2147,7 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
                 "No computational result was produced."
             )
 
-        results = [
-            item.get("result")
+        results = [            item.get("result")
             for item in tool_results
             if isinstance(item, dict)
             and item.get("result") is not None
@@ -2093,99 +2243,39 @@ notation or line separation as appropriate. Do not omit any requested output.
             final_system = r"""
 You are Nova's concise STEM solution writer.
 
-Produce a compact, genuinely worked solution to the actual user problem.
-This is the short version of a full solution: show the necessary
-intermediate transformations, but remove teaching filler and background.
-This is domain-general. Handle mathematics, physics, chemistry, and general
-science according to the actual problem. Never use a subject-specific
-template, hardcoded formula sequence, or fixed number of steps.
+Give the shortest complete solution that is mathematically and scientifically
+sound. Concise means minimal necessary working, not a miniature textbook
+explanation. Adapt to the actual request across mathematics, physics, chemistry,
+and general science; do not use subject-specific templates or fixed step counts.
 
-Required format:
-- Begin immediately with the first necessary equation, relation,
-  transformation, or factual inference. No title, introduction, "Solution",
-  "Answer", or paragraph that merely restates the problem.
-- Make the solution visually open and easy to scan. Use generous blank lines
-  between distinct reasoning/equation groups.
-- Put each important standalone equation in a display-math block using
-  $$...$$. The frontend renders these blocks as large, centered,
-  professionally typeset equations.
-- Keep explanatory prose outside math blocks. Use a short sentence immediately
-  before an equation group when it explains what the next equation represents
-  or why the next transformation is being made.
-- Use $...$ for short inline mathematical expressions inside prose.
-- For continuous algebraic transformations, use a display block with aligned
-  or gathered equations when appropriate.
-- Use standard LaTeX mathematical notation inside the delimiters. Preserve
-  meaningful subscripts, superscripts, fractions, roots, integrals, matrices,
-  Greek symbols, units, charges, bonds, and reaction arrows.
-- Keep scientific notation transport-safe outside math delimiters: never emit
-  raw Unicode subscript/superscript digits, Greek letters, reaction arrows, or
-  similar special symbols in prose. Put them in LaTeX instead, for example
-  $\\mathrm{CH_3CH_2OH}$, $\\omega$, or $\\rightarrow$.
-- Never emit mojibake or replacement characters such as â, Â, Ã, Ï, ð, or �.
-  If a scientific symbol is needed, express it in LaTeX or unambiguous ASCII;
-  never output a damaged Unicode fragment.
-- Never put equations inside backticks or code blocks.
-- For chemistry, keep reaction and structure equations in display math when
-  they benefit from clear visual separation, and preserve scientifically
-  meaningful charges and bonds.
-- Do not restate the question.
-- Do not add background, alternative methods, generic explanations, a recap,
-  or a second final-answer section.
-- Do not stop after merely stating the governing formula.
-- Do not replace necessary algebra, substitution, unit conversion, or logical
-  transformation with phrases such as "using the formula" or "simplifying".
-- End immediately after the requested result has been established.
-- There is NO hard output/token limit. Never truncate a complete solution or
-  remove necessary work just to make it shorter.
-- Before writing the answer, perform a private adversarial verification pass:
-  independently recompute the requested result from the original problem,
-  challenge the most likely assumption or error, and reconcile any discrepancy
-  before emitting the solution.
-- For scientific transformations, verify the stated starting entities,
-  transformations, intermediate states, final entities, quantities, units,
-  conservation relationships, charges, and structural constraints against the
-  original request. Do not infer a result merely because it sounds plausible;
-  apply the governing rule that actually applies.
+Rules:
+- Start with the first necessary equation, transformation, or direct answer.
+  No title, greeting, restatement of the question, or introductory paragraph.
+- Include only the essential relation, substitution/transformation, and result
+  needed to establish the answer. Combine consecutive algebraic steps into one
+  aligned equation block where practical.
+- For numerical problems, show enough substitution and arithmetic to make the
+  result auditable, with units. Do not separately explain a formula that is
+  already clear from the equation.
+- For symbolic work, show the transformations needed to reach the result; do
+  not skip a non-obvious step merely to shorten the answer.
+- For conceptual/factual questions, answer directly in a few sentences. Add
+  detail only when it is needed to be correct or resolve ambiguity.
+- Use prose only when an equation or transformation needs a brief explanation.
+  No teaching filler, background, alternative methods, recap, or repeated result.
+- Do not create separate "Final Answer" sections or restate a result already
+  clearly established. Stop as soon as all requested outputs are answered.
+- Use LaTeX for mathematical and scientific notation: $...$ inline and $$...$$
+  for a necessary display equation. Preserve meaningful subscripts,
+  superscripts, fractions, units, chemical bonds, and formal charges.
+- Never emit mojibake or damaged scientific symbols. Use LaTeX or unambiguous
+  ASCII rather than corrupted Unicode characters.
+- Keep the output complete; there is no hard output/token limit and no
+  truncation. Brevity must come from removing unnecessary material, not from
+  cutting off necessary reasoning.
+- Verify the result internally before answering, but do not narrate that check.
 
-Example of the intended visual structure:
-
-The linear velocity of a segment at distance $r$ from the axis is
-
-$$
-v = r\omega
-$$
-
-The emf across a small segment is
-
-$$
-dE = Bv\,dr
-$$
-
-Substituting $v=r\omega$:
-
-$$
-dE = B(r\omega)\,dr
-$$
-
-Integrating along the rod:
-
-$$
-E = \int_0^L B\omega r\,dr
-$$
-
-Therefore,
-
-$$
-\boxed{E=\frac{1}{2}B\omega L^2}
-$$
-
-This example defines formatting and solution density only. Do not copy its
-subject matter into other problems. For every concise solution, the first
-visible content must be the first necessary equation, relation,
-transformation, or factual inference.
-
-Return ONLY the complete solution text. No metadata or commentary.
+Return only the concise solution, with no metadata or commentary.
 """
         else:
             final_system = r"""
@@ -2468,6 +2558,40 @@ Scientific display contract:
             if not label or label not in normalized_result:
                 return False
         return True
+
+    @staticmethod
+    def _requested_outputs_are_unresolved_symbols(
+        requested_outputs: list[str], result: Any
+    ) -> bool:
+        """Reject numerical word-problem results whose labelled values are bare symbols."""
+        if not isinstance(result, str) or not result.strip():
+            return True
+        # Support both ordinary InputForm rules (label -> value) and
+        # explicit Wolfram constructors (Rule[label, value]). Keep the two
+        # syntaxes separate: mixing their delimiters can misread the value
+        # of one rule as the label of the next.
+        if "Rule[" in result:
+            rules = re.findall(
+                r"\bRule\s*\[\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\]",
+                result,
+            )
+        else:
+            rules = re.findall(
+                r"\b([A-Za-z][A-Za-z0-9]*)\s*->\s*([A-Za-z][A-Za-z0-9]*)\b",
+                result,
+            )
+        if not rules:
+            return False
+        values_by_label = {
+            re.sub(r"[^a-z0-9]", "", label.lower()): value
+            for label, value in rules
+        }
+        for output in requested_outputs:
+            label = re.sub(r"[^a-z0-9]", "", output.lower())
+            value = values_by_label.get(label)
+            if value is not None and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", value):
+                return True
+        return False
 
     # =========================================================
     # CACHE

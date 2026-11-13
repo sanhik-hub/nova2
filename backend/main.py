@@ -94,10 +94,12 @@ def _install_reasoning_timing_diagnostics() -> None:
         started = perf_counter()
         call_id = f"{get_ident()}-{time.time_ns()}"
         prompt = kwargs.get("prompt", "")
+        system_prompt = kwargs.get("system_prompt", "")
         _timing_logger.info(
-            "llm_generate START call=%s prompt_chars=%s max_tokens=%s timeout=%s tool_call=%s json_mode=%s",
+            "llm_generate START call=%s prompt_chars=%s system_prompt_chars=%s max_tokens=%s timeout=%s tool_call=%s json_mode=%s",
             call_id,
             len(prompt) if isinstance(prompt, str) else "unknown",
+            len(system_prompt) if isinstance(system_prompt, str) else "unknown",
             kwargs.get("max_tokens", "default"),
             kwargs.get("request_timeout", "default"),
             bool(kwargs.get("tools")),
@@ -113,11 +115,13 @@ def _install_reasoning_timing_diagnostics() -> None:
             )
             raise
         _timing_logger.info(
-            "llm_generate END call=%s elapsed_ms=%.2f success=%s result_chars=%s",
+            "llm_generate END call=%s elapsed_ms=%.2f success=%s result_chars=%s result_preview=%r error=%r",
             call_id,
             (perf_counter() - started) * 1000,
             result.get("success") if isinstance(result, dict) else "unknown",
             len(str(result.get("result") or "")) if isinstance(result, dict) else "unknown",
+            str(result.get("result") or "")[:1400] if isinstance(result, dict) else repr(result)[:1400],
+            result.get("error") if isinstance(result, dict) else None,
         )
         return result
 
@@ -128,8 +132,9 @@ def _install_reasoning_timing_diagnostics() -> None:
     def timed_execute_tool(operation, arguments):
         started = perf_counter()
         _timing_logger.info(
-            "wolfram_execute START operation=%s thread=%s",
+            "wolfram_execute START operation=%s arguments=%r thread=%s",
             operation,
+            arguments,
             get_ident(),
         )
         try:
@@ -142,10 +147,12 @@ def _install_reasoning_timing_diagnostics() -> None:
             )
             raise
         _timing_logger.info(
-            "wolfram_execute END operation=%s elapsed_ms=%.2f success=%s",
+            "wolfram_execute END operation=%s elapsed_ms=%.2f success=%s error=%r result=%r",
             operation,
             (perf_counter() - started) * 1000,
             result.get("success") if isinstance(result, dict) else "unknown",
+            result.get("error") if isinstance(result, dict) else None,
+            str(result.get("result") or "")[:1000] if isinstance(result, dict) else repr(result)[:1000],
         )
         return result
 
@@ -170,9 +177,11 @@ def _install_reasoning_timing_diagnostics() -> None:
             )
             raise
         _timing_logger.info(
-            "llm_wolfram_pipeline END elapsed_ms=%.2f success=%s",
+            "llm_wolfram_pipeline END elapsed_ms=%.2f success=%s error=%r answer_preview=%r",
             (perf_counter() - started) * 1000,
             result.get("success") if isinstance(result, dict) else "unknown",
+            result.get("error") if isinstance(result, dict) else None,
+            str(result.get("answer") or "")[:500] if isinstance(result, dict) else repr(result)[:500],
         )
         return result
 
@@ -313,10 +322,12 @@ def reason(request: ComputationRequest):
             explanation=request.explanation,
         )
         _timing_logger.info(
-            "reason_request END elapsed_ms=%.2f success=%s engine=%s",
+            "reason_request END elapsed_ms=%.2f success=%s engine=%s error=%r answer_preview=%r",
             (perf_counter() - started) * 1000,
             result.get("success") if isinstance(result, dict) else "unknown",
             result.get("engine") if isinstance(result, dict) else "unknown",
+            result.get("error") if isinstance(result, dict) else None,
+            str(result.get("answer") or "")[:500] if isinstance(result, dict) else repr(result)[:500],
         )
         return result
     except Exception as exc:
