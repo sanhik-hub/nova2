@@ -135,3 +135,17 @@ def test_start_planner_reuses_shared_server_without_local_model_file(monkeypatch
     result = control_server.start_planner()
     assert result["ok"] is True
     assert "already running" in result["message"]
+
+
+
+def test_terminate_wolfram_stops_only_the_owned_backend_session(monkeypatch):
+    calls = []
+    monkeypatch.setattr(control_server, "BACKEND_PROCESS", _fake_process(pid=8765))
+    monkeypatch.setattr(
+        control_server,
+        "http_json_post",
+        lambda url: (calls.append(url) or {"success": True}),
+    )
+    result = control_server.terminate_wolfram()
+    assert result["ok"] is True
+    assert calls == ["http://127.0.0.1:8000/api/wolfram/stop"]
