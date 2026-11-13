@@ -20,7 +20,8 @@ if ($LASTEXITCODE -ne 0) { throw "Could not read main repository local-model con
 $PlannerConfig = (& $Python $PlannerConfigScript --json | ConvertFrom-Json)
 if ($LASTEXITCODE -ne 0) { throw "Could not read main repository planner configuration." }
 
-function Resolve-SharedModelPath([string]$ConfiguredPath) {
+function Resolve-SharedModelPath {
+    param([string]$ConfiguredPath)
     if ([System.IO.Path]::IsPathRooted($ConfiguredPath)) { return $ConfiguredPath }
     return Join-Path $SharedRoot $ConfiguredPath
 }
