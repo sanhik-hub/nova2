@@ -148,4 +148,6 @@ def test_terminate_wolfram_stops_only_the_owned_backend_session(monkeypatch):
     )
     result = control_server.terminate_wolfram()
     assert result["ok"] is True
-    assert calls == ["http://127.0.0.1:8000/api/wolfram/stop"]
+    assert calls == [
+        f"http://{control_server.HOST}:{control_server.BACKEND_PORT}/api/wolfram/stop"
+    ]
