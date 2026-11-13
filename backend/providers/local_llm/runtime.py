@@ -258,6 +258,42 @@ class LocalLLMRuntime:
             )
 
         message = choices[0].get("message", {})
+
+        # llama.cpp returns native function calls in message.tool_calls and
+        # commonly leaves message.content empty. Convert the selected call
+        # back to the same JSON contract used by the structured-output path,
+        # so the reasoning service's existing validator remains authoritative.
+        tool_calls = message.get("tool_calls")
+        if tools is not None and isinstance(tool_calls, list) and tool_calls:
+            declared_names = {
+                tool.get("function", {}).get("name")
+                for tool in tools
+                if isinstance(tool, dict)
+                and isinstance(tool.get("function"), dict)
+            }
+            for tool_call in tool_calls:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function")
+                if not isinstance(function, dict):
+                    continue
+                function_name = function.get("name")
+                if function_name not in declared_names:
+                    continue
+                arguments = function.get("arguments")
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError as exc:
+                        raise RuntimeError(
+                            "Local LLM returned invalid JSON tool arguments."
+                        ) from exc
+                if not isinstance(arguments, dict):
+                    raise RuntimeError(
+                        "Local LLM returned a tool call without object arguments."
+                    )
+                return json.dumps(arguments, ensure_ascii=False)
+
         content = message.get("content")
 
         if content is None:

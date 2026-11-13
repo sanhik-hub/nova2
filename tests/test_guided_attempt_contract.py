@@ -3,12 +3,9 @@ from backend.services.guided_attempt_service import GuidedAttemptService
 
 def test_one_pass_guided_contract_without_hints():
     raw = (
-        "SOLUTION|||Let v=2t|||Set t=3|||v=6
-"
-        "STEP|||What is v at t=0?|||0|||1|||2|||3
-"
-        "STEP|||What is v at t=3?|||6|||5|||7|||9
-"
+        "SOLUTION|||Let v=2t|||Set t=3|||v=6\n"
+        "STEP|||What is v at t=0?|||0|||1|||2|||3\n"
+        "STEP|||What is v at t=3?|||6|||5|||7|||9\n"
     )
 
     steps = GuidedAttemptService._parse_generated_records(raw, include_hints=False)
@@ -23,12 +20,9 @@ def test_one_pass_guided_contract_without_hints():
 
 def test_one_pass_guided_contract_with_hints():
     raw = (
-        "SOLUTION|||Let v=2t|||Set t=3|||v=6
-"
-        "STEP|||What is v at t=0?|||0|||1|||2|||3|||Use the given relation.
-"
-        "STEP|||What is v at t=3?|||6|||5|||7|||9|||Substitute t into the relation.
-"
+        "SOLUTION|||Let v=2t|||Set t=3|||v=6\n"
+        "STEP|||What is v at t=0?|||0|||1|||2|||3|||Use the given relation.\n"
+        "STEP|||What is v at t=3?|||6|||5|||7|||9|||Substitute t into the relation.\n"
     )
 
     steps = GuidedAttemptService._parse_generated_records(raw, include_hints=True)
@@ -44,10 +38,8 @@ def test_one_pass_guided_contract_with_hints():
 
 def test_python_owns_correct_index_and_model_does_not_supply_it():
     raw = (
-        "STEP|||Find x|||2|||1|||3|||4
-"
-        "STEP|||Find y|||5|||4|||6|||7
-"
+        "STEP|||Find x|||2|||1|||3|||4\n"
+        "STEP|||Find y|||5|||4|||6|||7\n"
     )
 
     steps = GuidedAttemptService._parse_generated_records(raw, include_hints=False)
