@@ -80,3 +80,40 @@ def test_owned_llm_process_can_be_terminated(monkeypatch):
     assert result["ok"] is True
     assert killed == [["taskkill", "/PID", "4321", "/T", "/F"]]
     assert control_server.LLM_PROCESS is None
+
+
+
+def test_isolated_instance_refuses_to_load_duplicate_llm(monkeypatch, tmp_path):
+    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
+    monkeypatch.setattr(control_server, "LLM_PROCESS", None)
+    monkeypatch.setattr(control_server, "load_llm_config", lambda: {
+        "model_path": str(tmp_path / "model.gguf"),
+        "server_url": "http://127.0.0.1:8080",
+    })
+    monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "LLAMA_SERVER", tmp_path / "llama-server.exe")
+    try:
+        control_server.start_llm()
+    except RuntimeError as exc:
+        assert "will not load a second model" in str(exc)
+    else:
+        raise AssertionError("Isolated instance must not start a duplicate model server")
+
+
+def test_isolated_instance_refuses_to_load_duplicate_planner(monkeypatch, tmp_path):
+    model = tmp_path / "planner.gguf"
+    model.write_bytes(b"test")
+    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
+    monkeypatch.setattr(control_server, "PLANNER_PROCESS", None)
+    monkeypatch.setattr(control_server, "load_planner_config", lambda: {
+        "model_path": str(model),
+        "server_url": "http://127.0.0.1:8081",
+    })
+    monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "LLAMA_SERVER", tmp_path / "llama-server.exe")
+    try:
+        control_server.start_planner()
+    except RuntimeError as exc:
+        assert "will not load a second planner model" in str(exc)
+    else:
+        raise AssertionError("Isolated instance must not start a duplicate planner")
