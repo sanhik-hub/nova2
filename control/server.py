@@ -614,16 +614,17 @@ def start_planner():
     if not model_path or not server_url:
         raise RuntimeError("Planner model configuration is incomplete.")
 
+    parsed = urlparse(server_url)
+    port = parsed.port or PLANNER_PORT
+    if port_listener(port):
+        return {"ok": True, "message": "Planner model server is already running."}
+
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
 
     if not Path(model_path).exists():
         raise RuntimeError(f"Planner model not found: {model_path}")
 
-    parsed = urlparse(server_url)
-    port = parsed.port or PLANNER_PORT
-    if port_listener(port):
-        return {"ok": True, "message": "Planner model server is already running."}
     if not MANAGE_SHARED_MODELS:
         raise RuntimeError(
             "Shared planner server is not running. Start the main Nova Control Center first; "
