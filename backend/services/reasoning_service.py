@@ -572,6 +572,325 @@ Scientific display contract:
             return False
         return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+", text)) >= 3
 
+    @staticmethod
+    def _normalize_generated_calculate_expression(
+        operation: str,
+        arguments: dict[str, Any],
+        requested_outputs: list[str],
+    ) -> dict[str, Any]:
+        """Normalize a simple assignment-plus-list draft into labelled rules."""
+        if operation != "calculate" or not isinstance(arguments, dict):
+            return arguments
+        expression = arguments.get("expression")
+        if not isinstance(expression, str) or ";" not in expression:
+            return arguments
+
+        parts: list[str] = []
+        start = 0
+        stack: list[str] = []
+        pairs = {")": "(", "]": "[", "}": "{"}
+        in_string = False
+        escaped = False
+        for index, char in enumerate(expression):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char in "([{":
+                stack.append(char)
+            elif char in ")]}":
+                if stack and stack[-1] == pairs[char]:
+                    stack.pop()
+            elif char == ";" and not stack:
+                parts.append(expression[start:index].strip())
+                start = index + 1
+        parts.append(expression[start:].strip())
+        if len(parts) < 2 or any(not part for part in parts):
+            return arguments
+
+        assignments: dict[str, str] = {}
+        for part in parts[:-1]:
+            match = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)\s*=\s*(.+)", part, re.DOTALL)
+            if not match:
+                return arguments
+            symbol, value = match.groups()
+            if symbol in assignments:
+                return arguments
+            assignments[symbol] = value.strip()
+
+        list_match = re.fullmatch(
+            r"(?:\{\s*(.*?)\s*\}|List\s*\[\s*(.*?)\s*\])",
+            parts[-1],
+            re.DOTALL,
+        )
+        if not list_match:
+            recovered = ReasoningService._recover_assignment_sequence_with_literal_bindings(
+                parts, requested_outputs
+            )
+            if recovered is None:
+                return arguments
+            normalized = dict(arguments)
+            normalized["expression"] = recovered
+            return normalized
+        symbols_text = list_match.group(1) if list_match.group(1) is not None else list_match.group(2)
+        symbols = [item.strip() for item in symbols_text.split(",")]
+        if (
+            not symbols
+            or any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", item) for item in symbols)
+            or len(symbols) != len(assignments)
+            or set(symbols) != set(assignments)
+        ):
+            return arguments
+        if requested_outputs:
+            normalized_requested = {
+                re.sub(r"[^a-z0-9]", "", item.lower()) for item in requested_outputs
+            }
+            normalized_symbols = {
+                re.sub(r"[^a-z0-9]", "", item.lower()) for item in symbols
+            }
+            if normalized_requested != normalized_symbols:
+                return arguments
+
+        normalized = dict(arguments)
+        normalized["expression"] = "List[" + ", ".join(
+            f"Rule[{symbol}, {assignments[symbol]}]" for symbol in symbols
+        ) + "]"
+        return normalized
+
+    @staticmethod
+    def _recover_assignment_sequence_with_literal_bindings(
+        parts: list[str],
+        requested_outputs: list[str],
+    ) -> str | None:
+        """Recover a narrowly recognized assignment-plus-JSON-fragment draft.
+
+        Some constrained generations mix Wolfram assignments with a trailing
+        JSON-like fragment containing literal input values. Recover only when
+        every assignment, literal binding, and output label is unambiguous.
+        The result still passes the ordinary Wolfram validator before execution.
+        """
+        if len(parts) < 3 or not requested_outputs:
+            return None
+
+        assignment_pattern = re.compile(
+            r"([A-Za-z][A-Za-z0-9_]*)\s*=\s*(.+)", re.DOTALL
+        )
+        assignments: list[tuple[str, str]] = []
+        for part in parts[:-1]:
+            match = assignment_pattern.fullmatch(part.strip())
+            if not match:
+                return None
+            symbol, value = match.groups()
+            if any(existing == symbol for existing, _ in assignments):
+                return None
+            assignments.append((symbol, value.strip()))
+
+        if len(assignments) != len(requested_outputs):
+            return None
+
+        # Accept only scalar numeric literals, optionally followed by Degree.
+        number = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+        literal_pattern = re.compile(
+            rf'\s*"?([A-Za-z][A-Za-z0-9_]*)"?\s*:\s*'
+            rf'({number}(?:\s*Degree)?)\s*'
+        )
+        tail = parts[-1].strip()
+        if not tail.endswith("}"):
+            return None
+        tail = tail[:-1].strip()
+        bindings: dict[str, str] = {}
+        for item in tail.split(","):
+            match = literal_pattern.fullmatch(item)
+            if not match:
+                return None
+            name, value = match.groups()
+            if name in bindings:
+                return None
+            bindings[name] = value.strip()
+        if not bindings:
+            return None
+
+        def replace_identifiers(expression: str) -> str:
+            for name in sorted(bindings, key=len, reverse=True):
+                expression = re.sub(
+                    rf"(?<![A-Za-z0-9_$]){re.escape(name)}(?![A-Za-z0-9_$])",
+                    f"({bindings[name]})",
+                    expression,
+                )
+            return expression
+
+        safe_functions = {
+            str(name).casefold() for name in FUNCTION_MAP
+        } | {
+            str(name).casefold() for name in CONSTANT_MAP
+        } | {
+            "sin", "cos", "tan", "cot", "sec", "csc",
+            "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
+            "sqrt", "abs", "exp", "log", "ln", "min", "max",
+            "floor", "ceiling", "round", "sign", "pi", "e", "degree",
+        }
+
+        rules: list[str] = []
+        assignment_names = [name for name, _ in assignments]
+        for (symbol, expression), requested in zip(assignments, requested_outputs):
+            label = ReasoningService._wolfram_label(requested)
+            if label is None or symbol in bindings:
+                return None
+            identifiers = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression)
+            if any(
+                identifier not in bindings
+                and identifier.casefold() not in safe_functions
+                for identifier in identifiers
+            ):
+                return None
+            # Use requested labels rather than model-chosen output aliases.
+            expression = replace_identifiers(expression)
+            # Reject unresolved references to any discarded output assignment.
+            if re.search(
+                r"(?<![A-Za-z0-9_$])(?:"
+                + "|".join(re.escape(name) for name in assignment_names)
+                + r")(?![A-Za-z0-9_$])",
+                expression,
+            ):
+                return None
+            rules.append(f"Rule[{label}, {normalize_expression(expression)}]")
+        return "List[" + ", ".join(rules) + "]"
+
+    @staticmethod
+    def _answer_template_meets_mode(
+        template: str | None,
+        problem: str,
+        requested_outputs: list[str],
+        explanation: str,
+    ) -> bool:
+        """Validate template structure without requiring a fixed equation count."""
+        if explanation == "off":
+            return True
+        if not isinstance(template, str) or not template.strip() or not requested_outputs:
+            return False
+
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
+        if "{{" in template and not placeholders:
+            return False
+
+        normalize_label = lambda value: re.sub(r"[^a-z0-9]", "", value.lower())
+        expected = {normalize_label(label) for label in requested_outputs}
+        supplied = {normalize_label(label) for label in placeholders}
+        if not expected or supplied != expected:
+            return False
+
+        # For numerical word problems, every requested value must be attached
+        # to a mathematical relation. One relation may contain several equal
+        # signs or intermediate steps; counting a fixed number per output
+        # incorrectly rejects valid templates that combine steps compactly.
+        if re.search(r"\d", problem):
+            relation_pattern = r"=|≈|\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
+            for placeholder in placeholders:
+                marker = "{{" + placeholder + "}}"
+                position = template.find(marker)
+                prefix = template[:position]
+                # Limit the check to this output's clause so a relation for an
+                # earlier result cannot make a later value-only label look valid.
+                boundaries = list(re.finditer(r";|\n|(?<=[.!?])\s+|\}\}", prefix))
+                clause_start = boundaries[-1].end() if boundaries else 0
+                preceding = template[clause_start:position]
+                if not re.search(relation_pattern, preceding):
+                    return False
+
+        without_placeholders = re.sub(
+            r"\{\{[A-Za-z][A-Za-z0-9_]*\}\}", "", template
+        )
+        if explanation == "detailed":
+            meaningful_words = re.findall(
+                r"[A-Za-zÀ-ÖØ-öø-ÿ]{3,}", without_placeholders
+            )
+            # Detailed answers need some explanatory derivation, but the
+            # threshold is intentionally modest and independent of output count.
+            if len(meaningful_words) < 4:
+                return False
+        return True
+
+    @classmethod
+    def _augment_answer_template_with_calculation(
+        cls,
+        template: str | None,
+        requested_outputs: list[str],
+        expression: str | None,
+        problem: str,
+        explanation: str,
+    ) -> str | None:
+        """Add verified computation expressions when a numeric template omits them.
+
+        This keeps a model-authored template in one pass when its prose is useful
+        but it forgot to show the calculation. Only expressions present in the
+        already validated Wolfram call are inserted; computed values are still
+        supplied exclusively by the Wolfram result during rendering.
+        """
+        if (
+            explanation not in {"concise", "detailed"}
+            or not re.search(r"\d", problem)
+            or not isinstance(template, str)
+            or not template.strip()
+            or not isinstance(expression, str)
+            or not requested_outputs
+        ):
+            return template
+
+        formulas = cls._extract_labelled_wolfram_values(expression)
+        if not formulas:
+            return template
+
+        normalize_label = lambda value: re.sub(r"[^a-z0-9]", "", value.lower())
+        formula_by_label = {
+            normalize_label(label): value.strip()
+            for label, value in formulas.items()
+        }
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
+        expected = {normalize_label(label) for label in requested_outputs}
+        supplied = {normalize_label(label) for label in placeholders}
+        if not placeholders or supplied != expected:
+            return template
+
+        # Prepare all additions first. Refuse partial augmentation if even one
+        # output lacks a genuine expression (rather than a bare numeric value).
+        additions: dict[str, str] = {}
+        relation_pattern = r"=|≈|\\(?:approx|to|rightarrow|Rightarrow|propto)|→|∝"
+        for placeholder in placeholders:
+            label = normalize_label(placeholder)
+            formula = formula_by_label.get(label)
+            if not formula or not re.search(r"[+*/^()]|-(?!>)", formula):
+                continue
+            additions[placeholder] = formula
+
+        if set(map(normalize_label, additions)) != expected:
+            return template
+
+        augmented = template
+        for placeholder in placeholders:
+            marker = "{{" + placeholder + "}}"
+            position = augmented.find(marker)
+            if position < 0:
+                return template
+            # Evaluate each output against the original template, so adding a
+            # relation for an earlier output cannot mask a missing relation
+            # for a later output joined with "and".
+            original_position = template.find(marker)
+            prefix = template[:original_position]
+            boundaries = list(re.finditer(r";|\n|(?<=[.!?])\s+|\}\}", prefix))
+            clause_start = boundaries[-1].end() if boundaries else 0
+            preceding = template[clause_start:original_position]
+            if not re.search(relation_pattern, preceding):
+                augmented = augmented.replace(
+                    marker, additions[placeholder] + " = " + marker, 1
+                )
+        return augmented
+
     # =========================================================
     # LLM + EXACT CAS COMPUTATIONAL PIPELINE
     # =========================================================
@@ -587,45 +906,33 @@ Scientific display contract:
         source of truth for computed results.
         """
         formulation_system = r"""
-You convert a computational STEM request into one executable Wolfram Language
-tool call. Return the structured call only; do not write a solution or explain
-your reasoning. Identify every explicitly requested output and compute all of
-them in the same expression.
+Convert the user's computational STEM request into one executable Wolfram Language
+tool call. Return only the JSON object required by the schema. Do not write a solution or explain in prose; do not put explanations inside an expression.
 
-Return exactly this JSON shape:
-{"operation":"calculate","arguments":{"expression":"..."},"requested_outputs":["outputLabel"]}
+For natural-language quantitative problems, use operation "calculate". For multiple
+requested outputs, return one List of Rule expressions, with one exact lowerCamelCase
+label per requested output in the original order. Substitute all supplied numerical
+values directly; do not use assignments, intermediate symbols, or unrelated equations.
+Use explicit multiplication (*), valid Wolfram function syntax, and Degree for angles
+stated in degrees. Preserve signs, units, conditions, and the actual requested outputs.
+Never invent data or assumptions.
 
-Use one of these operations as appropriate: calculate, simplify, factor, expand,
-differentiate, integrate, integrate_definite, solve, limit. For natural-language
-quantitative problems, use calculate with one self-contained Wolfram expression.
-For multiple outputs, return a list of rules with one lowerCamelCase label for
-each requested result, in request order. Do not return intermediate values unless
-asked. Use explicit multiplication (*), valid Wolfram function syntax, and Degree
-for angles stated in degrees. Use ASCII variable names only. For numerical word
-problems, substitute the supplied numerical values directly into the expression;
-do not use With, local assignments, or a separate list of variable definitions.
-Return one balanced Wolfram expression with no trailing braces, markup, or
-assistant-control tokens. Never put natural-language instructions inside an
-expression, invent assumptions or data, use underscores in Wolfram symbols, or
-use strings, external functions, files, URLs, or side effects.
+For concise/detailed modes, include a complete answer_template in this same JSON
+response. Use {{label}} placeholders for every requested output, matching the labels
+exactly. Include the governing relation, necessary substitution, and units appropriate
+to the selected explanation_mode. Do not guess computed values. For explanation off,
+omit answer_template.
 
-Generalize from the actual request; do not assume a particular subject,
-formula, variable name, unit system, or problem type. Select the governing
-relationships from the information supplied by the user, and preserve the
-stated conditions. If multiple outputs are requested, derive each from the
-same problem and return every one in request order. Check the governing
-relationship and numerical factors for each requested output before returning
-the expression. Do not copy a formula from an example when it does not apply.
-
-For direct symbolic requests, preserve the user's expression and variable. For
-example, "solve x^2 - 5x + 4 = 0" becomes the solve operation with equation
-"x^2 - 5*x + 4 == 0" and variable "x". Preserve units, signs, constraints,
-initial conditions, and all requested outputs. Output only the JSON object,
-with no markdown or surrounding prose.
+Use the appropriate supported operation for symbolic requests. Preserve the user's
+expression and variable for differentiation, integration, limits, and equation solving.
+Return one balanced executable Wolfram expression with no trailing markup, assignments,
+natural-language instructions, external functions, files, URLs, or side effects.
+Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
 """
         formulation_prompt = json.dumps(
             {
                 "user_request": problem,
+                "explanation_mode": explanation,
             },
             ensure_ascii=False,
         )
@@ -643,42 +950,86 @@ with no markdown or surrounding prose.
                     "items": {"type": "string"},
                     "description": "Every output explicitly requested, in request order.",
                 },
+                "answer_template": {
+                    "type": "string",
+                    "description": (
+                        "For concise/detailed modes, a complete solution template. "
+                        "Use {{label}} placeholders for all requested outputs; do not "
+                        "guess or include computed numerical values. Omit in result-only mode."
+                    ),
+                },
                 "operation": {
                     "type": "string",
-                    "enum": [
-                        "calculate",
-                        "simplify",
-                        "factor",
-                        "expand",
-                        "differentiate",
-                        "integrate",
-                        "integrate_definite",
-                        "solve",
-                        "limit",
-                    ],
+                    "enum": (
+                        ["calculate"]
+                        if self._is_direct_quantitative_request(problem)
+                        else [
+                            "calculate",
+                            "simplify",
+                            "factor",
+                            "expand",
+                            "differentiate",
+                            "integrate",
+                            "integrate_definite",
+                            "solve",
+                            "limit",
+                        ]
+                    ),
+                    "description": (
+                        "Use calculate for natural-language numerical word problems. "
+                        "A multi-output numerical request must compute every requested "
+                        "quantity in one labelled List of Rule expressions."
+                    ),
                 },
                 "arguments": {
                     "type": "object",
-                    "properties": {
-                        "expression": {
-                            "type": "string",
-                            "description": (
-                                "Executable Wolfram Language syntax only. "
-                                "For calculate, return one balanced executable "
-                                "expression only, not explanation or derivation prose. "
-                                "Use ASCII variable names, no With/local assignments, "
-                                "and directly substitute supplied numeric values in "
-                                "numerical word problems. For multiple outputs, use "
-                                "one Wolfram list of labelled rules. No trailing markup."
-                            ),
-                        },
-                        "equation": {"type": "string"},
-                        "variable": {"type": "string"},
-                        "lower": {"type": "string"},
-                        "upper": {"type": "string"},
-                        "value": {"type": "string"},
-                    },
+                    "properties": (
+                        {
+                            "expression": {
+                                "type": "string",
+                                "description": (
+                                    "Executable Wolfram Language syntax only. "
+                                    "Return one balanced expression with every requested "
+                                    "quantity computed and labelled in one List of Rule "
+                                    "expressions. Directly substitute supplied numerical "
+                                    "values. Do not use assignments, extra arguments, "
+                                    "or derivation prose."
+                                ),
+                            },
+                        }
+                        if self._is_direct_quantitative_request(problem)
+                        else {
+                            "expression": {
+                                "type": "string",
+                                "description": (
+                                    "Executable Wolfram Language syntax only. "
+                                    "For calculate, return one balanced executable "
+                                    "expression only, not explanation or derivation prose. "
+                                    "Use ASCII variable names, no With/local assignments, "
+                                    "and directly substitute supplied numeric values in "
+                                    "numerical word problems. For multiple outputs, use "
+                                    "one Wolfram list of labelled rules. No trailing markup."
+                                ),
+                            },
+                            "equation": {"type": "string"},
+                            "variable": {"type": "string"},
+                            "lower": {"type": "string"},
+                            "upper": {"type": "string"},
+                            "value": {"type": "string"},
+                        }
+                    ),
                     "additionalProperties": False,
+                    # Direct quantitative requests are constrained to calculate
+                    # by the operation enum above, so require the one field that
+                    # makes that call executable. Without this conditional schema
+                    # requirement, constrained JSON can still emit e.g.
+                    # {"variable":"v0","value":"20"}; result-only mode correctly
+                    # refuses a repair pass and fails immediately.
+                    "required": (
+                        ["expression"]
+                        if self._is_direct_quantitative_request(problem)
+                        else []
+                    ),
                 },
             },
             "required": ["operation", "arguments", "requested_outputs"],
@@ -697,7 +1048,15 @@ with no markdown or surrounding prose.
             formulation = self.router.generate(
                 prompt=formulation_prompt,
                 system_prompt=formulation_system,
-                max_tokens=self.STRUCTURED_TOOL_TOKENS,
+                # Explanation modes include a user-facing template in this
+                # generation, so do not apply the compact tool-JSON budget to
+                # that content. None delegates to the provider's configured
+                # transport fallback.
+                max_tokens=(
+                    self.STRUCTURED_TOOL_TOKENS
+                    if explanation == "off"
+                    else None
+                ),
                 temperature=0.0,
                 enable_thinking=False,
                 request_timeout=None,
@@ -717,6 +1076,17 @@ with no markdown or surrounding prose.
             )
 
         formulation_text = formulation.get("result")
+        # Capture the exact provider-returned formulation before JSON parsing.
+        # This is diagnostic only: it does not alter the prompt, generation
+        # settings, parsing, validation, or execution path. The cap prevents
+        # accidental unbounded log entries while retaining the compact
+        # structured output used by this one-pass call.
+        logger.warning(
+            "structured_formulation_raw elapsed_ms=%s result_type=%s result=%r",
+            formulation_ms,
+            type(formulation_text).__name__,
+            str(formulation_text)[:4000],
+        )
         plan = self._parse_json(formulation_text)
 
         if not isinstance(plan, dict):
@@ -727,6 +1097,9 @@ with no markdown or surrounding prose.
         operation = plan.get("operation")
         arguments = plan.get("arguments")
         requested_outputs = plan.get("requested_outputs")
+        answer_template = plan.get("answer_template")
+        if not isinstance(answer_template, str) or not answer_template.strip():
+            answer_template = None
 
         if (
             not isinstance(requested_outputs, list)
@@ -747,12 +1120,28 @@ with no markdown or surrounding prose.
                 "The reasoning model did not produce a valid structured computational request."
             )
 
-        validated = self._validate_tool_call(
-            {
-                "tool": operation,
-                "arguments": arguments,
-            }
+        multi_output_numeric_problem = (
+            len(requested_outputs) >= 2
+            and self._is_direct_quantitative_request(problem)
         )
+        arguments = self._normalize_generated_calculate_expression(
+            operation, arguments, requested_outputs
+        )
+        if multi_output_numeric_problem and operation != "calculate":
+            validated = {
+                "valid": False,
+                "error": (
+                    "A numerical word problem with multiple requested outputs "
+                    "must use one calculate expression containing all labelled results."
+                ),
+            }
+        else:
+            validated = self._validate_tool_call(
+                {
+                    "tool": operation,
+                    "arguments": arguments,
+                }
+            )
         logger.warning(
             "structured_tool_initial operation=%r arguments=%r valid=%s validation_error=%r",
             operation, arguments, validated.get("valid"), validated.get("error"),
@@ -792,10 +1181,12 @@ with no markdown or surrounding prose.
                 "attempted. " + str(result.get("error") or "Wolfram verification failed.")
             )
 
+        repair_attempted = False
         if not result.get("success"):
             # Repair the structured tool call using the actual Wolfram error.
             # This remains a main-LLM formulation pass; it never asks the model
             # to provide an unverified numerical answer.
+            repair_attempted = True
             repair_system = r"""
 You are repairing a structured Wolfram tool call generated from a STEM
 problem.
@@ -808,19 +1199,28 @@ Use only these operations:
 calculate, simplify, factor, expand, differentiate, integrate,
 integrate_definite, solve, limit.
 
-Preserve the original problem and all requested quantities. Correct the
-operation/arguments so Wolfram can execute the request. Do not answer the
-problem yourself.
+Preserve the original problem and every requested quantity. The
+requested_outputs field in the repair payload is authoritative.
 
-For calculate, the expression must be one executable Wolfram Language
-expression. For solve, return an executable equation and variable. For limit,
-return expression, variable, and value. Do not use natural-language
-instructions, strings, external functions, files, URLs, or programming side
-effects. Never use underscores in Wolfram symbols.
+For a numerical word problem with two or more requested outputs, you MUST use
+operation "calculate" and return exactly one executable Wolfram List of Rule
+expressions, one Rule per requested output in the original order. Do not switch
+such a request to "solve", because solving one equation usually omits other
+requested quantities. Substitute the given numerical values directly into each
+right-hand side; do not use assignments, intermediate symbols, or a bare list
+of unrelated equations. Keep the exact requested labels.
+
+For other request types, preserve the appropriate operation unless it is
+actually invalid for the user's request. For calculate, the expression must be
+one executable Wolfram Language expression. For solve, return an executable
+equation and variable. For limit, return expression, variable, and value.
+Do not use natural-language instructions, strings, external functions, files,
+URLs, or programming side effects. Never use underscores in Wolfram symbols.
 """
             repair_prompt = json.dumps(
                 {
                     "user_request": problem,
+                    "requested_outputs": requested_outputs,
                     "previous_tool_call": {
                         "operation": operation,
                         "arguments": arguments,
@@ -886,6 +1286,18 @@ effects. Never use underscores in Wolfram symbols.
                         + str(result.get("error") or "unknown error")
                     )
 
+            if multi_output_numeric_problem and repaired_operation != "calculate":
+                logger.warning(
+                    "structured_tool_repair_rejected_wrong_operation operation=%r required='calculate'",
+                    repaired_operation,
+                )
+                return self._error(
+                    "The repair selected an incompatible operation for a numerical "
+                    "problem with multiple requested outputs. No partial symbolic "
+                    "result was accepted; the repair must calculate all requested "
+                    "quantities in one labelled expression."
+                )
+
             repair_validation = self._validate_tool_call(
                 {
                     "tool": repaired_operation,
@@ -947,10 +1359,30 @@ effects. Never use underscores in Wolfram symbols.
                     "no second model generation was attempted."
                 )
 
-        # A successful CAS evaluation can still be incomplete: e.g. it can
-        # calculate time of flight while omitting the requested maximum height.
-        # Check the labelled payload, and spend another model pass only when
-        # one or more explicitly requested outputs are missing.
+        # A successful CAS evaluation can still be incomplete. If the one
+        # allowed repair pass did not recover every requested output, fail here
+        # with a diagnostic instead of launching another very slow generation.
+        # This bounds recovery to one repair pass without imposing a global
+        # timeout or token limit on the local model.
+        if (
+            repair_attempted
+            and requested_outputs
+            and not self._requested_outputs_present(
+                requested_outputs, result.get("result")
+            )
+        ):
+            logger.warning(
+                "structured_repair_incomplete requested_outputs=%r operation=%r arguments=%r result=%r",
+                requested_outputs, operation, arguments, str(result.get("result"))[:1000],
+            )
+            return self._error(
+                "Wolfram repair returned an incomplete result for the requested quantities. "
+                "The solver stopped after one repair attempt rather than starting another slow generation."
+            )
+
+        # A successful CAS evaluation can still be incomplete. For an initially
+        # successful but incomplete computation, retain the existing completeness
+        # recovery path; the failed-computation repair path above is bounded.
         if requested_outputs and not self._requested_outputs_present(
             requested_outputs, result.get("result")
         ):
@@ -1090,6 +1522,61 @@ Never return a labelled rule whose value is merely an unresolved symbol.
             response["llm_passes"] = 1
             return response
 
+        # The initial LLM generation also authored this template. Fill its
+        # requested-output placeholders exclusively from verified Wolfram
+        # values. Invalid/missing templates retain the established LLM fallback.
+        answer_template = self._augment_answer_template_with_calculation(
+            answer_template,
+            requested_outputs,
+            arguments.get("expression"),
+            problem,
+            explanation,
+        )
+        template_is_appropriate = self._answer_template_meets_mode(
+            answer_template, problem, requested_outputs, explanation
+        )
+        rendered_answer = (
+            self._render_verified_answer_template(
+                answer_template, requested_outputs, result.get("result")
+            )
+            if template_is_appropriate else None
+        )
+        if rendered_answer is not None:
+            logger.info("Using one-pass deterministic answer rendering.")
+            return {
+                "success": True,
+                "answer": rendered_answer,
+                "engine": "local_llm+wolfram",
+                "tool_calls": tool_results,
+                "cached": False,
+                "result_only": False,
+                "timings_ms": {
+                    # Keep the legacy key for existing consumers. This path's
+                    # first generation is the main-model formulation call, not
+                    # the lightweight semantic planner used by _solve_complex.
+                    "planner": formulation_ms,
+                    "formulation": formulation_ms,
+                    "wolfram": wolfram_ms,
+                    "final_llm": 0.0,
+                },
+                "llm_passes": 1,
+                "answer_rendering": "deterministic_template",
+            }
+
+        placeholder_names = re.findall(
+            r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}",
+            answer_template or "",
+        )
+        logger.warning(
+            "One-pass answer template unavailable; using LLM fallback "
+            "(mode=%s, structurally_valid=%s, requested_outputs=%r, placeholders=%r, "
+            "wolfram_result_labels=%r).",
+            explanation,
+            template_is_appropriate,
+            requested_outputs,
+            placeholder_names,
+            sorted(self._extract_labelled_wolfram_values(result.get("result")).keys()),
+        )
         response = self._final_explanation(
             problem=problem,
             idea="",
@@ -1099,11 +1586,14 @@ Never return a labelled rule whose value is merely an unresolved symbol.
             estimated_answer_tokens=None,
         )
         response["timings_ms"] = {
+            # Keep the legacy key for existing consumers.
             "planner": formulation_ms,
+            "formulation": formulation_ms,
             "wolfram": wolfram_ms,
             "final_llm": response.pop("_final_llm_ms", 0.0),
         }
         response["llm_passes"] = 2
+        response["answer_rendering"] = "llm_fallback"
         return response
 
     # =========================================================
@@ -1868,7 +2358,14 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
         semicolon-separated statement is a simple symbol assignment, convert
         it to a List of Rules so each computed value remains labelled.
         """
-        if not isinstance(expression, str) or ";" not in expression:
+        if not isinstance(expression, str):
+            return None
+        # A trailing semicolon is valid Wolfram syntax. Do not let it create
+        # an empty statement that prevents labelled-result normalization.
+        expression = expression.strip()
+        if expression.endswith(";"):
+            expression = expression[:-1].rstrip()
+        if ";" not in expression:
             return None
 
         statements = []
@@ -1904,39 +2401,89 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
             return None
         statements.append(expression[start:].strip())
 
-        assignments = []
         assignment_pattern = re.compile(
             r"^([A-Za-z][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$",
             re.DOTALL,
         )
+        assignments: dict[str, str] = {}
         for statement in statements:
             match = assignment_pattern.fullmatch(statement)
             if not match:
-                return None
+                break
             name, value = match.groups()
-
-            # Model output labels sometimes use snake_case. Wolfram symbols
-            # must not contain underscores, so convert labels deterministically
-            # to lowerCamelCase before constructing the rule. The output
-            # verifier compares labels without punctuation/case, preserving
-            # compatibility with the requested_outputs contract.
-            if "_" in name:
-                parts = [part for part in name.split("_") if part]
-                if not parts:
-                    return None
-                name = parts[0].lower() + "".join(
-                    part[:1].upper() + part[1:] for part in parts[1:]
-                )
-            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
+            assignments[name] = value.strip()
+        else:
+            # Backwards-compatible handling for assignment-only sequences.
+            if len(assignments) < 2:
                 return None
+            rules = []
+            for name, value in assignments.items():
+                label = ReasoningService._wolfram_label(name)
+                if not label:
+                    return None
+                rules.append(f"Rule[{label}, {normalize_expression(value)}]")
+            return "List[" + ", ".join(rules) + "]"
 
-            assignments.append(
-                f"Rule[{name}, {normalize_expression(value)}]"
-            )
-
-        if len(assignments) < 2:
+        # Handle model output that initializes givens, assigns requested
+        # quantities, and ends with a list of those quantity symbols.
+        final_list = statements[-1].strip()
+        if not (final_list.startswith("{") and final_list.endswith("}")):
             return None
-        return "List[" + ", ".join(assignments) + "]"
+        output_names = [item.strip() for item in final_list[1:-1].split(",")]
+        if len(output_names) < 2 or any(
+            not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name)
+            or name not in assignments
+            for name in output_names
+        ):
+            return None
+
+        def resolve(name: str, trail: set[str] | None = None) -> str | None:
+            trail = set() if trail is None else set(trail)
+            if name in trail:
+                return None
+            trail.add(name)
+            value = assignments.get(name)
+            if value is None:
+                return None
+            for dependency in sorted(assignments, key=len, reverse=True):
+                if dependency == name:
+                    continue
+                if re.search(
+                    rf"(?<![A-Za-z0-9_$]){re.escape(dependency)}(?![A-Za-z0-9_$])",
+                    value,
+                ):
+                    resolved = resolve(dependency, trail)
+                    if resolved is None:
+                        return None
+                    value = re.sub(
+                        rf"(?<![A-Za-z0-9_$]){re.escape(dependency)}(?![A-Za-z0-9_$])",
+                        f"({resolved})",
+                        value,
+                    )
+            return value
+
+        rules = []
+        for name in output_names:
+            label = ReasoningService._wolfram_label(name)
+            value = resolve(name)
+            if not label or value is None:
+                return None
+            rules.append(f"Rule[{label}, {normalize_expression(value)}]")
+        return "List[" + ", ".join(rules) + "]"
+
+    @staticmethod
+    def _wolfram_label(name: str) -> str | None:
+        """Convert a generated label to a simple valid Wolfram symbol."""
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
+            return None
+        if "_" in name:
+            parts = [part for part in name.split("_") if part]
+            if not parts:
+                return None
+            name = parts[0].lower() + "".join(
+                part[:1].upper() + part[1:] for part in parts[1:]
+            )
+        return name if re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name) else None
 
     def _execute_tool(
         self,
@@ -2130,6 +2677,85 @@ estimate the complete answer. Never use answer_tokens to omit requested results.
 
     # =========================================================    # RESULT-ONLY CAS RESPONSE
     # =========================================================
+
+    @staticmethod
+    def _extract_labelled_wolfram_values(result: Any) -> dict[str, str]:
+        """Extract top-level labelled values without evaluating Wolfram syntax."""
+        if not isinstance(result, str) or not result.strip():
+            return {}
+
+        values: dict[str, str] = {}
+        rule_pattern = re.compile(
+            r"\bRule\s*\[\s*([A-Za-z][A-Za-z0-9_]*)\s*,"
+            r"|([A-Za-z][A-Za-z0-9_]*)\s*->\s*"
+        )
+        for match in rule_pattern.finditer(result):
+            label = match.group(1) or match.group(2)
+            start = match.end()
+            depth = 0
+            end = start
+            while end < len(result):
+                char = result[end]
+                if char in "([{":
+                    depth += 1
+                elif char in ")]}":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                elif char == "," and depth == 0:
+                    break
+                end += 1
+
+            value = result[start:end].strip()
+            if value:
+                key = re.sub(r"[^a-z0-9]", "", label.lower())
+                values[key] = value
+        return values
+
+    @classmethod
+    def _render_verified_answer_template(
+        cls,
+        template: str | None,
+        requested_outputs: list[str],
+        result: Any,
+    ) -> str | None:
+        """Fill a model-authored template only with values present in CAS output."""
+        if not isinstance(template, str) or not template.strip():
+            return None
+        if not isinstance(result, str) or not result.strip():
+            return None
+
+        placeholders = re.findall(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}", template)
+        if "{{" in template and not placeholders:
+            return None
+
+        if requested_outputs:
+            expected = {
+                re.sub(r"[^a-z0-9]", "", label.lower())
+                for label in requested_outputs
+            }
+            supplied = {
+                re.sub(r"[^a-z0-9]", "", label.lower())
+                for label in placeholders
+            }
+            if not expected or not expected.issubset(supplied):
+                return None
+            values = cls._extract_labelled_wolfram_values(result)
+            if not expected.issubset(values.keys()):
+                return None
+            for placeholder in placeholders:
+                key = re.sub(r"[^a-z0-9]", "", placeholder.lower())
+                if key not in values:
+                    return None
+                template = template.replace("{{" + placeholder + "}}", values[key])
+        else:
+            if placeholders != ["result"]:
+                return None
+            template = template.replace("{{result}}", result.strip())
+
+        if "{{" in template or "}}" in template:
+            return None
+        return template.strip() or None
 
     def _cas_result_only(
         self,

@@ -1,4 +1,5 @@
 import json
+import re
 
 from backend.services.reasoning_service import ReasoningService
 
@@ -58,8 +59,8 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     assert "no With/local assignments" in expression_description
     assert "tool_choice" not in router.kwargs
     assert router.kwargs["enable_thinking"] is False
-    assert "do not write a solution or explain" in router.kwargs["system_prompt"]
-    assert "do not assume a particular subject" in router.kwargs["system_prompt"]
+    assert "do not write a solution or explain" in router.kwargs["system_prompt"].lower()
+    assert "computational stem request" in router.kwargs["system_prompt"].lower()
     assert "projectile" not in router.kwargs["system_prompt"].lower()
     assert result["timings_ms"]["final_llm"] == 0.0
     assert router.calls == 1
@@ -139,4 +140,68 @@ def test_result_only_mode_does_not_regenerate_after_invalid_expression():
     assert "no second model generation was attempted" in result["error"]
     assert len(router.calls) == 1
     assert executed == []
+
+
+def test_malformed_assignment_sequence_with_literal_binding_fragment_is_recovered_safely():
+    service = ReasoningService(router=CapturingRouter())
+    arguments = {
+        "expression": (
+            "t = 2*v0*Sin[theta]/g; "
+            "h = (v0*Sin[theta])^2/(2*g); "
+            'v0": 20, "theta": 30 Degree, "g": 9.8}'
+        )
+    }
+
+    normalized = service._normalize_generated_calculate_expression(
+        "calculate",
+        arguments,
+        ["time_of_flight", "maximum_height"],
+    )
+
+    expression = normalized["expression"]
+    assert expression.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maximumHeight," in expression
+    assert "20" in expression and "30" in expression and "9.8" in expression
+    assert not re.search(r"(?<![A-Za-z0-9_$])v0(?![A-Za-z0-9_$])", expression)
+    assert not re.search(r"(?<![A-Za-z0-9_$])theta(?![A-Za-z0-9_$])", expression)
+    assert not re.search(r"(?<![A-Za-z0-9_$])g(?![A-Za-z0-9_$])", expression)
+    assert ";" not in expression
+
+
+def test_malformed_assignment_recovery_rejects_nonliteral_binding_payloads():
+    service = ReasoningService(router=CapturingRouter())
+    arguments = {
+        "expression": (
+            "first = x + 1; second = x + 2; "
+            'x": WolframKernel[], "y": 2}'
+        )
+    }
+
+    normalized = service._normalize_generated_calculate_expression(
+        "calculate", arguments, ["first_result", "second_result"]
+    )
+
+    assert normalized == arguments
+
+
+def test_assignment_sequence_with_final_output_list_is_normalized_without_side_effects():
+    service = ReasoningService(router=CapturingRouter())
+    expression = (
+        "v0 = 20; angle = 30 Degree; g = 9.8; "
+        "time_of_flight = (2 * v0 * Sin[angle]) / g; "
+        "maximum_height = (v0 * Sin[angle])^2 / (2 * g); "
+        "{time_of_flight, maximum_height}"
+    )
+
+    normalized = service._assignment_sequence_to_labelled_expression(expression)
+
+    assert normalized is not None
+    assert normalized.startswith("List[Rule[timeOfFlight,")
+    assert "Rule[maximumHeight," in normalized
+    assert "time_of_flight" not in normalized
+    assert "maximum_height" not in normalized
+    assert not re.search(r"(?<![A-Za-z0-9_])v0(?![A-Za-z0-9_])", normalized)
+    assert not __import__("re").search(r"(?<![A-Za-z0-9_])angle(?![A-Za-z0-9_])", normalized)
+    assert not __import__("re").search(r"(?<![A-Za-z0-9_])g(?![A-Za-z0-9_])", normalized)
+    assert ";" not in normalized
 

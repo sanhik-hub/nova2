@@ -471,6 +471,19 @@ def restart_wolfram():
     }
 
 
+@app.post("/api/wolfram/stop")
+def stop_wolfram():
+    """Stop only this backend's persistent Wolfram session."""
+    engine = computation.router.providers["wolfram"].engine
+    engine.close()
+    session = engine.status()
+    return {
+        "success": not session.get("session_started", False),
+        "message": "Wolfram persistent session stopped.",
+        "wolfram_session": session,
+    }
+
+
 @app.post(
     "/api/plot",
     response_model=ComputationResponse,
