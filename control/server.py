@@ -27,13 +27,15 @@ LLAMA_SERVER = Path(os.environ.get(
 ))
 FRONTEND_ROOT = NOVA_ROOT / "frontend"
 
-HOST = os.environ.get("NOVA_HOST", "127.0.0.1")
-PORT = int(os.environ.get("NOVA_CONTROL_PORT", "8100"))
-BACKEND_PORT = int(os.environ.get("NOVA_BACKEND_PORT", "8000"))
-FRONTEND_PORT = int(os.environ.get("NOVA_FRONTEND_PORT", "5173"))
-LLM_PORT = int(os.environ.get("NOVA_LLM_PORT", "8080"))
-PLANNER_PORT = int(os.environ.get("NOVA_PLANNER_PORT", "8081"))
-MANAGE_SHARED_MODELS = os.environ.get("NOVA_MANAGE_SHARED_MODELS", "1").lower() not in {"0", "false", "no"}
+# Nova is a single local instance. Ports are deliberately fixed so a second
+# checkout cannot start a duplicate backend, model server, or Wolfram session.
+HOST = "127.0.0.1"
+PORT = 8100
+BACKEND_PORT = 8000
+FRONTEND_PORT = 5173
+LLM_PORT = 8080
+PLANNER_PORT = 8081
+MANAGE_SHARED_MODELS = True
 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
@@ -640,8 +642,15 @@ def start_planner():
 
     parsed = urlparse(server_url)
     port = parsed.port or PLANNER_PORT
-    if http_check(f"{server_url.rstrip('/')}/health").get("ok") or port_listener(port):
-        return {"ok": True, "message": "Planner model server is already running (shared or existing instance)."}
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
+        return {"ok": True, "message": "Planner model server is already running."}
+    if port_listener(port):
+        terminate_planner()
+        deadline = time.time() + 10
+        while port_listener(port) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(port):
+            raise RuntimeError(f"Planner port {port} is occupied by an unresponsive process; refusing to start a duplicate.")
 
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
@@ -677,8 +686,16 @@ def start_planner():
 def start_backend():
     global BACKEND_PROCESS
 
-    if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok") or port_listener(BACKEND_PORT):
+    if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
         return {"ok": True, "message": "Backend is already running."}
+
+    if port_listener(BACKEND_PORT):
+        terminate_backend()
+        deadline = time.time() + 10
+        while port_listener(BACKEND_PORT) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(BACKEND_PORT):
+            raise RuntimeError("Backend port 8000 is occupied by an unresponsive process; refusing to start a duplicate.")
 
     if not PYTHON.exists():
         raise RuntimeError(f"Python executable not found: {PYTHON}")
@@ -728,11 +745,7 @@ def start_backend():
 
 
 def start_wolfram():
-    if BACKEND_PROCESS is None or BACKEND_PROCESS.poll() is not None:
-        raise RuntimeError(
-            "Wolfram can only be started through a backend launched by this Control Center."
-        )
-
+    # Always manage the single persistent session through the fixed-port backend.
     backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
 
     if not backend_http.get("ok"):
@@ -762,8 +775,16 @@ def start_wolfram():
 def start_frontend():
     global FRONTEND_PROCESS
 
-    if http_check(f"http://{HOST}:{FRONTEND_PORT}/").get("ok") or port_listener(FRONTEND_PORT):
+    if http_check(f"http://{HOST}:{FRONTEND_PORT}/").get("ok"):
         return {"ok": True, "message": "Frontend is already running."}
+
+    if port_listener(FRONTEND_PORT):
+        terminate_frontend()
+        deadline = time.time() + 10
+        while port_listener(FRONTEND_PORT) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(FRONTEND_PORT):
+            raise RuntimeError("Frontend port 5173 is occupied by an unresponsive process; refusing to start a duplicate.")
 
     npm = subprocess.run(
         ["where.exe", "npm.exe"],
@@ -801,8 +822,15 @@ def start_llm():
 
     parsed = urlparse(server_url)
     port = parsed.port or LLM_PORT
-    if http_check(f"{server_url.rstrip('/')}/health").get("ok") or port_listener(port):
-        return {"ok": True, "message": "Local model server is already running (shared or existing instance)."}
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
+        return {"ok": True, "message": "Local model server is already running."}
+    if port_listener(port):
+        terminate_llm()
+        deadline = time.time() + 10
+        while port_listener(port) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(port):
+            raise RuntimeError(f"Local model port {port} is occupied by an unresponsive process; refusing to start a duplicate.")
     if not MANAGE_SHARED_MODELS:
         raise RuntimeError(
             "Shared local model server is not running. Start the main Nova Control Center first; "
@@ -924,10 +952,7 @@ def start_all(restart_existing_backend: bool = False):
                 "Backend did not become ready."
             )
 
-        if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
-            start_wolfram()
-        else:
-            log("Skipping Wolfram session management because the backend is externally owned.")
+        start_wolfram()
 
         if SHUTDOWN_EVENT.is_set():
             raise RuntimeError("Control Center is closing.")
@@ -1047,51 +1072,51 @@ def terminate_owned_process(process, label: str):
 def terminate_backend():
     global BACKEND_PROCESS
     process = BACKEND_PROCESS
-    if process is None:
-        return {"ok": True, "message": "Backend was not started by this Control Center; leaving it running."}
     BACKEND_PROCESS = None
-    if terminate_owned_process(process, "Nova backend/reloader"):
-        return {"ok": True, "message": "Owned backend and reload worker terminated."}
-    return {"ok": True, "message": "Owned backend process is already stopped."}
+    if process is not None:
+        terminate_owned_process(process, "Nova backend/reloader")
+    else:
+        terminate_process_list(process_snapshot().get("backend", []), "Nova backend/reloader")
+    return {"ok": True, "message": "Backend on port 8000 stopped if it was running."}
 
 
 def terminate_frontend():
     global FRONTEND_PROCESS
     process = FRONTEND_PROCESS
-    if process is None:
-        return {"ok": True, "message": "Frontend was not started by this Control Center; leaving it running."}
     FRONTEND_PROCESS = None
-    terminate_owned_process(process, "Nova frontend")
-    return {"ok": True, "message": "Owned frontend process terminated."}
+    if process is not None:
+        terminate_owned_process(process, "Nova frontend")
+    else:
+        terminate_process_list(process_snapshot().get("frontend", []), "Nova frontend")
+    return {"ok": True, "message": "Frontend on port 5173 stopped if it was running."}
 
 
 def terminate_planner():
     global PLANNER_PROCESS
     process = PLANNER_PROCESS
-    if process is None:
-        return {"ok": True, "message": "Planner server is shared or was not started by this Control Center; leaving it running."}
     PLANNER_PROCESS = None
-    terminate_owned_process(process, "planner model server")
-    return {"ok": True, "message": "Owned planner server terminated."}
+    if process is not None:
+        terminate_owned_process(process, "planner model server")
+    else:
+        terminate_process_list(process_snapshot().get("planner", []), "planner model server")
+    return {"ok": True, "message": "Planner server on port 8081 stopped if it was running."}
 
 
 def terminate_llm():
     global LLM_PROCESS
     process = LLM_PROCESS
-    if process is None:
-        return {"ok": True, "message": "Local model server is shared or was not started by this Control Center; leaving it running."}
     LLM_PROCESS = None
-    terminate_owned_process(process, "local model server")
-    return {"ok": True, "message": "Owned local model server terminated."}
+    if process is not None:
+        terminate_owned_process(process, "local model server")
+    else:
+        terminate_process_list(process_snapshot().get("llm", []), "local model server")
+    return {"ok": True, "message": "Local model server on port 8080 stopped if it was running."}
 
 
 def terminate_wolfram():
-    """Reset only the Wolfram session owned by this Control Center's backend."""
-    if BACKEND_PROCESS is None or BACKEND_PROCESS.poll() is not None:
-        return {
-            "ok": True,
-            "message": "No backend-owned Wolfram session to terminate; external kernels are untouched.",
-        }
+    """Stop the one persistent Wolfram session through the fixed-port backend."""
+    if not http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
+        return {"ok": True, "message": "Backend is stopped; no managed Wolfram session remains."}
     try:
         result = http_json_post(
             f"http://{HOST}:{BACKEND_PORT}/api/wolfram/stop"
