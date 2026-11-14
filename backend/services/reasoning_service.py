@@ -22,10 +22,6 @@ class ReasoningService:
 
     MAX_TOOL_CALLS = 2
 
-    # Structured tool calls should be compact. This budget applies only to
-    # the machine-readable Wolfram request, never to user-facing solutions.
-    STRUCTURED_TOOL_TOKENS = 256
-
     # The planner only emits a small routing object. This bound applies only
     # to the planner's routing metadata, never to the final STEM answer.
     PLANNER_TOKENS = 96
@@ -1080,15 +1076,9 @@ code fences outside the JSON object.
             formulation = self.router.generate(
                 prompt=formulation_prompt,
                 system_prompt=formulation_system,
-                # Explanation modes include a user-facing template in this
-                # generation, so do not apply the compact tool-JSON budget to
-                # that content. None delegates to the provider's configured
-                # transport fallback.
-                max_tokens=(
-                    self.STRUCTURED_TOOL_TOKENS
-                    if explanation == "off"
-                    else None
-                ),
+                # Use the provider's configured generation capacity. Do not
+                # impose a fixed token ceiling on local reasoning output.
+                max_tokens=None,
                 temperature=0.0,
                 enable_thinking=False,
                 request_timeout=None,
@@ -1266,7 +1256,7 @@ URLs, or programming side effects. Never use underscores in Wolfram symbols.
                 repaired = self.router.generate(
                     prompt=repair_prompt,
                     system_prompt=repair_system,
-                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
+                    max_tokens=None,
                     temperature=0.0,
                     enable_thinking=False,
                     request_timeout=None,
@@ -1467,7 +1457,7 @@ Never return a labelled rule whose value is merely an unresolved symbol.
                 completion = self.router.generate(
                     prompt=completion_prompt,
                     system_prompt=completion_system,
-                    max_tokens=self.STRUCTURED_TOOL_TOKENS,
+                    max_tokens=None,
                     temperature=0.0,
                     enable_thinking=False,
                     request_timeout=None,
