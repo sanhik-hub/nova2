@@ -287,6 +287,10 @@ def test_failed_multi_output_calculation_stops_after_one_repair():
     )
     assert "timeOfFlight" in repair_payload
     assert "maximumHeight" in repair_payload
+    assert router.calls[1]["response_format"]["schema"]["required"] == [
+        "operation", "arguments", "requested_outputs"
+    ]
+    assert "Abs[expression]" in router.calls[1]["system_prompt"]
     # A symbolic solve result must never be executed as a substitute for both
     # requested numerical quantities.
     assert len(executions) == 1
