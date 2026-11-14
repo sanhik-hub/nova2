@@ -24,7 +24,8 @@ def test_backend_starts_with_source_reload(monkeypatch, tmp_path):
         return SimpleNamespace(pid=12345, poll=lambda: None)
 
     monkeypatch.setattr(control_server, "start_process", fake_start_process)
-    monkeypatch.setattr(control_server, "http_check", lambda url: {"ok": True})
+    checks = iter([{"ok": False}, {"ok": True}])
+    monkeypatch.setattr(control_server, "http_check", lambda url: next(checks))
 
     result = control_server.start_backend()
 
@@ -136,3 +137,5 @@ def test_control_center_exposes_explicit_shutdown_route_and_button():
     assert "def shutdown_control_center(" in server_source
     assert 'onclick="closeControlCenter()"' in dashboard_source
     assert 'fetch("/api/shutdown"' in dashboard_source
+    assert '<div class="grid">' in dashboard_source
+    assert dashboard_source.index('<div class="panel-title">Event Log</div>') < dashboard_source.index('<div class="grid">')
