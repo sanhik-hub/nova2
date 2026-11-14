@@ -13,10 +13,10 @@ def test_terminate_llm_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server, "process_snapshot", lambda: {
         "llm": [{"pid": 100, "name": "llama-server.exe"}]
     })
-    monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
+    monkeypatch.setattr(control_server.subprocess, "run", lambda args, **k: (killed.append(args) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_llm()
     assert result["ok"] is True
-    assert killed == [[["taskkill", "/PID", "100", "/T", "/F"]]]
+    assert killed == [["taskkill", "/PID", "100", "/T", "/F"]]
 
 
 def test_terminate_planner_controls_existing_fixed_port_server(monkeypatch):
@@ -28,7 +28,7 @@ def test_terminate_planner_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_planner()
     assert result["ok"] is True
-    assert killed == [[["taskkill", "/PID", "101", "/T", "/F"]]]
+    assert killed == [["taskkill", "/PID", "101", "/T", "/F"]]
 
 
 def test_terminate_backend_controls_existing_fixed_port_server(monkeypatch):
@@ -40,7 +40,7 @@ def test_terminate_backend_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_backend()
     assert result["ok"] is True
-    assert killed == [[["taskkill", "/PID", "200", "/T", "/F"]]]
+    assert killed == [["taskkill", "/PID", "200", "/T", "/F"]]
 
 
 def test_terminate_frontend_controls_existing_fixed_port_server(monkeypatch):
@@ -52,7 +52,7 @@ def test_terminate_frontend_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_frontend()
     assert result["ok"] is True
-    assert killed == [[["taskkill", "/PID", "300", "/T", "/F"]]]
+    assert killed == [["taskkill", "/PID", "300", "/T", "/F"]]
 
 
 def test_terminate_wolfram_never_scans_or_kills_global_kernels(monkeypatch):
