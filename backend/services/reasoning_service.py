@@ -1067,6 +1067,18 @@ code fences outside the JSON object.
             },
         }
 
+        # Repair generations only need to correct the executable computation.
+        # Requiring a user-facing template again wastes tokens and can prevent
+        # the model from completing the Wolfram expression.
+        repair_schema = dict(formulation_schema)
+        repair_schema["required"] = ["operation", "arguments", "requested_outputs"]
+        repair_kwargs = {
+            "response_format": {
+                "type": "json_object",
+                "schema": repair_schema,
+            },
+        }
+
         llm_started = time.perf_counter()
         try:
             formulation = self.router.generate(
@@ -1206,34 +1218,25 @@ code fences outside the JSON object.
             # to provide an unverified numerical answer.
             repair_attempted = True
             repair_system = r"""
-You are repairing a structured Wolfram tool call generated from a STEM
-problem.
-
-Return ONLY one JSON object matching this structure:
-{"operation":"...","arguments":{...},"requested_outputs":["..."]}
-
-Include every output requested by the original problem in requested_outputs.
-Use only these operations:
-calculate, simplify, factor, expand, differentiate, integrate,
-integrate_definite, solve, limit.
+Repair the Wolfram computation for the original computational STEM request.
+Return only one JSON object matching the response schema. Do not solve in prose.
 
 Preserve the original problem and every requested quantity. The
-requested_outputs field in the repair payload is authoritative.
+requested_outputs array supplied in the repair payload is authoritative.
+Use the exact same output labels and order.
 
-For a numerical word problem with two or more requested outputs, you MUST use
-operation "calculate" and return exactly one executable Wolfram List of Rule
-expressions, one Rule per requested output in the original order. Do not switch
-such a request to "solve", because solving one equation usually omits other
-requested quantities. Substitute the given numerical values directly into each
-right-hand side; do not use assignments, intermediate symbols, or a bare list
-of unrelated equations. Keep the exact requested labels.
+For every numerical word problem, substitute every numerical value supplied
+in the original request directly into the expression. Never leave supplied
+quantities as symbols. Use Rule[outputLabel, expression] for one requested
+output and List[Rule[labelOne, expressionOne], ...] for multiple outputs.
+Every requested output must have one complete executable result.
 
-For other request types, preserve the appropriate operation unless it is
-actually invalid for the user's request. For calculate, the expression must be
-one executable Wolfram Language expression. For solve, return an executable
-equation and variable. For limit, return expression, variable, and value.
-Do not use natural-language instructions, strings, external functions, files,
-URLs, or programming side effects. Never use underscores in Wolfram symbols.
+Use operation calculate for numerical word problems. Use Abs[expression] for
+absolute values, never vertical-bar notation. Use explicit multiplication (*),
+balanced Wolfram syntax, and Degree for angles stated in degrees. Do not use
+assignments, intermediate symbols, With, equality tests, unrelated equations,
+strings, external functions, files, URLs, or side effects. Never invent data
+or assumptions. Preserve the actual signs, units, and conditions.
 """
             repair_prompt = json.dumps(
                 {
@@ -1256,7 +1259,7 @@ URLs, or programming side effects. Never use underscores in Wolfram symbols.
                     temperature=0.0,
                     enable_thinking=False,
                     request_timeout=None,
-                    **structured_kwargs,
+                    **repair_kwargs,
                 )
             except Exception as exc:
                 repaired = {"success": False, "error": str(exc)}
@@ -1407,33 +1410,23 @@ URLs, or programming side effects. Never use underscores in Wolfram symbols.
             completion_system = formulation_system + r"""
 
 COMPLETENESS REPAIR — STRICT OUTPUT CONTRACT:
-The previous Wolfram result was incomplete. The JSON field required_outputs
-in the user payload is the authoritative list of labels. Return a new
-calculate expression that computes every item in that list in one evaluation.
+The required_outputs array in the user payload is the authoritative list of
+requested labels. Return one calculate expression that computes every item.
 
-For two or more requested outputs, the expression MUST use the Wolfram
-List and Rule constructors, with left-hand-side labels exactly matching every
-required_outputs entry in the same order, for example:
-List[Rule[outputOne, expressionOne], Rule[outputTwo, expressionTwo]]
-Use this constructor form rather than curly-brace list syntax because the
-application normalizes curly braces in ordinary mathematical input.
-The example illustrates output structure only; derive the actual formulas and
-values from the original request.
+Use Rule[exactLabel, expression] for one requested output. For multiple
+requested outputs, use List[Rule[labelOne, expressionOne],
+Rule[labelTwo, expressionTwo], ...]. Match every label exactly and preserve
+the original order. Do not return a partial result.
 
-Do NOT use assignments (=), semicolon-separated expressions, equality tests
-(==), local variables, intermediate-only results, or a result containing just
-one requested quantity. Do not return a rule for an unrequested label. Use
-direct expressions on the right-hand side and the exact requested labels on
-the left-hand side. Preserve the original problem's physical relationships,
-numbers, signs, and units. The output must be a single executable Wolfram
-expression, not a derivation or explanation.
+Substitute every numerical value supplied in the original request directly
+into every requested expression. Do not leave supplied values as symbols or
+reuse unresolved intermediate names from the previous call. Use Abs[expression]
+for absolute values, never vertical bars. Preserve the original problem's
+relationships, values, signs, units, and conditions.
 
-Every right-hand side must be a complete expression that Wolfram can evaluate
-from the data in the original request. Do not refer to placeholder symbols,
-abbreviations, or intermediate variable names such as t or h from the previous
-tool call. If the original request provides numerical data for a numerical
-word problem, substitute those values directly into every requested result.
-Never return a labelled rule whose value is merely an unresolved symbol.
+Do not use assignments (=), semicolon-separated expressions, equality tests
+(==), local variables, intermediate-only results, or unrequested labels.
+Every right-hand side must be a complete executable Wolfram expression.
 """
             completion_prompt = json.dumps(
                 {
@@ -1457,7 +1450,7 @@ Never return a labelled rule whose value is merely an unresolved symbol.
                     temperature=0.0,
                     enable_thinking=False,
                     request_timeout=None,
-                    **structured_kwargs,
+                    **repair_kwargs,
                 )
             except Exception as exc:
                 completion = {"success": False, "error": str(exc)}
