@@ -25,7 +25,7 @@ def test_terminate_planner_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server, "process_snapshot", lambda: {
         "planner": [{"pid": 101, "name": "llama-server.exe"}]
     })
-    monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
+    monkeypatch.setattr(control_server.subprocess, "run", lambda args, **k: (killed.append(args) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_planner()
     assert result["ok"] is True
     assert killed == [["taskkill", "/PID", "101", "/T", "/F"]]
@@ -100,7 +100,7 @@ def test_terminate_wolfram_uses_fixed_port_backend_even_if_not_spawned_here(monk
     ]
 
 
-def test_isolated_instance_reuses_healthy_shared_planner_without_listener_pid(monkeypatch, tmp_path):
+def test_fixed_port_planner_reuses_healthy_server_without_listener_pid(monkeypatch, tmp_path):
     monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
     monkeypatch.setattr(control_server, "PLANNER_PROCESS", None)
     monkeypatch.setattr(control_server, "load_planner_config", lambda: {
@@ -114,7 +114,7 @@ def test_isolated_instance_reuses_healthy_shared_planner_without_listener_pid(mo
     assert "already running" in result["message"]
 
 
-def test_isolated_instance_reuses_healthy_shared_llm_without_listener_pid(monkeypatch, tmp_path):
+def test_fixed_port_llm_reuses_healthy_server_without_listener_pid(monkeypatch, tmp_path):
     monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
     monkeypatch.setattr(control_server, "LLM_PROCESS", None)
     monkeypatch.setattr(control_server, "load_llm_config", lambda: {
