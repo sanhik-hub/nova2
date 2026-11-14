@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from functools import wraps
 import urllib.request
 import subprocess
 import threading
@@ -44,6 +45,16 @@ FRONTEND_PROCESS: subprocess.Popen | None = None
 LLM_PROCESS: subprocess.Popen | None = None
 PLANNER_PROCESS: subprocess.Popen | None = None
 SHUTDOWN_EVENT = threading.Event()
+SERVICE_OPERATION_LOCK = threading.RLock()
+
+
+def serialize_service_operation(function):
+    """Prevent concurrent Start/Stop requests from duplicating a service."""
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with SERVICE_OPERATION_LOCK:
+            return function(*args, **kwargs)
+    return wrapped
 
 
 def log(message: str):
@@ -629,6 +640,7 @@ def open_service_log(component: str):
     return {"ok": True, "message": f"Opened live log for {label}.", "path": str(path)}
 
 
+@serialize_service_operation
 def start_planner():
     global PLANNER_PROCESS
 
@@ -643,6 +655,8 @@ def start_planner():
     port = PLANNER_PORT
     if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
         return {"ok": True, "message": "Planner model server is already running."}
+    if PLANNER_PROCESS is not None and PLANNER_PROCESS.poll() is None:
+        return {"ok": True, "message": "Planner model server is already starting."}
     if port_listener(port):
         terminate_planner()
         deadline = time.time() + 10
@@ -677,11 +691,14 @@ def start_planner():
     return {"ok": True, "message": "Planner model server start requested."}
 
 
+@serialize_service_operation
 def start_backend():
     global BACKEND_PROCESS
 
     if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
         return {"ok": True, "message": "Backend is already running."}
+    if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
+        raise RuntimeError("Backend startup is already in progress; refusing to launch a second backend.")
 
     if port_listener(BACKEND_PORT):
         terminate_backend()
@@ -738,6 +755,7 @@ def start_backend():
     )
 
 
+@serialize_service_operation
 def start_wolfram():
     # Always manage the single persistent session through the fixed-port backend.
     backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
@@ -766,11 +784,14 @@ def start_wolfram():
     }
 
 
+@serialize_service_operation
 def start_frontend():
     global FRONTEND_PROCESS
 
     if http_check(f"http://{HOST}:{FRONTEND_PORT}/").get("ok"):
         return {"ok": True, "message": "Frontend is already running."}
+    if FRONTEND_PROCESS is not None and FRONTEND_PROCESS.poll() is None:
+        return {"ok": True, "message": "Frontend is already starting."}
 
     if port_listener(FRONTEND_PORT):
         terminate_frontend()
@@ -801,6 +822,7 @@ def start_frontend():
     return {"ok": True, "message": "Frontend start requested."}
 
 
+@serialize_service_operation
 def start_llm():
     global LLM_PROCESS
 
@@ -818,6 +840,8 @@ def start_llm():
     port = LLM_PORT
     if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
         return {"ok": True, "message": "Local model server is already running."}
+    if LLM_PROCESS is not None and LLM_PROCESS.poll() is None:
+        return {"ok": True, "message": "Local model server is already starting."}
     if port_listener(port):
         terminate_llm()
         deadline = time.time() + 10
@@ -1058,6 +1082,7 @@ def terminate_owned_process(process, label: str):
     return result.returncode == 0
 
 
+@serialize_service_operation
 def terminate_backend():
     global BACKEND_PROCESS
     process = BACKEND_PROCESS
@@ -1069,6 +1094,7 @@ def terminate_backend():
     return {"ok": True, "message": "Backend on port 8000 stopped if it was running."}
 
 
+@serialize_service_operation
 def terminate_frontend():
     global FRONTEND_PROCESS
     process = FRONTEND_PROCESS
@@ -1080,6 +1106,7 @@ def terminate_frontend():
     return {"ok": True, "message": "Frontend on port 5173 stopped if it was running."}
 
 
+@serialize_service_operation
 def terminate_planner():
     global PLANNER_PROCESS
     process = PLANNER_PROCESS
@@ -1091,6 +1118,7 @@ def terminate_planner():
     return {"ok": True, "message": "Planner server on port 8081 stopped if it was running."}
 
 
+@serialize_service_operation
 def terminate_llm():
     global LLM_PROCESS
     process = LLM_PROCESS
@@ -1102,6 +1130,7 @@ def terminate_llm():
     return {"ok": True, "message": "Local model server on port 8080 stopped if it was running."}
 
 
+@serialize_service_operation
 def terminate_wolfram():
     """Stop the one persistent Wolfram session through the fixed-port backend."""
     if not http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
