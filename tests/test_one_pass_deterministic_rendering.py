@@ -335,3 +335,72 @@ def test_numerical_word_problem_schema_requires_calculate_and_returns_all_output
     assert "2.0408163265" in result["answer"]
     assert "5.1020408163" in result["answer"]
     assert len(router.calls) == 1
+
+
+def test_numeric_result_validation_rejects_symbols_inside_formulas():
+    assert ReasoningService._requested_outputs_are_unresolved_symbols(
+        ["forceMagnitude"],
+        "Rule[forceMagnitude, k*Abs[q1]*Abs[q2]/r^2]",
+    )
+    assert not ReasoningService._requested_outputs_are_unresolved_symbols(
+        ["forceMagnitude"],
+        "Rule[forceMagnitude, 0.5991701195]",
+    )
+    assert not ReasoningService._requested_outputs_are_unresolved_symbols(
+        ["forceMagnitude"],
+        'Rule[forceMagnitude, Quantity[0.5991701195, "Newtons"]]',
+    )
+
+
+def test_one_pass_prompt_requires_substituted_and_labelled_numeric_outputs():
+    import json
+
+    class Router:
+        def __init__(self):
+            self.kwargs = None
+
+        def generate(self, **kwargs):
+            self.kwargs = kwargs
+            return {
+                "success": True,
+                "result": json.dumps({
+                    "operation": "calculate",
+                    "arguments": {
+                        "expression": "Rule[forceMagnitude, 0.5991701195]"
+                    },
+                    "requested_outputs": ["forceMagnitude"],
+                    "answer_template": (
+                        "Using the governing relationship and supplied values, "
+                        "F = {{forceMagnitude}} N."
+                    ),
+                }),
+            }
+
+    router = Router()
+    service = ReasoningService(router=router)
+    service._validate_tool_call = lambda call: {
+        "valid": True,
+        "tool": call["tool"],
+        "arguments": call["arguments"],
+    }
+    service._execute_tool = lambda operation, arguments: {
+        "success": True,
+        "result": "Rule[forceMagnitude, 0.5991701195]",
+    }
+    service._final_explanation = lambda **kwargs: (_ for _ in ()).throw(
+        AssertionError("valid one-pass template should not trigger a second generation")
+    )
+
+    result = service._solve_llm_wolfram(
+        "Two point charges, +2 μC and −3 μC, are separated by 0.30 m in vacuum. "
+        "Calculate the magnitude of the electrostatic force.",
+        explanation="concise",
+    )
+
+    assert result["success"] is True
+    assert result["answer"] == "Using the governing relationship and supplied values, F = 0.5991701195 N."
+    assert result["llm_passes"] == 1
+    assert "EVERY numerical value supplied" in router.kwargs["system_prompt"]
+    assert "including when there is only ONE" in router.kwargs["system_prompt"]
+    assert "Abs[expression]" in router.kwargs["system_prompt"]
+    assert "answer_template" in router.kwargs["response_format"]["schema"]["required"]
