@@ -178,6 +178,15 @@ button:disabled {
     gap: 16px;
 }
 
+.global-event-panel {
+    margin: 0 0 16px;
+}
+
+.global-event-panel pre {
+    min-height: 110px;
+    max-height: 220px;
+}
+
 .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -266,6 +275,11 @@ pre {
     <div class="global connection" id="lastUpdate">
         Connecting...
     </div>
+
+    <section class="panel global-event-panel">
+        <div class="panel-title">Event Log</div>
+        <pre id="logs">Loading events...</pre>
+    </section>
 
     <div class="grid">
 
@@ -442,11 +456,6 @@ pre {
         <section class="panel">
             <div class="panel-title">Runtime Processes</div>
             <pre id="processes">Loading...</pre>
-        </section>
-
-        <section class="panel">
-            <div class="panel-title">Event Log</div>
-            <pre id="logs">Loading...</pre>
         </section>
 
     </div>
