@@ -160,136 +160,134 @@ def load_planner_config():
 
 
 def get_processes():
-    """Inspect relevant processes using native tasklist, not PowerShell."""
-    names = {
-        "python.exe",
-        "pythonw.exe",
-        "llama-server.exe",
-        "WolframKernel.exe",
-        "node.exe",
-    }
+    """Read process IDs and command lines from Windows CIM.
+
+    netstat/Get-NetTCPConnection can report PID 0 for listeners in some
+    Windows environments. CIM provides the actual process inventory, so
+    service identification must not depend on the listener PID.
+    """
+    script = (
+        "$names = @('python.exe','pythonw.exe','llama-server.exe',"
+        "'WolframKernel.exe','node.exe'); "
+        "$items = @(Get-CimInstance -ClassName Win32_Process | "
+        "Where-Object { $names -contains $_.Name } | "
+        "Select-Object @{Name='ProcessId';Expression={[int]$_.ProcessId}}, "
+        "@{Name='ParentProcessId';Expression={[int]$_.ParentProcessId}}, "
+        "Name, CommandLine); "
+        "ConvertTo-Json -InputObject $items -Compress -Depth 3"
+    )
 
     try:
         result = run_command(
-            ["tasklist", "/FO", "CSV", "/NH"],
-            timeout=10,
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                script,
+            ],
+            timeout=15,
         )
-
         if result.returncode != 0:
             raise RuntimeError(
                 result.stderr.strip()
-                or f"tasklist exited with {result.returncode}"
+                or f"Get-CimInstance exited with {result.returncode}"
             )
 
-        import csv
-        from io import StringIO
-
-        processes = []
-        for row in csv.reader(StringIO(result.stdout)):
-            if len(row) < 2 or row[0] not in names:
-                continue
-
-            try:
-                pid = int(row[1])
-            except ValueError:
-                continue
-
-            processes.append({
-                "ProcessId": pid,
-                "ParentProcessId": None,
-                "Name": row[0],
-                "CommandLine": "",
-            })
-
-        return processes
+        raw = result.stdout.strip()
+        if not raw:
+            return []
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            data = [data]
+        if not isinstance(data, list):
+            raise ValueError("Windows process inventory returned an unexpected format")
+        return [
+            process for process in data
+            if isinstance(process, dict)
+            and int(process.get("ProcessId") or 0) > 0
+        ]
 
     except Exception as exc:
         log(f"Process inspection failed: {exc}")
         return []
 
 
-def port_listener(port: int):
-    """Find a listening TCP port using native netstat.
+def _command_uses_port(command: str, port: int) -> bool:
+    """Match a command-line --port argument without relying on netstat PID."""
+    normalized = str(command or "").lower()
+    return (
+        f"--port {port}" in normalized
+        or f"--port={port}" in normalized
+    )
 
-    No-listener is a normal startup/restart state and is not logged.
-    """
-    try:
-        result = run_command(
-            ["netstat", "-ano", "-p", "tcp"],
-            timeout=10,
-        )
 
-        if result.returncode != 0:
-            raise RuntimeError(
-                result.stderr.strip()
-                or f"netstat exited with {result.returncode}"
-            )
+def _process_record(process: dict) -> dict:
+    return {
+        "pid": process.get("ProcessId"),
+        "parent_pid": process.get("ParentProcessId"),
+        "name": process.get("Name"),
+        "command": process.get("CommandLine") or "",
+    }
 
-        for line in result.stdout.splitlines():
-            parts = line.split()
-            if len(parts) < 5 or parts[0].upper() != "TCP":
-                continue
 
-            local = parts[1]
-            state = parts[3].upper()
-            pid = parts[4]
-
-            if state != "LISTENING":
-                continue
-
-            try:
-                local_port = int(local.rsplit(":", 1)[1])
-                owning_pid = int(pid)
-            except (ValueError, IndexError):
-                continue
-
-            if local_port != port:
-                continue
-
-            return {
-                "OwningProcess": owning_pid,
-                "LocalAddress": local.rsplit(":", 1)[0],
-                "LocalPort": local_port,
-                "State": "Listen",
-            }
-
+def primary_process(processes: list[dict]) -> dict | None:
+    """Prefer the root process when a service has a parent/worker pair."""
+    if not processes:
         return None
-
-    except Exception as exc:
-        log(f"Port inspection failed for {port}: {exc}")
-        return None
+    pids = {item.get("pid") for item in processes}
+    roots = [
+        item for item in processes
+        if item.get("parent_pid") not in pids
+    ]
+    return roots[0] if roots else processes[0]
 
 
 def process_snapshot():
-    """Report only processes bound to this instance's configured ports.
+    """Identify this instance's services from executable command lines.
 
-    Wolfram kernels are managed through the backend session API; machine-wide
-    process enumeration is not a safe ownership mechanism.
+    Listener ownership is deliberately not used: Windows can report PID 0
+    for an otherwise healthy local listener. Wolfram remains backend-session
+    managed and is not inferred from a machine-wide process scan.
     """
-    processes = get_processes()
+    inventory = get_processes()
+    backend = []
+    frontend = []
+    llama = []
+    planner = []
 
-    def listener_process(port: int, allowed_names: set[str]):
-        listener = port_listener(port)
-        if not isinstance(listener, dict):
-            return []
-        pid = str(listener.get("OwningProcess"))
-        return [
-            {
-                "pid": process.get("ProcessId"),
-                "parent_pid": process.get("ParentProcessId"),
-                "name": process.get("Name"),
-                "command": process.get("CommandLine", ""),
-            }
-            for process in processes
-            if str(process.get("ProcessId")) == pid
-            and str(process.get("Name", "")).lower() in allowed_names
-        ]
+    for process in inventory:
+        name = str(process.get("Name") or "").lower()
+        command = str(process.get("CommandLine") or "")
+        command_lower = command.lower()
+        record = _process_record(process)
+
+        if (
+            name in {"python.exe", "pythonw.exe"}
+            and "uvicorn" in command_lower
+            and "backend.main:app" in command_lower
+            and _command_uses_port(command, BACKEND_PORT)
+        ):
+            backend.append(record)
+
+        if (
+            name == "node.exe"
+            and "vite" in command_lower
+            and _command_uses_port(command, FRONTEND_PORT)
+        ):
+            frontend.append(record)
+
+        if name == "llama-server.exe":
+            if _command_uses_port(command, LLM_PORT):
+                llama.append(record)
+            if _command_uses_port(command, PLANNER_PORT):
+                planner.append(record)
 
     return {
-        "backend": listener_process(BACKEND_PORT, {"python.exe", "pythonw.exe"}),
-        "frontend": listener_process(FRONTEND_PORT, {"node.exe"}),
-        "llm": listener_process(LLM_PORT, {"llama-server.exe"}),
-        "planner": listener_process(PLANNER_PORT, {"llama-server.exe"}),
+        "backend": backend,
+        "frontend": frontend,
+        "llm": llama,
+        "planner": planner,
         "wolfram": [],
     }
 
@@ -425,13 +423,10 @@ def health_status():
     # A service is considered running when its actual
     # endpoint is reachable. Process information is
     # supplemental diagnostic information.
-    backend_running = bool(
-        backend_listener and backend_http.get("ok")
-    )
-
-    frontend_running = bool(
-        frontend_listener and frontend_http.get("ok")
-    )
+    # Reachable service endpoints are authoritative. Listener PID reporting
+    # is supplemental because Windows may expose PID 0 for local listeners.
+    backend_running = bool(backend_http.get("ok"))
+    frontend_running = bool(frontend_http.get("ok"))
 
     llm_running = bool(
         llm_health.get("ok")
@@ -440,15 +435,7 @@ def health_status():
     return {
         "backend": {
             "process": backend_running,
-            "pid": (
-                backend_listener.get("OwningProcess")
-                if isinstance(backend_listener, dict)
-                else (
-                    processes["backend"][0]["pid"]
-                    if processes["backend"]
-                    else None
-                )
-            ),
+            "pid": (primary_process(processes["backend"]) or {}).get("pid"),
             "port": BACKEND_PORT,
             "listener": backend_listener,
             "http": backend_http,
@@ -456,15 +443,7 @@ def health_status():
 
         "frontend": {
             "process": frontend_running,
-            "pid": (
-                frontend_listener.get("OwningProcess")
-                if isinstance(frontend_listener, dict)
-                else (
-                    processes["frontend"][0]["pid"]
-                    if processes["frontend"]
-                    else None
-                )
-            ),
+            "pid": (primary_process(processes["frontend"]) or {}).get("pid"),
             "port": FRONTEND_PORT,
             "listener": frontend_listener,
             "http": frontend_http,
@@ -473,11 +452,7 @@ def health_status():
 
         "planner": {
             "process": bool(planner_health.get("ok")),
-            "pid": (
-                planner_listener.get("OwningProcess")
-                if isinstance(planner_listener, dict)
-                else None
-            ),
+            "pid": (primary_process(processes["planner"]) or {}).get("pid"),
             "server_url": planner_config.get("server_url", ""),
             "model_name": planner_config.get("model_name", ""),
             "model_path": planner_config.get("model_path", ""),
@@ -486,11 +461,7 @@ def health_status():
 
         "llm": {
             "process": llm_running,
-            "pid": (
-                processes["llm"][0]["pid"]
-                if processes["llm"]
-                else (port_listener(LLM_PORT) or {}).get("OwningProcess")
-            ),
+            "pid": (primary_process(processes["llm"]) or {}).get("pid"),
             "server_url": config.get(
                 "server_url",
                 "",
