@@ -37,7 +37,7 @@ def test_terminate_backend_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server, "process_snapshot", lambda: {
         "backend": [{"pid": 200, "name": "python.exe"}]
     })
-    monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
+    monkeypatch.setattr(control_server.subprocess, "run", lambda args, **k: (killed.append(args) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_backend()
     assert result["ok"] is True
     assert killed == [["taskkill", "/PID", "200", "/T", "/F"]]
@@ -114,7 +114,6 @@ def test_fixed_port_planner_reuses_healthy_server_without_listener_pid(monkeypat
 
 
 def test_fixed_port_llm_reuses_healthy_server_without_listener_pid(monkeypatch, tmp_path):
-    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
     monkeypatch.setattr(control_server, "LLM_PROCESS", None)
     monkeypatch.setattr(control_server, "load_llm_config", lambda: {
         "model_path": str(tmp_path / "missing-local.gguf"),
