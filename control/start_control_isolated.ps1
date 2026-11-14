@@ -30,6 +30,13 @@ $PlannerModel = Resolve-SharedModelPath ([string]$PlannerConfig.model_path)
 if (-not (Test-Path $LocalModel)) { throw "Main repository local model not found: $LocalModel" }
 if (-not (Test-Path $PlannerModel)) { throw "Main repository planner model not found: $PlannerModel" }
 
+try {
+    Invoke-WebRequest -Uri "http://127.0.0.1:8100/" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop | Out-Null
+    throw "A Nova Control Centre is already running on port 8100. Close it before launching this test checkout."
+} catch {
+    if ($_.Exception.Message -like "A Nova Control Centre is already running*") { throw }
+}
+
 $EnvironmentNames = @(
     "NOVA_ROOT", "NOVA_PYTHON", "NOVA_LLAMA_SERVER",
     "LOCAL_LLM_MODEL", "LOCAL_LLM_SERVER", "PLANNER_LLM_MODEL",
