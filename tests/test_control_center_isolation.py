@@ -52,7 +52,7 @@ def test_terminate_frontend_controls_existing_fixed_port_server(monkeypatch):
     monkeypatch.setattr(control_server.subprocess, "run", lambda *a, **k: (killed.append(a) or SimpleNamespace(returncode=0)))
     result = control_server.terminate_frontend()
     assert result["ok"] is True
-    assert killed == [["taskkill", "/PID", "300", "/T", "/F"]]
+    assert killed == [(["taskkill", "/PID", "300", "/T", "/F"],)]
 
 
 def test_terminate_wolfram_never_scans_or_kills_global_kernels(monkeypatch):
