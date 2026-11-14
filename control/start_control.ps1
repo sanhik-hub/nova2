@@ -6,13 +6,10 @@ $ControlServer = Join-Path $NovaRoot "control\server.py"
 
 $env:NOVA_ROOT = $NovaRoot
 $env:NOVA_PYTHON = $Python
-if (-not $env:NOVA_CONTROL_PORT) { $env:NOVA_CONTROL_PORT = "8100" }
-if (-not $env:NOVA_BACKEND_PORT) { $env:NOVA_BACKEND_PORT = "8000" }
-if (-not $env:NOVA_FRONTEND_PORT) { $env:NOVA_FRONTEND_PORT = "5173" }
-if (-not $env:NOVA_LLM_PORT) { $env:NOVA_LLM_PORT = "8080" }
-if (-not $env:NOVA_PLANNER_PORT) { $env:NOVA_PLANNER_PORT = "8081" }
-
-$ControlUrl = "http://127.0.0.1:$($env:NOVA_CONTROL_PORT)"
+$ControlPort = 8100
+$BackendPort = 8000
+$FrontendPort = 5173
+$ControlUrl = "http://127.0.0.1:$ControlPort"
 if (-not (Test-Path $Python)) { throw "Python executable not found: $Python" }
 if (-not (Test-Path $ControlServer)) { throw "Control server not found: $ControlServer" }
 
@@ -22,8 +19,8 @@ Write-Host " PrismOffline Control Center"
 Write-Host "============================================"
 Write-Host "Root      : $NovaRoot"
 Write-Host "Dashboard : $ControlUrl"
-Write-Host "Backend   : $($env:NOVA_BACKEND_PORT)"
-Write-Host "Frontend  : $($env:NOVA_FRONTEND_PORT)"
+Write-Host "Backend   : $BackendPort"
+Write-Host "Frontend  : $FrontendPort"
 Write-Host "============================================"
 Write-Host ""
 
