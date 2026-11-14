@@ -91,6 +91,7 @@ def test_isolated_instance_refuses_to_load_duplicate_llm(monkeypatch, tmp_path):
         "server_url": "http://127.0.0.1:8080",
     })
     monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "http_check", lambda url: {"ok": False})
     monkeypatch.setattr(control_server, "LLAMA_SERVER", tmp_path / "llama-server.exe")
     try:
         control_server.start_llm()
@@ -110,6 +111,7 @@ def test_isolated_instance_refuses_to_load_duplicate_planner(monkeypatch, tmp_pa
         "server_url": "http://127.0.0.1:8081",
     })
     monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "http_check", lambda url: {"ok": False})
     monkeypatch.setattr(control_server, "LLAMA_SERVER", tmp_path / "llama-server.exe")
     try:
         control_server.start_planner()
