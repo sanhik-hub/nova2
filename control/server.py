@@ -640,8 +640,8 @@ def start_planner():
 
     parsed = urlparse(server_url)
     port = parsed.port or PLANNER_PORT
-    if port_listener(port):
-        return {"ok": True, "message": "Planner model server is already running."}
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok") or port_listener(port):
+        return {"ok": True, "message": "Planner model server is already running (shared or existing instance)."}
 
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
@@ -677,7 +677,7 @@ def start_planner():
 def start_backend():
     global BACKEND_PROCESS
 
-    if port_listener(BACKEND_PORT):
+    if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok") or port_listener(BACKEND_PORT):
         return {"ok": True, "message": "Backend is already running."}
 
     if not PYTHON.exists():
@@ -762,7 +762,7 @@ def start_wolfram():
 def start_frontend():
     global FRONTEND_PROCESS
 
-    if port_listener(FRONTEND_PORT):
+    if http_check(f"http://{HOST}:{FRONTEND_PORT}/").get("ok") or port_listener(FRONTEND_PORT):
         return {"ok": True, "message": "Frontend is already running."}
 
     npm = subprocess.run(
@@ -801,8 +801,8 @@ def start_llm():
 
     parsed = urlparse(server_url)
     port = parsed.port or LLM_PORT
-    if port_listener(port):
-        return {"ok": True, "message": "Local model server is already running."}
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok") or port_listener(port):
+        return {"ok": True, "message": "Local model server is already running (shared or existing instance)."}
     if not MANAGE_SHARED_MODELS:
         raise RuntimeError(
             "Shared local model server is not running. Start the main Nova Control Center first; "
