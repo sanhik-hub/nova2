@@ -906,28 +906,60 @@ Scientific display contract:
         source of truth for computed results.
         """
         formulation_system = r"""
-Convert the user's computational STEM request into one executable Wolfram Language
-tool call. Return only the JSON object required by the schema. Do not write a solution or explain in prose; do not put explanations inside an expression.
+You are Nova's computational formulation engine. Translate the user's actual
+computational request into one safe, executable Wolfram Language operation.
+Do not solve in prose and do not invent numerical values.
 
-For natural-language quantitative problems, use operation "calculate". For multiple
-requested outputs, return one List of Rule expressions, with one exact lowerCamelCase
-label per requested output in the original order. Substitute all supplied numerical
-values directly; do not use assignments, intermediate symbols, or unrelated equations.
-Use explicit multiplication (*), valid Wolfram function syntax, and Degree for angles
-stated in degrees. Preserve signs, units, conditions, and the actual requested outputs.
-Never invent data or assumptions.
+Before writing the JSON, identify internally:
+- every supplied numerical or symbolic quantity;
+- every explicitly requested output;
+- the governing relationship or mathematical operation;
+- units, conversions, signs, absolute values, constraints, and conditions;
+- whether each requested output is numerical or intentionally symbolic.
 
-For concise/detailed modes, include a complete answer_template in this same JSON
-response. Use {{label}} placeholders for every requested output, matching the labels
-exactly. Include the governing relation, necessary substitution, and units appropriate
-to the selected explanation_mode. Do not guess computed values. For explanation off,
-omit answer_template.
+Return only one JSON object matching the response schema. Use the appropriate
+supported operation: calculate, simplify, factor, expand, differentiate,
+integrate, integrate_definite, solve, or limit.
 
-Use the appropriate supported operation for symbolic requests. Preserve the user's
-expression and variable for differentiation, integration, limits, and equation solving.
-Return one balanced executable Wolfram expression with no trailing markup, assignments,
-natural-language instructions, external functions, files, URLs, or side effects.
-Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
+For every natural-language quantitative problem, use calculate. Directly
+substitute EVERY numerical value supplied by the user into the Wolfram
+expression. Never leave a supplied quantity represented by a placeholder
+symbol such as k, q1, q2, r, m, a, or t. Do not return only the governing
+formula when the user asks for a numerical result. Do not introduce
+assignments, intermediate variables, With, or unrelated equations.
+
+Every requested output must be labelled, including when there is only ONE
+requested output. Use Rule[outputLabel, expression] for one output, and
+List[Rule[labelOne, expressionOne], Rule[labelTwo, expressionTwo], ...] for
+multiple outputs. Use one exact lowerCamelCase label per requested output,
+in the same order as the request. The requested_outputs array must contain
+those exact labels. Every right-hand side must compute the corresponding
+quantity, not merely repeat an input or an unresolved symbol.
+
+Use executable Wolfram syntax: explicit multiplication (*), balanced
+parentheses and brackets, ASCII identifiers, and Degree for angles given in
+degrees. Write absolute values as Abs[expression], never with vertical bars.
+Use N[expression] when a numerical approximation is required. Preserve
+physical signs and use magnitudes only when the user asks for a magnitude.
+Never invent data, assumptions, units, or conditions.
+
+For direct symbolic requests, preserve the user's expression and variable.
+For example, differentiating 3*x^4 - 5*x^2 with respect to x must remain a
+differentiate operation on that expression; do not turn it into a numerical
+word problem.
+
+For concise and detailed explanation modes, also include answer_template in
+the same JSON object. The template must explain the applicable relationship
+and show the substitution or derivation at the requested level. Put a
+{{label}} placeholder at every requested result location, using exactly the
+same labels as requested_outputs. Include units where the problem supplies
+them. Do not guess or write computed values in the template. For explanation
+mode off, omit answer_template.
+
+Completeness invariant: compare the final expression against the complete
+list of requested outputs before returning it. If even one requested result
+is missing, do not emit a partial calculation. Return no markdown, prose, or
+code fences outside the JSON object.
 """
         formulation_prompt = json.dumps(
             {
@@ -1032,7 +1064,7 @@ Use ASCII Wolfram symbols and no underscores in symbols. Output only JSON.
                     ),
                 },
             },
-            "required": ["operation", "arguments", "requested_outputs"],
+            "required": ["operation", "arguments", "requested_outputs"] + (["answer_template"] if explanation != "off" else []),
             "additionalProperties": False,
         }
 
@@ -1348,7 +1380,7 @@ URLs, or programming side effects. Never use underscores in Wolfram symbols.
                 requested_outputs, result_text
             )
             unresolved_values = bool(
-                re.search(r"\d", problem)
+                self._is_direct_quantitative_request(problem)
                 and self._requested_outputs_are_unresolved_symbols(
                     requested_outputs, result_text
                 )
@@ -1471,7 +1503,7 @@ Never return a labelled rule whose value is merely an unresolved symbol.
                             requested_outputs, retry_result.get("result")
                         )
                         and not (
-                            re.search(r"\d", problem)
+                            self._is_direct_quantitative_request(problem)
                             and self._requested_outputs_are_unresolved_symbols(
                                 requested_outputs, retry_result.get("result")
                             )
@@ -3189,34 +3221,40 @@ Scientific display contract:
     def _requested_outputs_are_unresolved_symbols(
         requested_outputs: list[str], result: Any
     ) -> bool:
-        """Reject numerical word-problem results whose labelled values are bare symbols."""
+        """Reject numerical results that still depend on unbound symbols."""
         if not isinstance(result, str) or not result.strip():
             return True
-        # Support both ordinary InputForm rules (label -> value) and
-        # explicit Wolfram constructors (Rule[label, value]). Keep the two
-        # syntaxes separate: mixing their delimiters can misread the value
-        # of one rule as the label of the next.
-        if "Rule[" in result:
-            rules = re.findall(
-                r"\bRule\s*\[\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\]",
-                result,
-            )
-        else:
-            rules = re.findall(
-                r"\b([A-Za-z][A-Za-z0-9]*)\s*->\s*([A-Za-z][A-Za-z0-9]*)\b",
-                result,
-            )
-        if not rules:
-            return False
-        values_by_label = {
-            re.sub(r"[^a-z0-9]", "", label.lower()): value
-            for label, value in rules
+
+        values = ReasoningService._extract_labelled_wolfram_values(result)
+        if not values:
+            return True
+
+        allowed_identifiers = {
+            str(name).casefold() for name in FUNCTION_MAP
+        } | {
+            str(name).casefold() for name in CONSTANT_MAP
+        } | {
+            "n", "abs", "sqrt", "sin", "cos", "tan", "cot", "sec", "csc",
+            "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "log",
+            "exp", "min", "max", "floor", "ceiling", "round", "sign",
+            "pi", "e", "degree", "i", "quantity", "unitconvert",
         }
+
         for output in requested_outputs:
             label = re.sub(r"[^a-z0-9]", "", output.lower())
-            value = values_by_label.get(label)
-            if value is not None and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", value):
+            value = values.get(label)
+            if value is None:
                 return True
+
+            # Ignore quoted unit names and inspect only executable identifiers.
+            expression = re.sub(r'"(?:\\.|[^"\\])*"', '""', value)
+            identifiers = re.findall(r"\\b[A-Za-z][A-Za-z0-9]*\\b", expression)
+            if any(
+                identifier.casefold() not in allowed_identifiers
+                for identifier in identifiers
+            ):
+                return True
+
         return False
 
     # =========================================================
