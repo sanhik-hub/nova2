@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = "Stop"
 
-# Use this launcher only from the one-pass test worktree.
+# Launch the test checkout on Nova's normal fixed ports. Only one stack may run at a time.
 $NovaRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $SharedRoot = Join-Path (Split-Path -Parent $NovaRoot) "nova2"
 $Python = "C:\Users\sanhi\Documents\code\python\.venv\Scripts\python.exe"
@@ -32,8 +32,6 @@ if (-not (Test-Path $PlannerModel)) { throw "Main repository planner model not f
 
 $EnvironmentNames = @(
     "NOVA_ROOT", "NOVA_PYTHON", "NOVA_LLAMA_SERVER",
-    "NOVA_CONTROL_PORT", "NOVA_BACKEND_PORT", "NOVA_FRONTEND_PORT",
-    "NOVA_LLM_PORT", "NOVA_PLANNER_PORT", "NOVA_MANAGE_SHARED_MODELS",
     "LOCAL_LLM_MODEL", "LOCAL_LLM_SERVER", "PLANNER_LLM_MODEL",
     "PLANNER_LLM_SERVER", "NOVA_BACKEND_URL"
 )
@@ -46,26 +44,21 @@ try {
     $env:NOVA_ROOT = $NovaRoot
     $env:NOVA_PYTHON = $Python
     $env:NOVA_LLAMA_SERVER = $LlamaServer
-    $env:NOVA_CONTROL_PORT = "8101"
-    $env:NOVA_BACKEND_PORT = "8002"
-    $env:NOVA_FRONTEND_PORT = "5174"
-    $env:NOVA_LLM_PORT = "8080"
-    $env:NOVA_PLANNER_PORT = "8081"
-    $env:NOVA_MANAGE_SHARED_MODELS = "0"
     $env:LOCAL_LLM_MODEL = $LocalModel
     $env:LOCAL_LLM_SERVER = "http://127.0.0.1:8080"
     $env:PLANNER_LLM_MODEL = $PlannerModel
     $env:PLANNER_LLM_SERVER = "http://127.0.0.1:8081"
-    $env:NOVA_BACKEND_URL = "http://127.0.0.1:8002"
+    $env:NOVA_BACKEND_URL = "http://127.0.0.1:8000"
 
-    Write-Host "Isolated test instance:"
-    Write-Host "  Source    : $NovaRoot"
-    Write-Host "  Control   : http://127.0.0.1:8101"
-    Write-Host "  Backend   : http://127.0.0.1:8002"
-    Write-Host "  Frontend  : http://127.0.0.1:5174"
-    Write-Host "  Shared LLM: http://127.0.0.1:8080"
-    Write-Host "  Planner   : http://127.0.0.1:8081"
-    Write-Host "  Model     : $LocalModel"
+    Write-Host "Nova test checkout (single-instance fixed ports):"
+    Write-Host "  Source   : $NovaRoot"
+    Write-Host "  Control  : http://127.0.0.1:8100"
+    Write-Host "  Backend  : http://127.0.0.1:8000"
+    Write-Host "  Frontend : http://127.0.0.1:5173"
+    Write-Host "  Local LLM: http://127.0.0.1:8080"
+    Write-Host "  Planner  : http://127.0.0.1:8081"
+    Write-Host "  Model    : $LocalModel"
+    Write-Host "Stop any currently running Nova Control Center before launching this checkout."
 
     & (Join-Path $PSScriptRoot "start_control.ps1")
 }
