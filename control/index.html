@@ -174,7 +174,7 @@ button:disabled {
 .bottom {
     margin-top: 16px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
 }
 
@@ -292,7 +292,7 @@ pre {
             <div class="details">
                 <div class="row">
                     <span class="label">Address</span>
-                    <span class="value">127.0.0.1:8000</span>
+                    <span id="backendAddress" class="value">127.0.0.1:8002</span>
                 </div>
                 <div class="row">
                     <span class="label">PID</span>
@@ -322,7 +322,7 @@ pre {
             <div class="details">
                 <div class="row">
                     <span class="label">Address</span>
-                    <span class="value">127.0.0.1:5173</span>
+                    <span id="frontendAddress" class="value">127.0.0.1:5174</span>
                 </div>
                 <div class="row">
                     <span class="label">PID</span>
@@ -512,6 +512,7 @@ async function refresh(force = false) {
             backendRunning ? "running" : (status.backend.process ? "warning" : "stopped"),
             backendRunning ? "RUNNING" : (status.backend.process ? "PROCESS" : "STOPPED")
         );
+        document.getElementById("backendAddress").textContent = "127.0.0.1:" + status.backend.port;
         document.getElementById("backendPid").textContent = fmt(status.backend.pid);
         document.getElementById("backendHttp").textContent = status.backend.http.ok ? "Healthy" : "Unavailable";
 
@@ -521,6 +522,7 @@ async function refresh(force = false) {
             frontendRunning ? "running" : (status.frontend.process ? "warning" : "stopped"),
             frontendRunning ? "RUNNING" : (status.frontend.process ? "PROCESS" : "STOPPED")
         );
+        document.getElementById("frontendAddress").textContent = "127.0.0.1:" + status.frontend.port;
         document.getElementById("frontendPid").textContent = fmt(status.frontend.pid);
         document.getElementById("frontendHttp").textContent = status.frontend.http.ok ? "Healthy" : "Unavailable";
         document.getElementById("frontendRoot").textContent = fmt(status.frontend.root);
