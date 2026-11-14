@@ -174,8 +174,17 @@ button:disabled {
 .bottom {
     margin-top: 16px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
+}
+
+.global-event-panel {
+    margin: 0 0 16px;
+}
+
+.global-event-panel pre {
+    min-height: 110px;
+    max-height: 220px;
 }
 
 .panel {
@@ -267,6 +276,11 @@ pre {
         Connecting...
     </div>
 
+    <section class="panel global-event-panel">
+        <div class="panel-title">Event Log</div>
+        <pre id="logs">Loading events...</pre>
+    </section>
+
     <div class="grid">
 
         <section class="card">
@@ -278,7 +292,7 @@ pre {
             <div class="details">
                 <div class="row">
                     <span class="label">Address</span>
-                    <span class="value">127.0.0.1:8000</span>
+                    <span id="backendAddress" class="value">127.0.0.1:8002</span>
                 </div>
                 <div class="row">
                     <span class="label">PID</span>
@@ -308,7 +322,7 @@ pre {
             <div class="details">
                 <div class="row">
                     <span class="label">Address</span>
-                    <span class="value">127.0.0.1:5173</span>
+                    <span id="frontendAddress" class="value">127.0.0.1:5174</span>
                 </div>
                 <div class="row">
                     <span class="label">PID</span>
@@ -444,11 +458,6 @@ pre {
             <pre id="processes">Loading...</pre>
         </section>
 
-        <section class="panel">
-            <div class="panel-title">Event Log</div>
-            <pre id="logs">Loading...</pre>
-        </section>
-
     </div>
 
     <div class="panel" style="margin-top:16px;">
@@ -503,6 +512,7 @@ async function refresh(force = false) {
             backendRunning ? "running" : (status.backend.process ? "warning" : "stopped"),
             backendRunning ? "RUNNING" : (status.backend.process ? "PROCESS" : "STOPPED")
         );
+        document.getElementById("backendAddress").textContent = "127.0.0.1:" + status.backend.port;
         document.getElementById("backendPid").textContent = fmt(status.backend.pid);
         document.getElementById("backendHttp").textContent = status.backend.http.ok ? "Healthy" : "Unavailable";
 
@@ -512,6 +522,7 @@ async function refresh(force = false) {
             frontendRunning ? "running" : (status.frontend.process ? "warning" : "stopped"),
             frontendRunning ? "RUNNING" : (status.frontend.process ? "PROCESS" : "STOPPED")
         );
+        document.getElementById("frontendAddress").textContent = "127.0.0.1:" + status.frontend.port;
         document.getElementById("frontendPid").textContent = fmt(status.frontend.pid);
         document.getElementById("frontendHttp").textContent = status.frontend.http.ok ? "Healthy" : "Unavailable";
         document.getElementById("frontendRoot").textContent = fmt(status.frontend.root);

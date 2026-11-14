@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from functools import wraps
 import urllib.request
 import subprocess
 import threading
@@ -10,48 +12,49 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-NOVA_ROOT = Path(r"C:\Users\sanhi\Documents\nova2")
-
+NOVA_ROOT = Path(os.environ.get(
+    "NOVA_ROOT", str(Path(__file__).resolve().parents[1])
+)).resolve()
 RUNNER = NOVA_ROOT / "run_nova.ps1"
-PYTHON = Path(r"C:\Users\sanhi\Documents\code\python\.venv\Scripts\python.exe")
-
-CONFIG_SCRIPT = (
-    NOVA_ROOT
-    / "backend"
-    / "providers"
-    / "local_llm"
-    / "config.py"
-)
-
-PLANNER_CONFIG_SCRIPT = (
-    NOVA_ROOT
-    / "backend"
-    / "providers"
-    / "planner_llm"
-    / "config.py"
-)
-
-LLAMA_SERVER = (
-    NOVA_ROOT
-    / "engines"
-    / "llama.cpp"
-    / "llama-server.exe"
-)
-
+PYTHON = Path(os.environ.get(
+    "NOVA_PYTHON",
+    r"C:\Users\sanhi\Documents\code\python\.venv\Scripts\python.exe",
+))
+CONFIG_SCRIPT = NOVA_ROOT / "backend" / "providers" / "local_llm" / "config.py"
+PLANNER_CONFIG_SCRIPT = NOVA_ROOT / "backend" / "providers" / "planner_llm" / "config.py"
+LLAMA_SERVER = Path(os.environ.get(
+    "NOVA_LLAMA_SERVER",
+    str(NOVA_ROOT / "engines" / "llama.cpp" / "llama-server.exe"),
+))
 FRONTEND_ROOT = NOVA_ROOT / "frontend"
 
+# Nova is a single local instance. Ports are deliberately fixed so a second
+# checkout cannot start a duplicate backend, model server, or Wolfram session.
 HOST = "127.0.0.1"
 PORT = 8100
-
 BACKEND_PORT = 8000
 FRONTEND_PORT = 5173
+LLM_PORT = 8080
 PLANNER_PORT = 8081
-
+ 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
 CONTROL_SERVER: ThreadingHTTPServer | None = None
 BACKEND_PROCESS: subprocess.Popen | None = None
+FRONTEND_PROCESS: subprocess.Popen | None = None
+LLM_PROCESS: subprocess.Popen | None = None
+PLANNER_PROCESS: subprocess.Popen | None = None
 SHUTDOWN_EVENT = threading.Event()
+SERVICE_OPERATION_LOCK = threading.RLock()
+
+
+def serialize_service_operation(function):
+    """Prevent concurrent Start/Stop requests from duplicating a service."""
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with SERVICE_OPERATION_LOCK:
+            return function(*args, **kwargs)
+    return wrapped
 
 
 def log(message: str):
@@ -113,7 +116,7 @@ def load_llm_config():
 
         return {
             "model_path": model_path,
-            "server_url": server_url,
+            "server_url": f"http://{HOST}:{LLM_PORT}",
             "model_name": (
                 Path(model_path).stem
                 if model_path
@@ -152,7 +155,7 @@ def load_planner_config():
 
         return {
             "model_path": model_path,
-            "server_url": server_url,
+            "server_url": f"http://{HOST}:{PLANNER_PORT}",
             "model_name": Path(model_path).stem if model_path else "",
             "context_size": int(data.get("context_size", 4096)),
             "threads": int(data.get("threads", 6)),
@@ -169,52 +172,136 @@ def load_planner_config():
 
 
 def get_processes():
-    """Inspect relevant processes using native tasklist, not PowerShell."""
-    names = {
-        "python.exe",
-        "pythonw.exe",
-        "llama-server.exe",
-        "WolframKernel.exe",
-        "node.exe",
-    }
+    """Read process IDs and command lines from Windows CIM.
+
+    netstat/Get-NetTCPConnection can report PID 0 for listeners in some
+    Windows environments. CIM provides the actual process inventory, so
+    service identification must not depend on the listener PID.
+    """
+    script = (
+        "$names = @('python.exe','pythonw.exe','llama-server.exe',"
+        "'WolframKernel.exe','node.exe'); "
+        "$items = @(Get-CimInstance -ClassName Win32_Process | "
+        "Where-Object { $names -contains $_.Name } | "
+        "Select-Object @{Name='ProcessId';Expression={[int]$_.ProcessId}}, "
+        "@{Name='ParentProcessId';Expression={[int]$_.ParentProcessId}}, "
+        "Name, CommandLine); "
+        "ConvertTo-Json -InputObject $items -Compress -Depth 3"
+    )
 
     try:
         result = run_command(
-            ["tasklist", "/FO", "CSV", "/NH"],
-            timeout=10,
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                script,
+            ],
+            timeout=15,
         )
-
         if result.returncode != 0:
             raise RuntimeError(
                 result.stderr.strip()
-                or f"tasklist exited with {result.returncode}"
+                or f"Get-CimInstance exited with {result.returncode}"
             )
 
-        import csv
-        from io import StringIO
-
-        processes = []
-        for row in csv.reader(StringIO(result.stdout)):
-            if len(row) < 2 or row[0] not in names:
-                continue
-
-            try:
-                pid = int(row[1])
-            except ValueError:
-                continue
-
-            processes.append({
-                "ProcessId": pid,
-                "ParentProcessId": None,
-                "Name": row[0],
-                "CommandLine": "",
-            })
-
-        return processes
+        raw = result.stdout.strip()
+        if not raw:
+            return []
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            data = [data]
+        if not isinstance(data, list):
+            raise ValueError("Windows process inventory returned an unexpected format")
+        return [
+            process for process in data
+            if isinstance(process, dict)
+            and int(process.get("ProcessId") or 0) > 0
+        ]
 
     except Exception as exc:
         log(f"Process inspection failed: {exc}")
         return []
+
+
+def _command_uses_port(command: str, port: int) -> bool:
+    """Match a command-line --port argument without relying on netstat PID."""
+    normalized = str(command or "").lower()
+    return (
+        f"--port {port}" in normalized
+        or f"--port={port}" in normalized
+    )
+
+
+def _process_record(process: dict) -> dict:
+    return {
+        "pid": process.get("ProcessId"),
+        "parent_pid": process.get("ParentProcessId"),
+        "name": process.get("Name"),
+        "command": process.get("CommandLine") or "",
+    }
+
+
+def primary_process(processes: list[dict]) -> dict | None:
+    """Prefer the root process when a service has a parent/worker pair."""
+    if not processes:
+        return None
+    pids = {item.get("pid") for item in processes}
+    roots = [
+        item for item in processes
+        if item.get("parent_pid") not in pids
+    ]
+    return roots[0] if roots else processes[0]
+
+
+def process_snapshot():
+    """Identify this instance's services from executable command lines.
+
+    Listener ownership is deliberately not used: Windows can report PID 0
+    for an otherwise healthy local listener. Wolfram remains backend-session
+    managed and is not inferred from a machine-wide process scan.
+    """
+    inventory = get_processes()
+    backend = []
+    frontend = []
+    llama = []
+    planner = []
+
+    for process in inventory:
+        name = str(process.get("Name") or "").lower()
+        command = str(process.get("CommandLine") or "")
+        command_lower = command.lower()
+        record = _process_record(process)
+
+        if (
+            name in {"python.exe", "pythonw.exe"}
+            and "uvicorn" in command_lower
+            and "backend.main:app" in command_lower
+            and _command_uses_port(command, BACKEND_PORT)
+        ):
+            backend.append(record)
+
+        if (
+            name == "node.exe"
+            and "vite" in command_lower
+            and _command_uses_port(command, FRONTEND_PORT)
+        ):
+            frontend.append(record)
+
+        if name == "llama-server.exe":
+            if _command_uses_port(command, LLM_PORT):
+                llama.append(record)
+            if _command_uses_port(command, PLANNER_PORT):
+                planner.append(record)
+
+    return {
+        "backend": backend,
+        "frontend": frontend,
+        "llm": llama,
+        "planner": planner,
+        "wolfram": [],
+    }
 
 
 def port_listener(port: int):
@@ -268,115 +355,6 @@ def port_listener(port: int):
         log(f"Port inspection failed for {port}: {exc}")
         return None
 
-
-def process_snapshot():
-    processes = get_processes()
-
-    backend = []
-    frontend = []
-    llama = []
-    wolfram = []
-
-    backend_listener = port_listener(BACKEND_PORT)
-    frontend_listener = port_listener(FRONTEND_PORT)
-
-    backend_pid = None
-    frontend_pid = None
-
-    if isinstance(backend_listener, dict):
-        backend_pid = backend_listener.get(
-            "OwningProcess"
-        )
-    elif isinstance(backend_listener, list) and backend_listener:
-        backend_pid = backend_listener[0].get(
-            "OwningProcess"
-        )
-
-    if isinstance(frontend_listener, dict):
-        frontend_pid = frontend_listener.get(
-            "OwningProcess"
-        )
-    elif isinstance(frontend_listener, list) and frontend_listener:
-        frontend_pid = frontend_listener[0].get(
-            "OwningProcess"
-        )
-
-    for process in processes:
-        name = str(
-            process.get("Name") or ""
-        )
-
-        command = str(
-            process.get("CommandLine") or ""
-        )
-
-        pid = process.get("ProcessId")
-        parent = process.get("ParentProcessId")
-
-        name_lower = name.lower()
-        command_lower = command.lower()
-
-        # Backend is identified by the process
-        # actually owning port 8000.
-        if (
-            backend_pid is not None
-            and str(pid) == str(backend_pid)
-            and name_lower in (
-                "python.exe",
-                "pythonw.exe",
-            )
-        ):
-            backend.append(
-                {
-                    "pid": pid,
-                    "parent_pid": parent,
-                    "name": name,
-                    "command": command,
-                }
-            )
-
-        # Frontend is identified primarily by
-        # the process owning Vite's port.
-        if (
-            frontend_pid is not None
-            and str(pid) == str(frontend_pid)
-            and name_lower == "node.exe"
-        ):
-            frontend.append(
-                {
-                    "pid": pid,
-                    "parent_pid": parent,
-                    "name": name,
-                    "command": command,
-                }
-            )
-
-        if name_lower == "llama-server.exe":
-            llama.append(
-                {
-                    "pid": pid,
-                    "parent_pid": parent,
-                    "name": name,
-                    "command": command,
-                }
-            )
-
-        if name_lower == "wolframkernel.exe":
-            wolfram.append(
-                {
-                    "pid": pid,
-                    "parent_pid": parent,
-                    "name": name,
-                    "command": command,
-                }
-            )
-
-    return {
-        "backend": backend,
-        "frontend": frontend,
-        "llm": llama,
-        "wolfram": wolfram,
-    }
 
 
 def http_check(url: str):
@@ -498,25 +476,22 @@ def health_status():
     session = wolfram_health.get("wolfram_session") or {}
     session_exists = bool(session.get("session_exists"))
     session_started = bool(session.get("session_started"))
-    kernel_count = len(processes["wolfram"])
-
-    # WolframLanguageSession.started is not used as the sole runtime
-    # signal here. After a successful evaluation the native kernel can
-    # still be present even when that property is momentarily false.
-    # The backend session object plus an actual WolframKernel.exe give
-    # us the reliable Control Center state.
-    wolfram_active = session_exists and kernel_count > 0
+    # The backend API is authoritative for this instance's Wolfram session.
+    # Never use a machine-wide WolframKernel.exe count as an ownership signal.
+    wolfram_active = bool(wolfram_health.get("wolfram")) or (
+        session_exists and session_started
+    )
+    # This is an instance-owned backend session count, not a machine-wide
+    # count of native WolframKernel.exe processes.
+    kernel_count = int(wolfram_active)
 
     # A service is considered running when its actual
     # endpoint is reachable. Process information is
     # supplemental diagnostic information.
-    backend_running = bool(
-        backend_listener and backend_http.get("ok")
-    )
-
-    frontend_running = bool(
-        frontend_listener and frontend_http.get("ok")
-    )
+    # Reachable service endpoints are authoritative. Listener PID reporting
+    # is supplemental because Windows may expose PID 0 for local listeners.
+    backend_running = bool(backend_http.get("ok"))
+    frontend_running = bool(frontend_http.get("ok"))
 
     llm_running = bool(
         llm_health.get("ok")
@@ -525,15 +500,7 @@ def health_status():
     return {
         "backend": {
             "process": backend_running,
-            "pid": (
-                backend_listener.get("OwningProcess")
-                if isinstance(backend_listener, dict)
-                else (
-                    processes["backend"][0]["pid"]
-                    if processes["backend"]
-                    else None
-                )
-            ),
+            "pid": (primary_process(processes["backend"]) or {}).get("pid"),
             "port": BACKEND_PORT,
             "listener": backend_listener,
             "http": backend_http,
@@ -541,15 +508,7 @@ def health_status():
 
         "frontend": {
             "process": frontend_running,
-            "pid": (
-                frontend_listener.get("OwningProcess")
-                if isinstance(frontend_listener, dict)
-                else (
-                    processes["frontend"][0]["pid"]
-                    if processes["frontend"]
-                    else None
-                )
-            ),
+            "pid": (primary_process(processes["frontend"]) or {}).get("pid"),
             "port": FRONTEND_PORT,
             "listener": frontend_listener,
             "http": frontend_http,
@@ -558,11 +517,7 @@ def health_status():
 
         "planner": {
             "process": bool(planner_health.get("ok")),
-            "pid": (
-                planner_listener.get("OwningProcess")
-                if isinstance(planner_listener, dict)
-                else None
-            ),
+            "pid": (primary_process(processes["planner"]) or {}).get("pid"),
             "server_url": planner_config.get("server_url", ""),
             "model_name": planner_config.get("model_name", ""),
             "model_path": planner_config.get("model_path", ""),
@@ -571,15 +526,7 @@ def health_status():
 
         "llm": {
             "process": llm_running,
-            "pid": (
-                processes["llm"][0]["pid"]
-                if processes["llm"]
-                else (
-                    (
-                        port_listener(8080) or {}
-                    ).get("OwningProcess")
-                )
-            ),
+            "pid": (primary_process(processes["llm"]) or {}).get("pid"),
             "server_url": config.get(
                 "server_url",
                 "",
@@ -693,10 +640,9 @@ def open_service_log(component: str):
     return {"ok": True, "message": f"Opened live log for {label}.", "path": str(path)}
 
 
+@serialize_service_operation
 def start_planner():
-    listener = port_listener(PLANNER_PORT)
-    if listener:
-        return {"ok": True, "message": "Planner model server is already running."}
+    global PLANNER_PROCESS
 
     config = load_planner_config()
     model_path = str(config.get("model_path", "")).strip()
@@ -705,17 +651,31 @@ def start_planner():
     if not model_path or not server_url:
         raise RuntimeError("Planner model configuration is incomplete.")
 
+    parsed = urlparse(f"http://{HOST}:{PLANNER_PORT}")
+    port = PLANNER_PORT
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
+        return {"ok": True, "message": "Planner model server is already running."}
+    if PLANNER_PROCESS is not None and PLANNER_PROCESS.poll() is None:
+        return {"ok": True, "message": "Planner model server is already starting."}
+    if port_listener(port):
+        terminate_planner()
+        deadline = time.time() + 10
+        while port_listener(port) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(port):
+            raise RuntimeError(f"Planner port {port} is occupied by an unresponsive process; refusing to start a duplicate.")
+
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
 
     if not Path(model_path).exists():
         raise RuntimeError(f"Planner model not found: {model_path}")
 
-    parsed = urlparse(server_url)
-    port = parsed.port or PLANNER_PORT
+    if not LLAMA_SERVER.exists():
+        raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
     log(f"Starting small planner model server on port {port}...")
-    start_process(
+    PLANNER_PROCESS = start_process(
         [
             str(LLAMA_SERVER), "-m", model_path,
             "--host", parsed.hostname or HOST,
@@ -731,11 +691,22 @@ def start_planner():
     return {"ok": True, "message": "Planner model server start requested."}
 
 
+@serialize_service_operation
 def start_backend():
     global BACKEND_PROCESS
 
-    if port_listener(BACKEND_PORT):
+    if http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
         return {"ok": True, "message": "Backend is already running."}
+    if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
+        raise RuntimeError("Backend startup is already in progress; refusing to launch a second backend.")
+
+    if port_listener(BACKEND_PORT):
+        terminate_backend()
+        deadline = time.time() + 10
+        while port_listener(BACKEND_PORT) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(BACKEND_PORT):
+            raise RuntimeError("Backend port 8000 is occupied by an unresponsive process; refusing to start a duplicate.")
 
     if not PYTHON.exists():
         raise RuntimeError(f"Python executable not found: {PYTHON}")
@@ -784,7 +755,9 @@ def start_backend():
     )
 
 
+@serialize_service_operation
 def start_wolfram():
+    # Always manage the single persistent session through the fixed-port backend.
     backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
 
     if not backend_http.get("ok"):
@@ -811,9 +784,22 @@ def start_wolfram():
     }
 
 
+@serialize_service_operation
 def start_frontend():
-    if port_listener(FRONTEND_PORT):
+    global FRONTEND_PROCESS
+
+    if http_check(f"http://{HOST}:{FRONTEND_PORT}/").get("ok"):
         return {"ok": True, "message": "Frontend is already running."}
+    if FRONTEND_PROCESS is not None and FRONTEND_PROCESS.poll() is None:
+        return {"ok": True, "message": "Frontend is already starting."}
+
+    if port_listener(FRONTEND_PORT):
+        terminate_frontend()
+        deadline = time.time() + 10
+        while port_listener(FRONTEND_PORT) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(FRONTEND_PORT):
+            raise RuntimeError("Frontend port 5173 is occupied by an unresponsive process; refusing to start a duplicate.")
 
     npm = subprocess.run(
         ["where.exe", "npm.exe"],
@@ -823,7 +809,7 @@ def start_frontend():
         raise RuntimeError("npm.exe was not found in PATH.")
 
     log("Starting Vite frontend...")
-    start_process(
+    FRONTEND_PROCESS = start_process(
         [
             npm.stdout.strip().splitlines()[0],
             "run", "dev", "--",
@@ -836,9 +822,9 @@ def start_frontend():
     return {"ok": True, "message": "Frontend start requested."}
 
 
+@serialize_service_operation
 def start_llm():
-    if port_listener(8080):
-        return {"ok": True, "message": "Local model server is already running."}
+    global LLM_PROCESS
 
     config = load_llm_config()
     model_path = str(config.get("model_path", "")).strip()
@@ -850,11 +836,24 @@ def start_llm():
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
 
-    parsed = urlparse(server_url)
-    port = parsed.port or 8080
+    parsed = urlparse(f"http://{HOST}:{LLM_PORT}")
+    port = LLM_PORT
+    if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
+        return {"ok": True, "message": "Local model server is already running."}
+    if LLM_PROCESS is not None and LLM_PROCESS.poll() is None:
+        return {"ok": True, "message": "Local model server is already starting."}
+    if port_listener(port):
+        terminate_llm()
+        deadline = time.time() + 10
+        while port_listener(port) and time.time() < deadline:
+            time.sleep(0.25)
+        if port_listener(port):
+            raise RuntimeError(f"Local model port {port} is occupied by an unresponsive process; refusing to start a duplicate.")
+    if not LLAMA_SERVER.exists():
+        raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
     log(f"Starting local model server on port {port}...")
-    start_process(
+    LLM_PROCESS = start_process(
         [
             str(LLAMA_SERVER), "-m", model_path,
             "--host", parsed.hostname or HOST,
@@ -942,13 +941,16 @@ def start_all(restart_existing_backend: bool = False):
             )
 
         if restart_existing_backend and port_listener(BACKEND_PORT):
-            log("Replacing the existing backend so current source is loaded with automatic reload enabled...")
-            terminate_backend()
-            release_deadline = time.time() + 10
-            while port_listener(BACKEND_PORT) and time.time() < release_deadline:
-                time.sleep(0.25)
-            if port_listener(BACKEND_PORT):
-                raise RuntimeError("The existing backend did not stop; refusing to launch a second backend.")
+            if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
+                log("Restarting the backend process owned by this Control Center...")
+                terminate_backend()
+                release_deadline = time.time() + 10
+                while port_listener(BACKEND_PORT) and time.time() < release_deadline:
+                    time.sleep(0.25)
+                if port_listener(BACKEND_PORT):
+                    raise RuntimeError("The owned backend did not stop; refusing to launch a second backend.")
+            else:
+                log("An external backend already owns this port; reusing it without terminating it.")
 
         start_backend()
         if SHUTDOWN_EVENT.is_set():
@@ -964,6 +966,7 @@ def start_all(restart_existing_backend: bool = False):
             )
 
         start_wolfram()
+
         if SHUTDOWN_EVENT.is_set():
             raise RuntimeError("Control Center is closing.")
 
@@ -1060,182 +1063,104 @@ def terminate_process_list(
     return True
 
 
-def terminate_backend():
-    global BACKEND_PROCESS
+def terminate_owned_process(process, label: str):
+    """Terminate only a Popen handle created by this Control Center."""
+    if process is None or process.poll() is not None:
+        return False
 
-    # With Uvicorn --reload, the process owning port 8000 is a worker
-    # underneath the reloader. Kill the original launcher PID as a tree so
-    # the reloader cannot respawn the backend during shutdown.
-    if BACKEND_PROCESS is not None and BACKEND_PROCESS.poll() is None:
-        pid = BACKEND_PROCESS.pid
-        log(f"Terminating Nova backend/reloader process tree PID {pid}...")
-        result = subprocess.run(
-            ["taskkill", "/PID", str(pid), "/T", "/F"],
-            capture_output=True,
-            text=True,
-        )
-        BACKEND_PROCESS = None
-        if result.returncode == 0:
-            return {"ok": True, "message": "Backend and reload worker terminated."}
-        log(f"Tracked backend termination returned {result.returncode}: {result.stderr.strip()}")
-
-    processes = process_snapshot()["backend"]
-
-    if not processes:
-        return {
-            "ok": True,
-            "message": (
-                "Backend is not running."
-            ),
-        }
-
-    terminate_process_list(
-        processes,
-        "Nova backend",
-    )
-
-    return {
-        "ok": True,
-        "message": "Backend terminated.",
-    }
-
-
-def terminate_frontend():
-    processes = process_snapshot()["frontend"]
-
-    if not processes:
-        return {
-            "ok": True,
-            "message": (
-                "Frontend is not running."
-            ),
-        }
-
-    terminate_process_list(
-        processes,
-        "frontend",
-    )
-
-    return {
-        "ok": True,
-        "message": "Frontend terminated.",
-    }
-
-
-def terminate_planner():
-    listener = port_listener(PLANNER_PORT)
-    if not listener:
-        return {"ok": True, "message": "Planner model server is not running."}
-
-    pid = int(listener["OwningProcess"])
-    log(f"Terminating planner model server PID {pid}...")
-    subprocess.run(
+    pid = int(process.pid)
+    log(f"Terminating owned {label} process tree PID {pid}...")
+    result = subprocess.run(
         ["taskkill", "/PID", str(pid), "/T", "/F"],
         capture_output=True,
         text=True,
     )
-    return {"ok": True, "message": "Planner model server terminated."}
+    try:
+        process.wait(timeout=10)
+    except (AttributeError, subprocess.TimeoutExpired):
+        pass
+    return result.returncode == 0
 
 
+@serialize_service_operation
+def terminate_backend():
+    global BACKEND_PROCESS
+    process = BACKEND_PROCESS
+    BACKEND_PROCESS = None
+    if process is not None:
+        terminate_owned_process(process, "Nova backend/reloader")
+    else:
+        terminate_process_list(process_snapshot().get("backend", []), "Nova backend/reloader")
+    return {"ok": True, "message": "Backend on port 8000 stopped if it was running."}
+
+
+@serialize_service_operation
+def terminate_frontend():
+    global FRONTEND_PROCESS
+    process = FRONTEND_PROCESS
+    FRONTEND_PROCESS = None
+    if process is not None:
+        terminate_owned_process(process, "Nova frontend")
+    else:
+        terminate_process_list(process_snapshot().get("frontend", []), "Nova frontend")
+    return {"ok": True, "message": "Frontend on port 5173 stopped if it was running."}
+
+
+@serialize_service_operation
+def terminate_planner():
+    global PLANNER_PROCESS
+    process = PLANNER_PROCESS
+    PLANNER_PROCESS = None
+    if process is not None:
+        terminate_owned_process(process, "planner model server")
+    else:
+        terminate_process_list(process_snapshot().get("planner", []), "planner model server")
+    return {"ok": True, "message": "Planner server on port 8081 stopped if it was running."}
+
+
+@serialize_service_operation
 def terminate_llm():
-    processes = process_snapshot()["llm"]
-
-    if not processes:
-        return {
-            "ok": True,
-            "message": (
-                "Local model server "
-                "is not running."
-            ),
-        }
-
-    terminate_process_list(
-        processes,
-        "llama-server",
-    )
-
-    return {
-        "ok": True,
-        "message": (
-            "Local model server terminated."
-        ),
-    }
+    global LLM_PROCESS
+    process = LLM_PROCESS
+    LLM_PROCESS = None
+    if process is not None:
+        terminate_owned_process(process, "local model server")
+    else:
+        terminate_process_list(process_snapshot().get("llm", []), "local model server")
+    return {"ok": True, "message": "Local model server on port 8080 stopped if it was running."}
 
 
+@serialize_service_operation
 def terminate_wolfram():
-    """Reset the backend session and remove any kernel left behind.
-
-    WolframLanguageSession.terminate() can occasionally release the
-    Python-side session without immediately removing the native
-    WolframKernel.exe process. Never report a clean termination until
-    the native process is actually gone.
-    """
-    backend_http = http_check(f"http://{HOST}:{BACKEND_PORT}/docs")
-
-    if backend_http.get("ok"):
-        try:
-            result = http_json_post(
-                f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
-            )
-
-            if result.get("success"):
-                deadline = time.time() + 5
-
-                while time.time() < deadline:
-                    if not process_snapshot()["wolfram"]:
-                        log("Wolfram session terminated cleanly through backend.")
-                        return {
-                            "ok": True,
-                            "message": "Wolfram session terminated cleanly.",
-                        }
-                    time.sleep(0.25)
-
-                log(
-                    "Wolfram session reset succeeded, but a native "
-                    "WolframKernel.exe process remained. Forcing termination."
-                )
-        except Exception as exc:
-            log(f"Wolfram session reset failed: {exc}")
-
-    processes = process_snapshot()["wolfram"]
-
-    if processes:
-        terminate_process_list(processes, "WolframKernel")
-
-        deadline = time.time() + 5
-        while time.time() < deadline:
-            if not process_snapshot()["wolfram"]:
-                break
-            time.sleep(0.25)
-
-    if process_snapshot()["wolfram"]:
+    """Stop the one persistent Wolfram session through the fixed-port backend."""
+    if not http_check(f"http://{HOST}:{BACKEND_PORT}/docs").get("ok"):
+        return {"ok": True, "message": "Backend is stopped; no managed Wolfram session remains."}
+    try:
+        result = http_json_post(
+            f"http://{HOST}:{BACKEND_PORT}/api/wolfram/stop"
+        )
+    except Exception as exc:
+        return {"ok": False, "message": f"Could not stop owned Wolfram session: {exc}"}
+    if not result.get("success"):
         return {
             "ok": False,
-            "message": "WolframKernel.exe could not be terminated.",
+            "message": result.get("message", "Owned Wolfram session stop failed."),
         }
-
-    return {
-        "ok": True,
-        "message": "Wolfram kernel processes terminated.",
-    }
+    log("Owned Wolfram session stopped through its backend API.")
+    return {"ok": True, "message": "Owned Wolfram session stopped successfully."}
 
 
 def terminate_all():
+    # Only process handles created by this Control Center are terminated.
     terminate_frontend()
-    terminate_llm()
-    terminate_planner()
     terminate_wolfram()
     terminate_backend()
-
-    log("Nova processes terminated.")
-
+    terminate_planner()
+    terminate_llm()
+    log("Owned Nova processes terminated; shared/external services were left running.")
     return {
         "ok": True,
-        "message": (
-            "Nova frontend, backend, "
-            "local model and Wolfram "
-            "processes terminated."
-        ),
+        "message": "Owned frontend, backend and service processes terminated; shared model servers were preserved.",
     }
 
 
@@ -1504,13 +1429,19 @@ class Handler(BaseHTTPRequestHandler):
                 api_response(self, start_planner())
                 return
             if parsed.path == "/api/restart/wolfram":
+                if BACKEND_PROCESS is None or BACKEND_PROCESS.poll() is not None:
+                    api_response(self, {
+                        "ok": False,
+                        "message": "Backend is not owned by this Control Center; leaving its Wolfram session untouched.",
+                    }, 409)
+                    return
                 result = http_json_post(
                     f"http://{HOST}:{BACKEND_PORT}/api/wolfram/restart"
                 )
                 api_response(self, {
                     "ok": bool(result.get("success")),
-                    "message": result.get("message", "Wolfram session reset."),
-                })
+                    "message": result.get("message", "Wolfram session restart requested."),
+                }, 200 if result.get("success") else 409)
                 return
 
             if parsed.path == "/api/shutdown":
