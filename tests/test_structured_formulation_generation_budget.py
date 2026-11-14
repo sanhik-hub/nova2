@@ -29,7 +29,7 @@ class CapturingRouter:
         }
 
 
-def test_complex_result_only_formulation_uses_scoped_structured_budget():
+def test_complex_result_only_formulation_uses_provider_generation_capacity():
     router = CapturingRouter()
     service = ReasoningService(router=router)
     service._validate_tool_call = lambda call: {
@@ -48,8 +48,7 @@ def test_complex_result_only_formulation_uses_scoped_structured_budget():
     )
 
     assert result["success"] is True
-    assert router.kwargs["max_tokens"] == ReasoningService.STRUCTURED_TOOL_TOKENS
-    assert router.kwargs["max_tokens"] == 256
+    assert router.kwargs["max_tokens"] is None
     assert router.kwargs["response_format"]["type"] == "json_object"
     schema = router.kwargs["response_format"]["schema"]
     assert schema["required"] == ["operation", "arguments", "requested_outputs"]
