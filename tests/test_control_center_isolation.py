@@ -151,3 +151,31 @@ def test_terminate_wolfram_stops_only_the_owned_backend_session(monkeypatch):
     assert calls == [
         f"http://{control_server.HOST}:{control_server.BACKEND_PORT}/api/wolfram/stop"
     ]
+
+
+def test_isolated_instance_reuses_healthy_shared_planner_without_listener_pid(monkeypatch, tmp_path):
+    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
+    monkeypatch.setattr(control_server, "PLANNER_PROCESS", None)
+    monkeypatch.setattr(control_server, "load_planner_config", lambda: {
+        "model_path": str(tmp_path / "missing-planner.gguf"),
+        "server_url": "http://127.0.0.1:8081",
+    })
+    monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "http_check", lambda url: {"ok": url.endswith("/health")})
+    result = control_server.start_planner()
+    assert result["ok"] is True
+    assert "already running" in result["message"]
+
+
+def test_isolated_instance_reuses_healthy_shared_llm_without_listener_pid(monkeypatch, tmp_path):
+    monkeypatch.setattr(control_server, "MANAGE_SHARED_MODELS", False)
+    monkeypatch.setattr(control_server, "LLM_PROCESS", None)
+    monkeypatch.setattr(control_server, "load_llm_config", lambda: {
+        "model_path": str(tmp_path / "missing-local.gguf"),
+        "server_url": "http://127.0.0.1:8080",
+    })
+    monkeypatch.setattr(control_server, "port_listener", lambda port: None)
+    monkeypatch.setattr(control_server, "http_check", lambda url: {"ok": url.endswith("/health")})
+    result = control_server.start_llm()
+    assert result["ok"] is True
+    assert "already running" in result["message"]
