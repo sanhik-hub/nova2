@@ -35,8 +35,7 @@ BACKEND_PORT = 8000
 FRONTEND_PORT = 5173
 LLM_PORT = 8080
 PLANNER_PORT = 8081
-MANAGE_SHARED_MODELS = True
-
+ 
 LOG_LOCK = threading.Lock()
 LOGS: list[str] = []
 CONTROL_SERVER: ThreadingHTTPServer | None = None
@@ -106,7 +105,7 @@ def load_llm_config():
 
         return {
             "model_path": model_path,
-            "server_url": server_url,
+            "server_url": f"http://{HOST}:{LLM_PORT}",
             "model_name": (
                 Path(model_path).stem
                 if model_path
@@ -145,7 +144,7 @@ def load_planner_config():
 
         return {
             "model_path": model_path,
-            "server_url": server_url,
+            "server_url": f"http://{HOST}:{PLANNER_PORT}",
             "model_name": Path(model_path).stem if model_path else "",
             "context_size": int(data.get("context_size", 4096)),
             "threads": int(data.get("threads", 6)),
@@ -640,8 +639,8 @@ def start_planner():
     if not model_path or not server_url:
         raise RuntimeError("Planner model configuration is incomplete.")
 
-    parsed = urlparse(server_url)
-    port = parsed.port or PLANNER_PORT
+    parsed = urlparse(f"http://{HOST}:{PLANNER_PORT}")
+    port = PLANNER_PORT
     if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
         return {"ok": True, "message": "Planner model server is already running."}
     if port_listener(port):
@@ -658,11 +657,6 @@ def start_planner():
     if not Path(model_path).exists():
         raise RuntimeError(f"Planner model not found: {model_path}")
 
-    if not MANAGE_SHARED_MODELS:
-        raise RuntimeError(
-            "Shared planner server is not running. Start the main Nova Control Center first; "
-            "the isolated test instance will not load a second planner model."
-        )
     if not LLAMA_SERVER.exists():
         raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
@@ -820,8 +814,8 @@ def start_llm():
     if not Path(model_path).is_absolute():
         model_path = str(NOVA_ROOT / model_path)
 
-    parsed = urlparse(server_url)
-    port = parsed.port or LLM_PORT
+    parsed = urlparse(f"http://{HOST}:{LLM_PORT}")
+    port = LLM_PORT
     if http_check(f"{server_url.rstrip('/')}/health").get("ok"):
         return {"ok": True, "message": "Local model server is already running."}
     if port_listener(port):
@@ -831,11 +825,6 @@ def start_llm():
             time.sleep(0.25)
         if port_listener(port):
             raise RuntimeError(f"Local model port {port} is occupied by an unresponsive process; refusing to start a duplicate.")
-    if not MANAGE_SHARED_MODELS:
-        raise RuntimeError(
-            "Shared local model server is not running. Start the main Nova Control Center first; "
-            "the isolated test instance will not load a second model."
-        )
     if not LLAMA_SERVER.exists():
         raise RuntimeError(f"llama-server executable not found: {LLAMA_SERVER}")
 
