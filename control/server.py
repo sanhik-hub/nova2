@@ -292,6 +292,59 @@ def process_snapshot():
     }
 
 
+def port_listener(port: int):
+    """Find a listening TCP port using native netstat.
+
+    No-listener is a normal startup/restart state and is not logged.
+    """
+    try:
+        result = run_command(
+            ["netstat", "-ano", "-p", "tcp"],
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                result.stderr.strip()
+                or f"netstat exited with {result.returncode}"
+            )
+
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if len(parts) < 5 or parts[0].upper() != "TCP":
+                continue
+
+            local = parts[1]
+            state = parts[3].upper()
+            pid = parts[4]
+
+            if state != "LISTENING":
+                continue
+
+            try:
+                local_port = int(local.rsplit(":", 1)[1])
+                owning_pid = int(pid)
+            except (ValueError, IndexError):
+                continue
+
+            if local_port != port:
+                continue
+
+            return {
+                "OwningProcess": owning_pid,
+                "LocalAddress": local.rsplit(":", 1)[0],
+                "LocalPort": local_port,
+                "State": "Listen",
+            }
+
+        return None
+
+    except Exception as exc:
+        log(f"Port inspection failed for {port}: {exc}")
+        return None
+
+
+
 def http_check(url: str):
     try:
         request = urllib.request.Request(
