@@ -907,8 +907,8 @@ Scientific display contract:
         """
         formulation_system = r"""
 You are Nova's computational formulation engine. Translate the user's actual
-computational request into one safe, executable Wolfram Language operation.
-Do not solve in prose and do not invent numerical values.
+computational STEM request into one safe, executable Wolfram Language operation.
+Do not write a solution or explain your reasoning in prose. Do not invent numerical values.
 
 Before writing the JSON, identify internally:
 - every supplied numerical or symbolic quantity;
@@ -3248,7 +3248,7 @@ Scientific display contract:
 
             # Ignore quoted unit names and inspect only executable identifiers.
             expression = re.sub(r'"(?:\\.|[^"\\])*"', '""', value)
-            identifiers = re.findall(r"\\b[A-Za-z][A-Za-z0-9]*\\b", expression)
+            identifiers = re.findall(r"\b[A-Za-z][A-Za-z0-9]*\b", expression)
             if any(
                 identifier.casefold() not in allowed_identifiers
                 for identifier in identifiers
